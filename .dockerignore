@@ -1,0 +1,11 @@
+**/bin/
+**/obj/
+**/.vs/
+**/.git/
+**/*.user
+**/prospeccao.db*
+mockups/
+amostra-receita/
+files/
+1/
+*.zip

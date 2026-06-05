@@ -1,0 +1,96 @@
+@model LeadListaViewModel
+@{
+    ViewData["Title"] = "Leads";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Leads</h1>
+    <div>
+        <a class="btn btn-outline-primary" asp-action="Importar">Importar CNPJs</a>
+        <form asp-action="RodarAgora" method="post" class="d-inline"
+              onsubmit="this.querySelector('button').disabled=true;this.querySelector('button').innerText='Pontuando...';">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-primary">Rodar agora</button>
+        </form>
+    </div>
+</div>
+
+@if (TempData["Mensagem"] is string msg)
+{
+    <div class="alert alert-success">@msg</div>
+}
+@if (TempData["Erro"] is string err)
+{
+    <div class="alert alert-danger">@err</div>
+}
+
+<form method="get" class="row g-2 align-items-end mb-3">
+    <div class="col-auto">
+        <label class="form-label" for="uf">UF</label>
+        <input id="uf" name="uf" value="@Model.Uf" class="form-control" maxlength="2" style="width: 6rem" />
+    </div>
+    <div class="col-auto">
+        <label class="form-label" for="situacao">Situação</label>
+        <input id="situacao" name="situacao" value="@Model.Situacao" class="form-control" />
+    </div>
+    <div class="col-auto">
+        <label class="form-label" for="ordenacao">Ordenar por</label>
+        <select id="ordenacao" name="ordenacao" class="form-select">
+            <option value="score" selected="@(Model.Ordenacao == "score")">Score (maior)</option>
+            <option value="razao" selected="@(Model.Ordenacao == "razao")">Razão social</option>
+        </select>
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-primary">Filtrar</button>
+        <a class="btn btn-outline-secondary" asp-action="Index">Limpar</a>
+    </div>
+</form>
+
+@if (!Model.Linhas.Any())
+{
+    <p class="text-muted">Nenhum lead ainda. Os leads são gerados pelo job diário (12h) a partir do recorte da Receita — fase posterior.</p>
+}
+else
+{
+    <table class="table table-hover align-middle">
+        <thead>
+            <tr>
+                <th>Razão social</th>
+                <th>CNPJ</th>
+                <th>CNAE</th>
+                <th>UF</th>
+                <th>Município</th>
+                <th>Situação</th>
+                <th>Porte est.</th>
+                <th class="text-end">Score</th>
+                <th>Gerado em</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var linha in Model.Linhas)
+        {
+            var l = linha.Lead;
+            <tr>
+                <td title="@linha.Racional">@l.RazaoSocial</td>
+                <td>@l.Cnpj</td>
+                <td>@l.Cnae</td>
+                <td>@l.Uf</td>
+                <td>@l.Municipio</td>
+                <td>@l.Situacao</td>
+                <td>@(string.IsNullOrWhiteSpace(l.PorteEstimado) ? "" : "~" + l.PorteEstimado)</td>
+                <td class="text-end">
+                    @if (linha.MelhorScore.HasValue)
+                    {
+                        <span class="badge bg-primary">@linha.MelhorScore</span>
+                    }
+                    else
+                    {
+                        <span class="text-muted">—</span>
+                    }
+                </td>
+                <td>@(linha.GeradoEm?.ToLocalTime().ToString("dd/MM/yyyy") ?? "—")</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}

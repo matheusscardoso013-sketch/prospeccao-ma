@@ -1,0 +1,53 @@
+@model ConfiguracaoProspeccao
+@{
+    // Editar usa POST para a action Editar com o id; Criar posta para Criar.
+    var ehEdicao = Model.Id != 0;
+    var action = ehEdicao ? "Editar" : "Criar";
+}
+
+<div class="row">
+    <div class="col-md-7">
+        <form asp-action="@action" asp-route-id="@(ehEdicao ? Model.Id : (int?)null)" method="post">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            @if (ehEdicao)
+            {
+                <input type="hidden" asp-for="Id" />
+            }
+
+            <div class="mb-3">
+                <label asp-for="Cnaes" class="form-label"></label>
+                <input asp-for="Cnaes" class="form-control" placeholder="Ex.: 6201501, 6202300" />
+                <div class="form-text">CNAEs-alvo separados por vírgula.</div>
+                <span asp-validation-for="Cnaes" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Ufs" class="form-label"></label>
+                <input asp-for="Ufs" class="form-control" placeholder="Ex.: SP, MG, PR" />
+                <div class="form-text">UFs separadas por vírgula.</div>
+                <span asp-validation-for="Ufs" class="text-danger"></span>
+            </div>
+
+            <div class="row">
+                <div class="col mb-3">
+                    <label asp-for="CapitalMin" class="form-label"></label>
+                    <input asp-for="CapitalMin" class="form-control" type="number" step="0.01" />
+                    <span asp-validation-for="CapitalMin" class="text-danger"></span>
+                </div>
+                <div class="col mb-3">
+                    <label asp-for="CapitalMax" class="form-label"></label>
+                    <input asp-for="CapitalMax" class="form-control" type="number" step="0.01" />
+                    <span asp-validation-for="CapitalMax" class="text-danger"></span>
+                </div>
+            </div>
+
+            <div class="form-check mb-3">
+                <input asp-for="Ativo" class="form-check-input" />
+                <label asp-for="Ativo" class="form-check-label"></label>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Salvar</button>
+            <a class="btn btn-outline-secondary" asp-action="Index">Cancelar</a>
+        </form>
+    </div>
+</div>

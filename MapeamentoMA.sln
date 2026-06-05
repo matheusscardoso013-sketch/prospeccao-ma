@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{CABC7675-3923-4E3A-B0B8-87E52BF4655B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MapeamentoMA.Web", "src\MapeamentoMA.Web\MapeamentoMA.Web.csproj", "{8CB94BA6-EE5F-4AB9-9B1A-BEE867D79CF6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Prospeccao.Web", "src\Prospeccao.Web\Prospeccao.Web.csproj", "{D7881C7B-4843-4F25-8CAE-2D4E149B0A1A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8CB94BA6-EE5F-4AB9-9B1A-BEE867D79CF6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8CB94BA6-EE5F-4AB9-9B1A-BEE867D79CF6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8CB94BA6-EE5F-4AB9-9B1A-BEE867D79CF6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8CB94BA6-EE5F-4AB9-9B1A-BEE867D79CF6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D7881C7B-4843-4F25-8CAE-2D4E149B0A1A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D7881C7B-4843-4F25-8CAE-2D4E149B0A1A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D7881C7B-4843-4F25-8CAE-2D4E149B0A1A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D7881C7B-4843-4F25-8CAE-2D4E149B0A1A}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{8CB94BA6-EE5F-4AB9-9B1A-BEE867D79CF6} = {CABC7675-3923-4E3A-B0B8-87E52BF4655B}
+		{D7881C7B-4843-4F25-8CAE-2D4E149B0A1A} = {CABC7675-3923-4E3A-B0B8-87E52BF4655B}
+	EndGlobalSection
+EndGlobal

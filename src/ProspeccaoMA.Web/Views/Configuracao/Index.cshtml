@@ -1,0 +1,54 @@
+@model List<ProspeccaoMA.Web.Models.ConfiguracaoProspeccao>
+@{
+    ViewData["Title"] = "Configurações";
+}
+
+<div class="pagehead">
+    <div>
+        <h1>Configurações de prospecção</h1>
+        <div class="sub">Setores, regiões e faixa de capital. O job das 12h usa as configs ativas para buscar empresas reais.</div>
+    </div>
+    <a class="btn primary" asp-controller="Configuracao" asp-action="Editar">+ Nova configuração</a>
+</div>
+
+@if (Model.Count == 0)
+{
+    <div class="vazio">Nenhuma configuração ainda. Crie uma para definir os CNAEs, UFs e faixa de capital.</div>
+}
+else
+{
+    <div class="panel">
+        <table>
+            <thead>
+                <tr><th>CNAEs</th><th>UFs</th><th>Capital</th><th>Status</th><th></th></tr>
+            </thead>
+            <tbody>
+            @foreach (var c in Model)
+            {
+                <tr>
+                    <td>@c.Cnaes</td>
+                    <td>@c.Ufs</td>
+                    <td>
+                        @(c.CapitalMin?.ToString("C") ?? "—") &nbsp;a&nbsp; @(c.CapitalMax?.ToString("C") ?? "—")
+                    </td>
+                    <td>
+                        @if (c.Ativo) { <span class="badge on">Ativa</span> } else { <span class="badge off">Inativa</span> }
+                    </td>
+                    <td style="text-align:right;white-space:nowrap">
+                        <a class="btn ghost sm" asp-action="Editar" asp-route-id="@c.Id">Editar</a>
+                        <form asp-action="AlternarAtivo" asp-route-id="@c.Id" method="post" class="inline-form">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn ghost sm">@(c.Ativo ? "Desativar" : "Ativar")</button>
+                        </form>
+                        <form asp-action="Excluir" asp-route-id="@c.Id" method="post" class="inline-form"
+                              onsubmit="return confirm('Remover esta configuração?');">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn danger sm">Excluir</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}

@@ -1,0 +1,72 @@
+@model IEnumerable<MapeamentoMA.Web.Models.Empresa>
+@{ ViewData["Title"] = "Empresas"; }
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Empresas</h2>
+    <a asp-action="Importar" class="btn btn-primary">+ Importar CNPJs</a>
+</div>
+
+<form method="get" class="row g-2 mb-3">
+    <div class="col-auto">
+        <input name="cnae" class="form-control" placeholder="Filtrar por CNAE" value="@Context.Request.Query["cnae"]" />
+    </div>
+    <div class="col-auto">
+        <select name="teseId" class="form-select">
+            <option value="">Todas as teses</option>
+            @foreach (var t in (IEnumerable<MapeamentoMA.Web.Models.Tese>)ViewBag.Teses)
+            {
+                <option value="@t.Id" selected="@(Context.Request.Query["teseId"] == t.Id.ToString())">@t.Nome</option>
+            }
+        </select>
+    </div>
+    <div class="col-auto"><button class="btn btn-outline-secondary">Filtrar</button></div>
+</form>
+
+<table class="table table-hover table-sm">
+    <thead class="table-dark">
+        <tr>
+            <th>CNPJ</th>
+            <th>Razão Social</th>
+            <th>CNAE</th>
+            <th>Tese</th>
+            <th>Faturamento</th>
+            <th>Situação</th>
+            <th>Score</th>
+            <th>Coleta</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var e in Model)
+        {
+            <tr>
+                <td><a asp-action="Detalhe" asp-route-id="@e.Id">@e.Cnpj</a></td>
+                <td>@e.RazaoSocial</td>
+                <td>@e.CnaePrincipal</td>
+                <td>@(e.Tese?.Nome ?? "—")</td>
+                <td>
+                    @if (e.FaturamentoEstimado.HasValue)
+                    {
+                        @(e.IndicadorEstimado ? "~" : "")@e.FaturamentoEstimado.Value.ToString("N0")
+                    }
+                    else { <span class="text-muted">—</span> }
+                </td>
+                <td>@(string.IsNullOrEmpty(e.SituacaoCadastral) ? "—" : e.SituacaoCadastral)</td>
+                <td>
+                    @{ var s = e.Scores.FirstOrDefault(); }
+                    @if (s is not null)
+                    {
+                        <span class="badge @(s.Valor >= 70 ? "bg-success" : s.Valor >= 40 ? "bg-warning text-dark" : "bg-secondary")">
+                            @s.Valor
+                        </span>
+                    }
+                    else { <span class="text-muted">—</span> }
+                </td>
+                <td><small class="text-muted">@e.DataColeta.ToString("dd/MM/yy")</small></td>
+            </tr>
+        }
+        @if (!Model.Any())
+        {
+            <tr><td colspan="7" class="text-center text-muted py-4">Nenhuma empresa importada ainda.</td></tr>
+        }
+    </tbody>
+</table>

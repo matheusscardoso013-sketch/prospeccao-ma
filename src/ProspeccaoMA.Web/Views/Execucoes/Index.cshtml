@@ -1,0 +1,45 @@
+@model List<ProspeccaoMA.Web.Models.ExecucaoJob>
+@using ProspeccaoMA.Web.Models
+@{
+    ViewData["Title"] = "Execuções";
+    string Badge(StatusExecucao s) => s switch
+    {
+        StatusExecucao.Sucesso => "suc",
+        StatusExecucao.Erro => "err",
+        _ => "run"
+    };
+}
+
+<div class="pagehead">
+    <div>
+        <h1>Histórico de execuções</h1>
+        <div class="sub">Auditoria da rotina diária de prospecção (últimas 50).</div>
+    </div>
+</div>
+
+@if (Model.Count == 0)
+{
+    <div class="vazio">Nenhuma execução registrada ainda.</div>
+}
+else
+{
+    <div class="panel">
+        <table>
+            <thead>
+                <tr><th>Início</th><th>Fim</th><th>Leads pontuados</th><th>Status</th><th>Erro</th></tr>
+            </thead>
+            <tbody>
+            @foreach (var e in Model)
+            {
+                <tr>
+                    <td>@e.IniciadoEm.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss")</td>
+                    <td>@(e.FinalizadoEm?.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss") ?? "—")</td>
+                    <td>@e.LeadsGerados</td>
+                    <td><span class="badge @Badge(e.Status)">@e.Status</span></td>
+                    <td style="color:#9d3535">@e.Erro</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}

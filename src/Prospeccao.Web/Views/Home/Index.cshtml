@@ -1,0 +1,62 @@
+@model DashboardViewModel
+@{
+    ViewData["Title"] = "Início";
+}
+
+<h1 class="h3 mb-4">Painel de prospecção</h1>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="text-muted small">Total de leads</div>
+                <div class="display-6">@Model.TotalLeads</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="text-muted small">Configurações ativas</div>
+                <div class="display-6">@Model.ConfiguracoesAtivas</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="text-muted small">Leads pontuados hoje</div>
+                <div class="display-6">@Model.LeadsHoje</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <h2 class="h5">Última execução do job</h2>
+        @if (Model.UltimaExecucao is null)
+        {
+            <p class="text-muted mb-0">Nenhuma execução registrada ainda. O job diário (12h) entra em fase posterior.</p>
+        }
+        else
+        {
+            var e = Model.UltimaExecucao;
+            <dl class="row mb-0">
+                <dt class="col-sm-3">Iniciado em</dt>
+                <dd class="col-sm-9">@e.IniciadoEm.ToLocalTime()</dd>
+                <dt class="col-sm-3">Finalizado em</dt>
+                <dd class="col-sm-9">@(e.FinalizadoEm?.ToLocalTime().ToString() ?? "—")</dd>
+                <dt class="col-sm-3">Status</dt>
+                <dd class="col-sm-9">@e.Status</dd>
+                <dt class="col-sm-3">Leads gerados</dt>
+                <dd class="col-sm-9">@e.LeadsGerados</dd>
+                @if (!string.IsNullOrWhiteSpace(e.Erro))
+                {
+                    <dt class="col-sm-3 text-danger">Erro</dt>
+                    <dd class="col-sm-9 text-danger">@e.Erro</dd>
+                }
+            </dl>
+        }
+    </div>
+</div>

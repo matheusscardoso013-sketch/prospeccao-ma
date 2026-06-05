@@ -1,0 +1,119 @@
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using ProspeccaoMA.Web.Data;
+using ProspeccaoMA.Web.IA;
+using ProspeccaoMA.Web.Ingestao;
+using ProspeccaoMA.Web.Jobs;
+using ProspeccaoMA.Web.Models;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Hospedagem (Render/Railway): escutar a porta informada pela plataforma via env PORT.
+var portaHospedagem = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrWhiteSpace(portaHospedagem))
+    builder.WebHost.UseUrls($"http://0.0.0.0:{portaHospedagem}");
+
+// Connection string do Neon (Postgres). Lida de config/env/user-secrets, NUNCA do código.
+// Aceita tanto a URI postgresql://... quanto o formato key=value.
+var connNeon = NeonConnectionString.Normalizar(
+    builder.Configuration.GetConnectionString("Neon")
+    ?? builder.Configuration["Neon:ConnectionString"]);
+
+if (string.IsNullOrWhiteSpace(connNeon))
+{
+    // Permite build e geração de migrations sem o Neon ainda conectado.
+    // Em runtime real, defina ConnectionStrings:Neon (user-secrets/env) com a string do painel.
+    connNeon = "Host=localhost;Database=prospeccao_dev;Username=postgres;Password=postgres";
+}
+
+builder.Services.AddDbContext<AppDbContext>(opt => opt.UseNpgsql(connNeon));
+
+builder.Services
+    .AddIdentity<Usuario, IdentityRole>(opt =>
+    {
+        opt.SignIn.RequireConfirmedAccount = false;
+        opt.Password.RequiredLength = 6;
+        opt.Password.RequireNonAlphanumeric = false;
+    })
+    .AddEntityFrameworkStores<AppDbContext>()
+    .AddDefaultTokenProviders();
+
+builder.Services.ConfigureApplicationCookie(opt =>
+{
+    opt.LoginPath = "/Conta/Login";
+    opt.AccessDeniedPath = "/Conta/Login";
+});
+
+// Ingestão de dados reais.
+builder.Services.AddHttpClient<IConectorBrasilApi, ConectorBrasilApi>(c =>
+{
+    c.BaseAddress = new Uri("https://brasilapi.com.br/");
+    c.Timeout = TimeSpan.FromSeconds(20);
+});
+builder.Services.AddScoped<IImportadorCnpj, ImportadorCnpj>();
+builder.Services.AddScoped<IImportadorReceita, ImportadorReceita>();
+
+// Qualificação por IA (Gemini free tier). Abstração IClassificadorIA — trocável por config.
+builder.Services.AddHttpClient<IClassificadorIA, GeminiClassificador>(c =>
+{
+    c.BaseAddress = new Uri("https://generativelanguage.googleapis.com/");
+    c.Timeout = TimeSpan.FromSeconds(40);
+});
+
+// Rotina de prospecção (compartilhada) + agendador diário às 12h.
+builder.Services.AddScoped<RotinaProspeccao>();
+builder.Services.AddHostedService<JobProspeccaoService>();
+
+builder.Services.AddControllersWithViews();
+
+var app = builder.Build();
+
+// Comando de console para importar o recorte da Receita (fora do fluxo web).
+if (args.Length > 0 && string.Equals(args[0], "importar-receita", StringComparison.OrdinalIgnoreCase))
+{
+    await ComandoImportarReceita.ExecutarAsync(app.Services, args);
+    return;
+}
+
+// Atrás do proxy da hospedagem (Render/Railway): repassa esquema/host reais
+// para o HTTPS e o cookie de login funcionarem corretamente.
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/Home/Error");
+    app.UseHsts();
+}
+else
+{
+    // Em produção o TLS é encerrado no proxy da plataforma; redirect só em dev.
+    app.UseHttpsRedirection();
+}
+
+app.UseStaticFiles();
+
+app.UseRouting();
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controller=Home}/{action=Index}/{id?}");
+
+// Aplica migrations e cria o usuário inicial. Resiliente: se o Neon ainda não estiver
+// configurado/acessível, registra o aviso em vez de impedir o boot.
+try
+{
+    await DbInicializador.InicializarAsync(app.Services);
+}
+catch (Exception ex)
+{
+    app.Logger.LogError(ex, "Banco não inicializado (configure ConnectionStrings:Neon). App segue de pé para diagnóstico.");
+}
+
+app.Run();

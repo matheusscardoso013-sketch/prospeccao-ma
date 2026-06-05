@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet new *)",
+      "Bash(dotnet sln *)",
+      "PowerShell(Get-ChildItem \"C:\\\\Program Files\\\\dotnet\\\\dotnet.exe\" -ErrorAction SilentlyContinue; Get-ChildItem \"$env:LOCALAPPDATA\\\\Microsoft\\\\dotnet\\\\dotnet.exe\" -ErrorAction SilentlyContinue; where.exe dotnet 2>$null)",
+      "PowerShell(dotnet --version)",
+      "PowerShell($dotnet = \"C:\\\\Program Files\\\\dotnet\\\\dotnet.exe\"; & $dotnet --version)",
+      "PowerShell($env:PATH += \";C:\\\\Program Files\\\\dotnet;$env:USERPROFILE\\\\.dotnet\\\\tools\"; dotnet --version; \"SDKs:\"; dotnet --list-sdks)",
+      "PowerShell(& \"$env:LOCALAPPDATA\\\\Programs\\\\Ollama\\\\ollama.exe\" pull qwen2.5:3b)",
+      "PowerShell($env:PATH += \";C:\\\\Program Files\\\\dotnet;$env:USERPROFILE\\\\.dotnet\\\\tools\"; Write-Output \"--- dotnet-ef ---\"; try { dotnet ef --version } catch { Write-Output \"ef nao instalado\" }; Write-Output \"--- src atual ---\"; Get-ChildItem \"C:\\\\Users\\\\Valore\\\\Documents\\\\Projetos\\\\Agente IA Mapeamento\\\\src\" | Select-Object Name)",
+      "mcp__Claude_Preview__preview_start",
+      "PowerShell($d=Get-Command docker -ErrorAction SilentlyContinue; if\\($d\\){ Write-Output \"docker: $\\($d.Source\\)\"; docker --version } else { Write-Output \"docker nao instalado\" })"
+    ]
+  }
+}

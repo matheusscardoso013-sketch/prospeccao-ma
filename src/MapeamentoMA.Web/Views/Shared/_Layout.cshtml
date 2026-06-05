@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Originação M&A</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <style>
+        .kanban-board { display: flex; gap: 1rem; overflow-x: auto; padding-bottom: 1rem; }
+        .kanban-col { min-width: 200px; flex: 1; }
+        .kanban-col-header { font-weight: 600; font-size: .85rem; text-transform: uppercase; letter-spacing: .05em; padding: .5rem; border-radius: .25rem .25rem 0 0; }
+        .kanban-cards { min-height: 120px; background: #f8f9fa; border-radius: 0 0 .25rem .25rem; padding: .5rem; }
+        .kanban-card { background: #fff; border: 1px solid #dee2e6; border-radius: .25rem; padding: .6rem; margin-bottom: .5rem; cursor: grab; font-size: .85rem; }
+        .kanban-card:active { cursor: grabbing; }
+        .sortable-ghost { opacity: .4; }
+        .badge-estimado { font-size: .7rem; }
+    </style>
+</head>
+<body>
+    <header>
+        <nav class="navbar navbar-expand-sm navbar-dark bg-dark border-bottom mb-3">
+            <div class="container-fluid">
+                <a class="navbar-brand fw-bold" asp-controller="Pipeline" asp-action="Index">Originação M&A</a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMain">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navMain">
+                    <ul class="navbar-nav me-auto">
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="Pipeline" asp-action="Index">Pipeline</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="Empresa" asp-action="Index">Empresas</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="Tese" asp-action="Index">Teses</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="Gatilho" asp-action="Index">Gatilhos</a>
+                        </li>
+                    </ul>
+                    <ul class="navbar-nav">
+                        @if (User.Identity?.IsAuthenticated == true)
+                        {
+                            <li class="nav-item">
+                                <span class="nav-link text-light opacity-75">
+                                    @User.Identity.Name
+                                    @if (User.IsInRole("Socio")) { <span class="badge bg-warning text-dark ms-1">Sócio</span> }
+                                    else { <span class="badge bg-secondary ms-1">Analista</span> }
+                                </span>
+                            </li>
+                            <li class="nav-item">
+                                <form method="post" asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="/">
+                                    <button type="submit" class="nav-link btn btn-link text-light">Sair</button>
+                                </form>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-area="Identity" asp-page="/Account/Login">Entrar</a>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+    <div class="container-fluid">
+        @if (TempData["Mensagem"] is string msg)
+        {
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                @msg
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        }
+        <main role="main" class="pb-3">
+            @RenderBody()
+        </main>
+    </div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

@@ -1,0 +1,115 @@
+@model Dictionary<string, List<MapeamentoMA.Web.Models.PipelineItem>>
+@{ ViewData["Title"] = "Pipeline"; }
+
+@{
+    var cores = new Dictionary<string, string>
+    {
+        ["Identificado"] = "bg-secondary",
+        ["Qualificado"]  = "bg-primary",
+        ["Abordagem"]    = "bg-info",
+        ["Conversa"]     = "bg-warning",
+        ["Mandato"]      = "bg-success",
+        ["Descartado"]   = "bg-danger"
+    };
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Pipeline</h2>
+    <a asp-controller="Empresa" asp-action="Importar" class="btn btn-outline-primary btn-sm">+ Importar empresas</a>
+</div>
+
+@{
+    var exec = ViewBag.UltimaExecucao as MapeamentoMA.Web.Models.JobExecucao;
+}
+@if (exec is not null)
+{
+    <div class="alert @(exec.Sucesso ? "alert-success" : "alert-warning") py-2 d-flex gap-4 align-items-center mb-3" style="font-size:.85rem">
+        <span><strong>Último ciclo:</strong> @exec.IniciadoEm.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+        <span>Gatilhos criados: <strong>@exec.GatilhosCriados</strong></span>
+        <span>Alta prioridade: <strong>@exec.AltaPrioridade</strong></span>
+        @if (!exec.Sucesso)
+        {
+            <span class="text-danger">Erro: @exec.ErroMensagem</span>
+        }
+        <a asp-controller="Gatilho" asp-action="Index" asp-route-pendentes="true" class="ms-auto btn btn-sm btn-outline-secondary">Ver gatilhos pendentes</a>
+    </div>
+}
+
+<div class="kanban-board">
+    @foreach (var estagio in Model.Keys)
+    {
+        var cor = cores.GetValueOrDefault(estagio, "bg-dark");
+        var items = Model[estagio];
+        <div class="kanban-col">
+            <div class="kanban-col-header text-white @cor">
+                @estagio <span class="badge bg-white text-dark ms-1">@items.Count</span>
+            </div>
+            <div class="kanban-cards" data-estagio="@estagio" id="col-@estagio">
+                @foreach (var item in items)
+                {
+                    var score = item.Empresa.Scores.FirstOrDefault();
+                    var gatilhoRecente = item.Empresa.Gatilhos
+                        .Where(g => !g.Revisado && g.DataEvento >= DateOnly.FromDateTime(DateTime.Today.AddDays(-30)))
+                        .OrderByDescending(g => g.DataEvento)
+                        .FirstOrDefault();
+                    <div class="kanban-card" data-id="@item.Id">
+                        <div class="d-flex justify-content-between align-items-start">
+                        <div class="fw-semibold">
+                            @item.Empresa.RazaoSocial
+                            @if (gatilhoRecente is not null)
+                            {
+                                <span class="badge bg-danger ms-1" title="Gatilho: @gatilhoRecente.Tipo">!</span>
+                            }
+                        </div>
+                        @if (score is not null)
+                        {
+                            <span class="badge @(score.Valor >= 70 ? "bg-success" : score.Valor >= 40 ? "bg-warning text-dark" : "bg-secondary")"
+                                  title="Score">@score.Valor</span>
+                        }
+                        </div>
+                        <div class="text-muted" style="font-size:.75rem">
+                            @item.Empresa.Cnpj
+                            @if (item.Empresa.Tese is not null)
+                            {
+                                <span class="badge bg-light text-dark ms-1">@item.Empresa.Tese.Nome</span>
+                            }
+                            @if (gatilhoRecente is not null)
+                            {
+                                <span class="badge bg-warning text-dark ms-1">@gatilhoRecente.Tipo</span>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<script>
+document.querySelectorAll('.kanban-cards').forEach(col => {
+    new Sortable(col, {
+        group: 'pipeline',
+        animation: 150,
+        ghostClass: 'sortable-ghost',
+        onEnd: async function (evt) {
+            const itemId = parseInt(evt.item.dataset.id);
+            const novoEstagio = evt.to.dataset.estagio;
+            const novaOrdem = evt.newIndex;
+
+            await fetch('/Pipeline/Mover', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': getToken() },
+                body: JSON.stringify({ itemId, novoEstagio, novaOrdem })
+            });
+        }
+    });
+});
+
+function getToken() {
+    return document.querySelector('input[name="__RequestVerificationToken"]')?.value ?? '';
+}
+</script>
+<form id="__AntiForgery" method="post" style="display:none">@Html.AntiForgeryToken()</form>
+}

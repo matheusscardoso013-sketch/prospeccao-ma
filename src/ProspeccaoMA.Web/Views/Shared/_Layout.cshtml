@@ -1,0 +1,49 @@
+@{
+    var ctrl = ViewContext.RouteData.Values["controller"]?.ToString();
+    string Ativo(string c) => string.Equals(ctrl, c, StringComparison.OrdinalIgnoreCase) ? "active" : "";
+    var email = User.Identity?.Name ?? "";
+    var iniciais = string.IsNullOrEmpty(email) ? "?" : email.Substring(0, Math.Min(2, email.Length)).ToUpper();
+}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] · Prospecção M&A</title>
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    <header class="topbar">
+        <a class="brand" asp-controller="Lead" asp-action="Index"><span class="logo">◆</span> Prospecção M&amp;A</a>
+        <nav class="nav">
+            <a class="@Ativo("Lead")" asp-controller="Lead" asp-action="Index">Leads</a>
+            <a class="@Ativo("Configuracao")" asp-controller="Configuracao" asp-action="Index">Configurações</a>
+            <a class="@Ativo("Execucoes")" asp-controller="Execucoes" asp-action="Index">Execuções</a>
+        </nav>
+        <div class="userbox">
+            <span class="avatar">@iniciais</span>
+            <span>@email</span>
+            <form asp-controller="Conta" asp-action="Logout" method="post" class="inline-form">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="linkout">Sair</button>
+            </form>
+        </div>
+    </header>
+
+    <div class="container">
+        @if (TempData["Ok"] is string ok)
+        {
+            <div class="alert ok">@ok</div>
+        }
+        @if (TempData["Erro"] is string erro)
+        {
+            <div class="alert err">@erro</div>
+        }
+        <main role="main">
+            @RenderBody()
+        </main>
+    </div>
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

@@ -1,0 +1,22 @@
+# Build
+**/bin/
+**/obj/
+artefato-publish/
+
+# IDE
+.vs/
+*.user
+
+# Banco local / segredos locais
+*.db
+*.db-shm
+*.db-wal
+secrets.json
+
+# Dados volumosos / amostras / zips (não versionar)
+amostra-receita/
+*.zip
+
+# OS
+Thumbs.db
+.DS_Store

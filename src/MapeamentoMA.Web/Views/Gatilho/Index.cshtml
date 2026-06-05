@@ -1,0 +1,94 @@
+@model IEnumerable<MapeamentoMA.Web.Models.Gatilho>
+@{ ViewData["Title"] = "Gatilhos"; }
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Gatilhos</h2>
+    <form asp-action="ExecutarCiclo" method="post">
+        <button type="submit" class="btn btn-outline-primary btn-sm">
+            ▶ Executar ciclo de ingestão agora
+        </button>
+    </form>
+</div>
+
+<form method="get" class="row g-2 mb-3">
+    <div class="col-auto">
+        <select name="tipo" class="form-select form-select-sm">
+            <option value="">Todos os tipos</option>
+            @foreach (var t in (string[])ViewBag.Tipos)
+            {
+                <option value="@t" selected="@(Context.Request.Query["tipo"] == t)">@t</option>
+            }
+        </select>
+    </div>
+    <div class="col-auto">
+        <div class="form-check mt-1">
+            <input class="form-check-input" type="checkbox" name="pendentes" value="true"
+                   id="chkPendentes" @(Context.Request.Query["pendentes"] == "true" ? "checked" : "") />
+            <label class="form-check-label" for="chkPendentes">Apenas pendentes</label>
+        </div>
+    </div>
+    <div class="col-auto"><button class="btn btn-sm btn-outline-secondary">Filtrar</button></div>
+</form>
+
+<table class="table table-hover table-sm">
+    <thead class="table-dark">
+        <tr>
+            <th>Empresa</th>
+            <th>Tipo</th>
+            <th>Data evento</th>
+            <th>Confiança</th>
+            <th>Fonte</th>
+            <th>Status</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var g in Model)
+        {
+            <tr class="@(g.Revisado ? "table-secondary" : "")">
+                <td>
+                    <a asp-controller="Empresa" asp-action="Detalhe" asp-route-id="@g.EmpresaId">
+                        @g.Empresa.RazaoSocial
+                    </a>
+                </td>
+                <td><span class="badge bg-info text-dark">@g.Tipo</span></td>
+                <td>@g.DataEvento.ToString("dd/MM/yyyy")</td>
+                <td>
+                    <div class="progress" style="width:80px;height:14px">
+                        <div class="progress-bar @(g.Confianca >= 0.7 ? "bg-success" : g.Confianca >= 0.4 ? "bg-warning" : "bg-danger")"
+                             style="width:@((int)(g.Confianca * 100))%"></div>
+                    </div>
+                    <small class="text-muted">@(g.Confianca.ToString("P0"))</small>
+                </td>
+                <td>
+                    <small>
+                        @g.Fonte
+                        @if (!string.IsNullOrEmpty(g.Url))
+                        {
+                            <a href="@g.Url" target="_blank" class="ms-1">↗</a>
+                        }
+                    </small>
+                </td>
+                <td>
+                    @if (g.Revisado)
+                    { <span class="badge bg-success">Revisado</span> }
+                    else
+                    { <span class="badge bg-warning text-dark">Pendente</span> }
+                </td>
+                <td>
+                    @if (!g.Revisado)
+                    {
+                        <form asp-action="MarcarRevisado" method="post">
+                            <input type="hidden" name="id" value="@g.Id" />
+                            <button type="submit" class="btn btn-xs btn-outline-success btn-sm">✓ Revisar</button>
+                        </form>
+                    }
+                </td>
+            </tr>
+        }
+        @if (!Model.Any())
+        {
+            <tr><td colspan="7" class="text-center text-muted py-4">Nenhum gatilho encontrado. Execute o ciclo de ingestão para coletar.</td></tr>
+        }
+    </tbody>
+</table>

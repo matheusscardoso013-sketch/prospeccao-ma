@@ -1,0 +1,34 @@
+@{ ViewData["Title"] = "Importar CNPJs"; }
+
+<h2>Importar Empresas por CNPJ</h2>
+<div class="row"><div class="col-md-7">
+<form asp-action="Importar" method="post">
+    <div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+    <div class="mb-3">
+        <label class="form-label fw-semibold">CNPJs <small class="text-muted">(um por linha, ou separados por vírgula/ponto-e-vírgula)</small></label>
+        <textarea name="cnpjs" class="form-control font-monospace" rows="10"
+                  placeholder="11222333000181&#10;22333444000182&#10;..."></textarea>
+        <div class="form-text">Apenas dígitos — pontuação é removida automaticamente. CNPJs já existentes são ignorados.</div>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label fw-semibold">Tese</label>
+        <select name="teseId" class="form-select">
+            <option value="">Sem tese (classificar depois)</option>
+            @foreach (var t in (IEnumerable<MapeamentoMA.Web.Models.Tese>)ViewBag.Teses)
+            {
+                <option value="@t.Id">@t.Nome</option>
+            }
+        </select>
+    </div>
+
+    <div class="mb-4">
+        <label class="form-label fw-semibold">Fonte de origem</label>
+        <input name="fonte" class="form-control" placeholder="Ex.: Base CNAE 6920601 — Receita Federal" />
+    </div>
+
+    <button type="submit" class="btn btn-primary">Importar</button>
+    <a asp-action="Index" class="btn btn-outline-secondary ms-2">Cancelar</a>
+</form>
+</div></div>

@@ -1,0 +1,150 @@
+@using ProspeccaoMA.Web.Models.ViewModels
+@model LeadsViewModel
+@{
+    ViewData["Title"] = "Leads";
+    string ClasseScore(int s) => s >= 70 ? "hi" : s >= 50 ? "mid" : "lo";
+}
+
+<div class="pagehead">
+    <div>
+        <h1>Leads prospectados</h1>
+        <div class="sub">Empresas reais da base da Receita Federal, pontuadas por sinergia setorial.</div>
+    </div>
+    <div style="display:flex;gap:10px">
+        <a class="btn ghost" asp-controller="Lead" asp-action="Importar">+ Importar CNPJs</a>
+        <form asp-controller="Lead" asp-action="RodarAgora" method="post" class="inline-form">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn primary">▶ Rodar prospecção agora</button>
+        </form>
+    </div>
+</div>
+
+<div class="kpis">
+    <div class="kpi"><div class="label">Leads no total</div><div class="value">@Model.TotalLeads</div></div>
+    <div class="kpi"><div class="label">Pontuados hoje</div><div class="value">@Model.GeradosHoje</div></div>
+    <div class="kpi ok">
+        <div class="label">Última execução</div>
+        <div class="value">
+            @if (Model.UltimaExecucao is null)
+            {
+                <span>— nenhuma ainda</span>
+            }
+            else
+            {
+                var ex = Model.UltimaExecucao;
+                var clsDot = ex.Status == ProspeccaoMA.Web.Models.StatusExecucao.Erro ? "dot err" : "dot";
+                <span class="@clsDot"></span>@ex.IniciadoEm.ToLocalTime().ToString("dd/MM HH:mm") <small>· @ex.Status</small>
+            }
+        </div>
+    </div>
+    <div class="kpi"><div class="label">Score médio (filtro)</div><div class="value">@Model.ScoreMedio<small>/100</small></div></div>
+</div>
+
+<form method="get" asp-controller="Lead" asp-action="Index" class="toolbar">
+    <div class="field">
+        <label>Setor (CNAE)</label>
+        <select name="cnae">
+            <option value="">Todos</option>
+            @foreach (var c in Model.Cnaes)
+            {
+                <option value="@c" selected="@(c == Model.Cnae)">@c</option>
+            }
+        </select>
+    </div>
+    <div class="field">
+        <label>UF</label>
+        <select name="uf">
+            <option value="">Todas</option>
+            @foreach (var u in Model.Ufs)
+            {
+                <option value="@u" selected="@(u == Model.Uf)">@u</option>
+            }
+        </select>
+    </div>
+    <div class="field">
+        <label>Score mínimo</label>
+        <select name="scoreMin">
+            <option value="">Qualquer</option>
+            <option value="70" selected="@(Model.ScoreMin == 70)">70+</option>
+            <option value="50" selected="@(Model.ScoreMin == 50)">50+</option>
+        </select>
+    </div>
+    <div class="field">
+        <label>Ordenar por</label>
+        <select name="ordenar">
+            <option value="Score" selected="@(Model.Ordenar == OrdenacaoLeads.Score)">Maior score</option>
+            <option value="Capital" selected="@(Model.Ordenar == OrdenacaoLeads.Capital)">Maior capital</option>
+            <option value="Recente" selected="@(Model.Ordenar == OrdenacaoLeads.Recente)">Mais recente</option>
+        </select>
+    </div>
+    <button type="submit" class="btn ghost">Filtrar</button>
+    <div class="spacer"></div>
+    <a class="btn green" asp-controller="Lead" asp-action="Exportar"
+       asp-route-cnae="@Model.Cnae" asp-route-uf="@Model.Uf" asp-route-scoreMin="@Model.ScoreMin" asp-route-ordenar="@Model.Ordenar">
+        ⬇ Exportar Excel
+    </a>
+</form>
+
+@if (Model.Leads.Count == 0)
+{
+    <div class="vazio">
+        Nenhum lead pontuado ainda. Importe CNPJs reais e rode a prospecção —
+        ou aguarde o job das 12h. A IA só pontua empresas reais já trazidas pela base.
+    </div>
+}
+else
+{
+    <div class="cards">
+        @foreach (var x in Model.Leads)
+        {
+            var l = x.Lead;
+            <div class="lead">
+                <div class="lead-top">
+                    <div class="scorebox @ClasseScore(x.Score)">
+                        <span class="n">@x.Score</span><span class="l">sinergia</span>
+                    </div>
+                    <div class="lead-id">
+                        <div class="razao">@l.RazaoSocial</div>
+                        <div class="cnpj">@ProspeccaoMA.Web.Ingestao.CnpjUtil.Formatar(l.Cnpj)</div>
+                        <div class="tags">
+                            @if (!string.IsNullOrWhiteSpace(l.Cnae)) { <span class="tag">CNAE @l.Cnae</span> }
+                            <span class="tag gray">📍 @l.Municipio/@l.Uf</span>
+                            @if (!string.IsNullOrWhiteSpace(l.Situacao)) { <span class="tag ativa">● @l.Situacao</span> }
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lead-grid">
+                    <div class="cell"><div class="k">Capital social</div><div class="v">@l.CapitalSocial.ToString("C")</div></div>
+                    <div class="cell"><div class="k">Porte estimado</div><div class="v est">@l.PorteEstimado</div></div>
+                </div>
+
+                <div class="contatos">
+                    <div class="h">Contatos (cadastro / enriquecimento)</div>
+                    @if (string.IsNullOrWhiteSpace(l.Contato))
+                    {
+                        <div class="ct missing"><span class="ico">✉️</span> Contato não consta no cadastro</div>
+                    }
+                    else
+                    {
+                        foreach (var parte in l.Contato.Split(" | ", StringSplitOptions.RemoveEmptyEntries))
+                        {
+                            <div class="ct"><span class="ico">•</span> @parte</div>
+                        }
+                    }
+                </div>
+
+                <div class="racional">
+                    <div class="h">Racional da IA</div>
+                    <p>@x.Racional</p>
+                </div>
+
+                <div class="lead-foot">
+                    <span class="src">Fonte: @x.Fonte</span>
+                    <div class="spacer"></div>
+                    <span class="ger">Gerado @x.GeradoEm.ToLocalTime().ToString("dd/MM HH:mm")</span>
+                </div>
+            </div>
+        }
+    </div>
+}

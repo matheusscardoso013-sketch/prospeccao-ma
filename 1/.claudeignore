@@ -1,0 +1,37 @@
+# Segredos e configuração sensível — NÃO ler
+.env
+.env.*
+appsettings.json
+appsettings.*.json
+secrets.json
+*.pfx
+*.key
+*.pem
+
+# Build / artefatos
+bin/
+obj/
+out/
+publish/
+*.dll
+*.exe
+
+# Dependências
+node_modules/
+packages/
+
+# Dados volumosos da Receita (não carregar no contexto)
+data/
+*.csv
+*.zip
+
+# IDE / SO
+.vs/
+.vscode/
+*.user
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/

@@ -1,0 +1,74 @@
+@model MapeamentoMA.Web.Models.Empresa
+@{ ViewData["Title"] = Model.RazaoSocial; }
+
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+        <h2>@Model.RazaoSocial</h2>
+        <p class="text-muted mb-0">CNPJ: @Model.Cnpj · CNAE: @Model.CnaePrincipal · @Model.Porte · @Model.SituacaoCadastral</p>
+    </div>
+    <a asp-action="Index" class="btn btn-outline-secondary">Voltar</a>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="text-muted small">Faturamento estimado</div>
+                <div class="fs-5 fw-semibold">
+                    @if (Model.FaturamentoEstimado.HasValue)
+                    { @(Model.IndicadorEstimado ? "~" : "")@Model.FaturamentoEstimado.Value.ToString("N0") }
+                    else { <span class="text-muted">—</span> }
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="text-muted small">Tese</div>
+                <div class="fs-5 fw-semibold">@(Model.Tese?.Nome ?? "—")</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="text-muted small">Estágio no pipeline</div>
+                <div class="fs-5 fw-semibold">@(Model.PipelineItem?.Estagio ?? "—")</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="text-muted small">Fonte / data de coleta</div>
+                <div class="small">@Model.FonteOrigem</div>
+                <div class="text-muted small">@Model.DataColeta.ToString("dd/MM/yyyy HH:mm")</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<h5>Gatilhos (@Model.Gatilhos.Count)</h5>
+@if (Model.Gatilhos.Any())
+{
+    <table class="table table-sm">
+        <thead><tr><th>Tipo</th><th>Data</th><th>Confiança</th><th>Fonte</th><th>Revisado</th></tr></thead>
+        <tbody>
+            @foreach (var g in Model.Gatilhos.OrderByDescending(g => g.DataEvento))
+            {
+                <tr>
+                    <td><span class="badge bg-info text-dark">@g.Tipo</span></td>
+                    <td>@g.DataEvento.ToString("dd/MM/yyyy")</td>
+                    <td>@(g.Confianca.ToString("P0"))</td>
+                    <td><small>@g.Fonte</small></td>
+                    <td>@(g.Revisado ? "✓" : "—")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <p class="text-muted">Nenhum gatilho registrado ainda.</p>
+}

@@ -1,0 +1,43 @@
+@model MapeamentoMA.Web.Models.Tese
+@{ ViewData["Title"] = "Nova Tese"; }
+
+<h2>Nova Tese</h2>
+<div class="row"><div class="col-md-8">
+<form asp-action="Criar" method="post">
+    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+    <div class="mb-3">
+        <label asp-for="Nome" class="form-label"></label>
+        <input asp-for="Nome" class="form-control" placeholder="Ex.: Contabilidade — sucessão" />
+        <span asp-validation-for="Nome" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <label asp-for="CnaesAlvo" class="form-label">CNAEs-alvo (separados por vírgula)</label>
+        <input asp-for="CnaesAlvo" class="form-control" placeholder="6920601,6920602" />
+    </div>
+    <div class="row">
+        <div class="col mb-3">
+            <label asp-for="FaturamentoMin" class="form-label">Faturamento mín. (R$)</label>
+            <input asp-for="FaturamentoMin" class="form-control" type="number" step="100000" />
+        </div>
+        <div class="col mb-3">
+            <label asp-for="FaturamentoMax" class="form-label">Faturamento máx. (R$)</label>
+            <input asp-for="FaturamentoMax" class="form-control" type="number" step="100000" />
+        </div>
+    </div>
+    <div class="mb-3">
+        <label asp-for="Racional" class="form-label">Racional</label>
+        <textarea asp-for="Racional" class="form-control" rows="3"
+                  placeholder="Por que há deals ali: consolidação, sucessão, pressão de margem..."></textarea>
+    </div>
+    <div class="mb-3">
+        <label asp-for="PerfilComprador" class="form-label">Perfil do comprador</label>
+        <input asp-for="PerfilComprador" class="form-control" placeholder="PE, estratégico, family office..." />
+    </div>
+
+    <button type="submit" class="btn btn-primary">Salvar</button>
+    <a asp-action="Index" class="btn btn-outline-secondary ms-2">Cancelar</a>
+</form>
+</div></div>
+
+@section Scripts { @{ await Html.RenderPartialAsync("_ValidationScriptsPartial"); } }
