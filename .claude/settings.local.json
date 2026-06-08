@@ -17,7 +17,10 @@
       "WebFetch(domain:prospeccao-ma.onrender.com)",
       "Bash(git add *)",
       "Bash(GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=Never git push origin main)",
-      "WebFetch(domain:dadosabertos.rfb.gov.br)"
+      "WebFetch(domain:dadosabertos.rfb.gov.br)",
+      "WebSearch",
+      "WebFetch(domain:dados.gov.br)",
+      "Bash(git mv *)"
     ]
   }
 }

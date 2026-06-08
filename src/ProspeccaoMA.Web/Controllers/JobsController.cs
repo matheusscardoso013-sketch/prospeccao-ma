@@ -11,13 +11,13 @@ namespace ProspeccaoMA.Web.Controllers;
 /// rotina em segundo plano para não esbarrar no timeout do cron.
 /// </summary>
 [AllowAnonymous]
-public class JobController : Controller
+public class JobsController : Controller
 {
     private readonly IServiceScopeFactory _escopos;
     private readonly IConfiguration _cfg;
-    private readonly ILogger<JobController> _log;
+    private readonly ILogger<JobsController> _log;
 
-    public JobController(IServiceScopeFactory escopos, IConfiguration cfg, ILogger<JobController> log)
+    public JobsController(IServiceScopeFactory escopos, IConfiguration cfg, ILogger<JobsController> log)
     {
         _escopos = escopos;
         _cfg = cfg;
