@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using ProspeccaoMA.Web.Models;
@@ -7,8 +8,10 @@ namespace ProspeccaoMA.Web.Data;
 /// <summary>
 /// Contexto EF Core (provider Npgsql/PostgreSQL — Neon). Herda do IdentityDbContext
 /// para a tabela de Usuarios/login. Demais tabelas seguem a spec seção 3.
+/// Implementa IDataProtectionKeyContext para persistir as chaves de criptografia no banco
+/// (assim os cookies de login sobrevivem aos redeploys no Render — disco efêmero).
 /// </summary>
-public class AppDbContext : IdentityDbContext<Usuario>
+public class AppDbContext : IdentityDbContext<Usuario>, IDataProtectionKeyContext
 {
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
@@ -16,6 +19,7 @@ public class AppDbContext : IdentityDbContext<Usuario>
     public DbSet<Lead> Leads => Set<Lead>();
     public DbSet<LeadScore> LeadScores => Set<LeadScore>();
     public DbSet<ExecucaoJob> ExecucoesJob => Set<ExecucaoJob>();
+    public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

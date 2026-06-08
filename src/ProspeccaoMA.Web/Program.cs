@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -28,6 +29,12 @@ if (string.IsNullOrWhiteSpace(connNeon))
 }
 
 builder.Services.AddDbContext<AppDbContext>(opt => opt.UseNpgsql(connNeon));
+
+// Persiste as chaves de Data Protection no banco (Neon) para os cookies de login
+// sobreviverem aos redeploys do Render (disco efêmero recria as chaves a cada deploy).
+builder.Services.AddDataProtection()
+    .PersistKeysToDbContext<AppDbContext>()
+    .SetApplicationName("ProspeccaoMA");
 
 builder.Services
     .AddIdentity<Usuario, IdentityRole>(opt =>
