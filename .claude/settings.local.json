@@ -16,7 +16,8 @@
       "Bash(GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=Never git push -u origin main)",
       "WebFetch(domain:prospeccao-ma.onrender.com)",
       "Bash(git add *)",
-      "Bash(GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=Never git push origin main)"
+      "Bash(GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=Never git push origin main)",
+      "WebFetch(domain:dadosabertos.rfb.gov.br)"
     ]
   }
 }

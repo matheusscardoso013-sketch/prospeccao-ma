@@ -62,10 +62,22 @@ public class JobProspeccaoService : BackgroundService
 
     private TimeSpan TempoAteProximaExecucao()
     {
-        var agora = DateTime.Now;
-        var proxima = agora.Date.AddHours(_hora);
+        // Horário de Brasília (o container do Render roda em UTC).
+        var tz = FusoBrasil();
+        var agora = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, tz);
+        var proxima = new DateTimeOffset(agora.Year, agora.Month, agora.Day, _hora, 0, 0, agora.Offset);
         if (proxima <= agora)
             proxima = proxima.AddDays(1);
         return proxima - agora;
+    }
+
+    private static TimeZoneInfo FusoBrasil()
+    {
+        foreach (var id in new[] { "America/Sao_Paulo", "E. South America Standard Time" })
+        {
+            try { return TimeZoneInfo.FindSystemTimeZoneById(id); }
+            catch { /* tenta o próximo id */ }
+        }
+        return TimeZoneInfo.Utc;
     }
 }
