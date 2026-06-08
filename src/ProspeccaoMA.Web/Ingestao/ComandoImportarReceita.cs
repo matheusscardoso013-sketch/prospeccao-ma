@@ -20,13 +20,15 @@ public static class ComandoImportarReceita
         var cnaes = ValorLista(args, "--cnaes");
         var ufs = ValorLista(args, "--ufs");
         var gravar = args.Any(a => string.Equals(a, "--gravar", StringComparison.OrdinalIgnoreCase));
+        var capMin = ValorDecimal(args, "--capmin");
+        var capMax = ValorDecimal(args, "--capmax");
 
         Console.WriteLine($"Importando recorte da Receita de: {pasta}");
-        Console.WriteLine($"  CNAEs: {string.Join(",", cnaes)} | UFs: {string.Join(",", ufs)} | gravar: {gravar}");
+        Console.WriteLine($"  CNAEs: {string.Join(",", cnaes)} | UFs: {string.Join(",", ufs)} | capital: {capMin}–{capMax} | gravar: {gravar}");
 
         using var escopo = sp.CreateScope();
         var importador = escopo.ServiceProvider.GetRequiredService<IImportadorReceita>();
-        var r = await importador.ImportarRecorteAsync(pasta, cnaes, ufs, gravar);
+        var r = await importador.ImportarRecorteAsync(pasta, cnaes, ufs, gravar, capMin, capMax);
 
         Console.WriteLine($"Estabelecimentos lidos: {r.LinhasEstabelecimentos}");
         Console.WriteLine($"Selecionados no recorte: {r.Selecionados}");
@@ -40,5 +42,13 @@ public static class ComandoImportarReceita
         var i = Array.FindIndex(args, a => string.Equals(a, flag, StringComparison.OrdinalIgnoreCase));
         if (i < 0 || i + 1 >= args.Length) return new();
         return args[i + 1].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+    }
+
+    private static decimal? ValorDecimal(string[] args, string flag)
+    {
+        var i = Array.FindIndex(args, a => string.Equals(a, flag, StringComparison.OrdinalIgnoreCase));
+        if (i < 0 || i + 1 >= args.Length) return null;
+        return decimal.TryParse(args[i + 1], System.Globalization.NumberStyles.Any,
+            System.Globalization.CultureInfo.InvariantCulture, out var v) ? v : null;
     }
 }

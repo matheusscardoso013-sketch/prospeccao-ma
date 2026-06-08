@@ -11,7 +11,7 @@ public interface IImportadorReceita
 {
     Task<ResultadoImportacaoReceita> ImportarRecorteAsync(
         string pasta, IReadOnlyCollection<string> cnaes, IReadOnlyCollection<string> ufs,
-        bool gravar, CancellationToken ct = default);
+        bool gravar, decimal? capMin = null, decimal? capMax = null, CancellationToken ct = default);
 }
 
 /// <summary>
@@ -37,7 +37,7 @@ public class ImportadorReceita : IImportadorReceita
 
     public async Task<ResultadoImportacaoReceita> ImportarRecorteAsync(
         string pasta, IReadOnlyCollection<string> cnaes, IReadOnlyCollection<string> ufs,
-        bool gravar, CancellationToken ct = default)
+        bool gravar, decimal? capMin = null, decimal? capMax = null, CancellationToken ct = default)
     {
         if (!Directory.Exists(pasta))
             throw new DirectoryNotFoundException($"Pasta não encontrada: {pasta}");
@@ -132,6 +132,19 @@ public class ImportadorReceita : IImportadorReceita
                 lead.RazaoSocial = string.IsNullOrWhiteSpace(lead.RazaoSocial) ? "(razão social não encontrada)" : lead.RazaoSocial;
                 lead.PorteEstimado = EstimadorPorte.Estimar(0m, null);
             }
+        }
+
+        // Filtro de capital (middle market): mantém o pool enxuto no Neon. Se a faixa for
+        // informada, só entram empresas com capital REAL dentro dela (sem join confiável fica fora).
+        if (capMin is not null || capMax is not null)
+        {
+            var antes = selecionados.Count;
+            selecionados = selecionados
+                .Where(kv => dadosEmpresa.ContainsKey(kv.Key[..8])
+                          && (capMin is null || kv.Value.CapitalSocial >= capMin)
+                          && (capMax is null || kv.Value.CapitalSocial <= capMax))
+                .ToDictionary(kv => kv.Key, kv => kv.Value);
+            _log.LogInformation("Filtro de capital [{Min}–{Max}]: {Antes} → {Depois}", capMin, capMax, antes, selecionados.Count);
         }
 
         if (!gravar)

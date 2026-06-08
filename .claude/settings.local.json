@@ -20,7 +20,8 @@
       "WebFetch(domain:dadosabertos.rfb.gov.br)",
       "WebSearch",
       "WebFetch(domain:dados.gov.br)",
-      "Bash(git mv *)"
+      "Bash(git mv *)",
+      "WebFetch(domain:github.com)"
     ]
   }
 }
