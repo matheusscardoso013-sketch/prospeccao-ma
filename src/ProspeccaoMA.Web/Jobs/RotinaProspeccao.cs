@@ -1,32 +1,39 @@
 using Microsoft.EntityFrameworkCore;
 using ProspeccaoMA.Web.Data;
 using ProspeccaoMA.Web.IA;
+using ProspeccaoMA.Web.Ingestao;
 using ProspeccaoMA.Web.Models;
 
 namespace ProspeccaoMA.Web.Jobs;
 
 /// <summary>
-/// Rotina de prospecção (spec seção 4). Idempotente: só pontua leads REAIS que casam
-/// com cada configuração ativa e que ainda não têm score para aquela configuração
-/// (dedup via índice único LeadId+ConfiguracaoId). Não descobre/inventa empresas —
-/// trabalha sobre os Leads já importados da base da Receita.
-/// Usada tanto pelo BackgroundService das 12h quanto pelo botão "Rodar agora".
+/// Rotina de prospecção (spec seção 4). A cada execução descobre e qualifica até
+/// N empresas REAIS NOVAS por dia (Prospeccao:LeadsPorDia, padrão 3), middle market,
+/// a partir do universo já carregado da base da Receita. Idempotente: só pega quem
+/// ainda não foi pontuado (índice único LeadId+ConfiguracaoId) e respeita a faixa de
+/// capital/UF/CNAE/situação de cada configuração ativa. Os escolhidos do dia são
+/// enriquecidos via BrasilAPI (contatos) antes de irem para a IA. A IA nunca inventa
+/// empresas — só pontua os candidatos reais.
+/// Usada pelo BackgroundService das 12h e pelo botão "Rodar agora".
 /// </summary>
 public class RotinaProspeccao
 {
     private readonly AppDbContext _db;
     private readonly IClassificadorIA _ia;
+    private readonly IConectorBrasilApi _brasilApi;
     private readonly ILogger<RotinaProspeccao> _log;
-    private readonly int _tamanhoLote;
+    private readonly int _leadsPorDia;
 
     private const string FonteReceita = "Receita Federal — base pública";
 
-    public RotinaProspeccao(AppDbContext db, IClassificadorIA ia, ILogger<RotinaProspeccao> log, IConfiguration cfg)
+    public RotinaProspeccao(AppDbContext db, IClassificadorIA ia, IConectorBrasilApi brasilApi,
+        ILogger<RotinaProspeccao> log, IConfiguration cfg)
     {
         _db = db;
         _ia = ia;
+        _brasilApi = brasilApi;
         _log = log;
-        _tamanhoLote = cfg.GetValue("Prospeccao:TamanhoLote", 100);
+        _leadsPorDia = Math.Max(1, cfg.GetValue("Prospeccao:LeadsPorDia", 3));
     }
 
     public async Task<ExecucaoJob> ExecutarAsync(CancellationToken ct = default)
@@ -39,12 +46,18 @@ public class RotinaProspeccao
         try
         {
             var configs = await _db.Configuracoes.Where(c => c.Ativo).ToListAsync(ct);
-            _log.LogInformation("Prospecção iniciada: {N} configuração(ões) ativa(s)", configs.Count);
+            _log.LogInformation("Prospecção iniciada: meta de {Meta} lead(s)/dia, {N} configuração(ões) ativa(s)",
+                _leadsPorDia, configs.Count);
 
+            // Cap GLOBAL: no máximo _leadsPorDia empresas novas por execução (no total).
+            var restante = _leadsPorDia;
             foreach (var config in configs)
             {
+                if (restante <= 0) break;
                 ct.ThrowIfCancellationRequested();
-                totalNovos += await ProcessarConfiguracaoAsync(config, ct);
+                var n = await ProcessarConfiguracaoAsync(config, restante, ct);
+                totalNovos += n;
+                restante -= n;
             }
 
             execucao.LeadsGerados = totalNovos;
@@ -68,17 +81,17 @@ public class RotinaProspeccao
             await _db.SaveChangesAsync(ct);
         }
 
-        _log.LogInformation("Prospecção finalizada: {Status}, {N} novo(s) lead(s) pontuado(s)",
+        _log.LogInformation("Prospecção finalizada: {Status}, {N} nova(s) empresa(s) prospectada(s)",
             execucao.Status, execucao.LeadsGerados);
         return execucao;
     }
 
-    private async Task<int> ProcessarConfiguracaoAsync(ConfiguracaoProspeccao config, CancellationToken ct)
+    private async Task<int> ProcessarConfiguracaoAsync(ConfiguracaoProspeccao config, int maximo, CancellationToken ct)
     {
         var ufs = SepararLista(config.Ufs).Select(u => u.ToUpperInvariant()).ToList();
         var cnaes = SepararLista(config.Cnaes).Select(SoDigitos).Where(c => c.Length > 0).ToList();
 
-        // Filtro grosso no banco: situação ATIVA, UF/capital, e ainda não pontuado nesta config.
+        // Filtro no banco: ATIVA, UF/capital (middle market), e ainda não pontuado nesta config.
         var query = _db.Leads.Where(l =>
             l.Situacao.ToUpper().Contains("ATIVA") &&
             !l.Scores.Any(s => s.ConfiguracaoId == config.Id));
@@ -90,24 +103,26 @@ public class RotinaProspeccao
         if (config.CapitalMax is not null)
             query = query.Where(l => l.CapitalSocial <= config.CapitalMax);
 
-        // Traz um pouco mais que o lote para refinar o CNAE em memória (formatos variam).
+        // Traz um buffer para refinar o CNAE em memória (formatos variam) e prioriza maior capital.
         var candidatos = await query
             .OrderByDescending(l => l.CapitalSocial)
-            .Take(_tamanhoLote * 3)
+            .Take(maximo * 10)
             .ToListAsync(ct);
 
         var selecionados = candidatos
             .Where(l => cnaes.Count == 0 || cnaes.Any(c => CnaeCombina(l.Cnae, c)))
-            .Take(_tamanhoLote)
+            .Take(maximo)
             .ToList();
 
-        _log.LogInformation("Config {Id}: {N} candidato(s) real(is) para pontuar", config.Id, selecionados.Count);
+        _log.LogInformation("Config {Id}: {N} candidato(s) real(is) selecionado(s) (máx {Max})",
+            config.Id, selecionados.Count, maximo);
 
         var novos = 0;
         foreach (var lead in selecionados)
         {
             ct.ThrowIfCancellationRequested();
 
+            await EnriquecerAsync(lead, ct);              // contatos via BrasilAPI (best-effort)
             var resultado = await _ia.ClassificarAsync(lead, config, ct);
 
             _db.LeadScores.Add(new LeadScore
@@ -120,14 +135,34 @@ public class RotinaProspeccao
                 GeradoEm = DateTime.UtcNow
             });
             novos++;
-
-            // Persiste em pequenos blocos para não perder trabalho em lotes longos.
-            if (novos % 20 == 0)
-                await _db.SaveChangesAsync(ct);
         }
 
         await _db.SaveChangesAsync(ct);
         return novos;
+    }
+
+    /// <summary>Enriquece contatos via BrasilAPI (só os escolhidos do dia → não estoura rate limit).</summary>
+    private async Task EnriquecerAsync(Lead lead, CancellationToken ct)
+    {
+        try
+        {
+            var dados = await _brasilApi.ConsultarAsync(lead.Cnpj, ct);
+            if (dados is null) return;
+
+            var partes = new List<string>();
+            if (!string.IsNullOrWhiteSpace(dados.DddTelefone1)) partes.Add($"Tel: {dados.DddTelefone1.Trim()}");
+            if (!string.IsNullOrWhiteSpace(dados.Email)) partes.Add($"E-mail: {dados.Email.Trim()}");
+            var endereco = string.Join(", ", new[] { dados.Logradouro, dados.Numero, dados.Bairro, dados.Municipio, dados.Uf }
+                .Where(p => !string.IsNullOrWhiteSpace(p)));
+            if (!string.IsNullOrWhiteSpace(endereco)) partes.Add($"End: {endereco}");
+
+            if (partes.Count > 0)
+                lead.Contato = string.Join(" | ", partes);
+        }
+        catch (Exception ex)
+        {
+            _log.LogWarning(ex, "Enriquecimento falhou para {Cnpj} (seguindo sem contatos)", lead.Cnpj);
+        }
     }
 
     private static List<string> SepararLista(string? csv)
@@ -137,10 +172,7 @@ public class RotinaProspeccao
 
     private static string SoDigitos(string s) => new(s.Where(char.IsDigit).ToArray());
 
-    /// <summary>
-    /// Compara CNAE do lead (ex.: "2110600") com o do filtro (ex.: "21106"/"2110600"),
-    /// ambos só em dígitos. Casa por igualdade ou por prefixo (filtro a nível de classe).
-    /// </summary>
+    /// <summary>CNAE do lead (ex.: "6202300") casa com o filtro (ex.: "62") por igualdade ou prefixo.</summary>
     private static bool CnaeCombina(string cnaeLead, string cnaeFiltroDigitos)
     {
         var lead = SoDigitos(cnaeLead);

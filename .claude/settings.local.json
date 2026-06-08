@@ -10,7 +10,13 @@
       "PowerShell(& \"$env:LOCALAPPDATA\\\\Programs\\\\Ollama\\\\ollama.exe\" pull qwen2.5:3b)",
       "PowerShell($env:PATH += \";C:\\\\Program Files\\\\dotnet;$env:USERPROFILE\\\\.dotnet\\\\tools\"; Write-Output \"--- dotnet-ef ---\"; try { dotnet ef --version } catch { Write-Output \"ef nao instalado\" }; Write-Output \"--- src atual ---\"; Get-ChildItem \"C:\\\\Users\\\\Valore\\\\Documents\\\\Projetos\\\\Agente IA Mapeamento\\\\src\" | Select-Object Name)",
       "mcp__Claude_Preview__preview_start",
-      "PowerShell($d=Get-Command docker -ErrorAction SilentlyContinue; if\\($d\\){ Write-Output \"docker: $\\($d.Source\\)\"; docker --version } else { Write-Output \"docker nao instalado\" })"
+      "PowerShell($d=Get-Command docker -ErrorAction SilentlyContinue; if\\($d\\){ Write-Output \"docker: $\\($d.Source\\)\"; docker --version } else { Write-Output \"docker nao instalado\" })",
+      "Bash(git commit -q -m ' *)",
+      "Bash(git remote *)",
+      "Bash(GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=Never git push -u origin main)",
+      "WebFetch(domain:prospeccao-ma.onrender.com)",
+      "Bash(git add *)",
+      "Bash(GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=Never git push origin main)"
     ]
   }
 }

@@ -76,9 +76,12 @@ public partial class GeminiClassificador : IClassificadorIA
     private static string MontarPrompt(Lead lead, ConfiguracaoProspeccao config)
     {
         var sb = new StringBuilder();
-        sb.AppendLine("Você é um analista de M&A sell-side avaliando a sinergia de uma empresa-alvo REAL com um mandato.");
+        sb.AppendLine("Você é um analista de M&A sell-side de uma boutique focada em MIDDLE MARKET.");
+        sb.AppendLine("Avalie o potencial desta empresa-alvo REAL como candidata a uma operação de VENDA (sell-side),");
+        sb.AppendLine("considerando aderência setorial ao mandato, porte de middle market e atratividade para compradores.");
         sb.AppendLine("Regras obrigatórias:");
-        sb.AppendLine("- NÃO invente informações. Avalie a sinergia somente com base nos dados fornecidos.");
+        sb.AppendLine("- NÃO invente informações. Avalie somente com base nos dados fornecidos.");
+        sb.AppendLine("- Lembre que porte/faturamento são ESTIMADOS (capital social é proxy) — não trate como receita real.");
         sb.AppendLine("- Se faltar dado relevante, diga explicitamente que falta no racional.");
         sb.AppendLine("- Responda ESTRITAMENTE em JSON no formato: {\"score\": <inteiro 0-100>, \"racional\": \"<texto curto>\"}.");
         sb.AppendLine();
