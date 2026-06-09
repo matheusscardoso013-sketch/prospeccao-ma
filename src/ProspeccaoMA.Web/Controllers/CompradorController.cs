@@ -30,4 +30,20 @@ public class CompradorController : Controller
         var lista = await query.OrderBy(c => c.Nome).ToListAsync();
         return View(lista);
     }
+
+    /// <summary>Alvos (leads) com maior sinergia para a tese deste comprador.</summary>
+    public async Task<IActionResult> Alvos(int id)
+    {
+        var comprador = await _db.Compradores.FirstOrDefaultAsync(c => c.Id == id);
+        if (comprador is null) return NotFound();
+
+        var sinergias = await _db.SinergiasComprador
+            .Include(s => s.Lead)
+            .Where(s => s.CompradorId == id)
+            .OrderByDescending(s => s.Score)
+            .ToListAsync();
+
+        ViewData["Comprador"] = comprador;
+        return View(sinergias);
+    }
 }

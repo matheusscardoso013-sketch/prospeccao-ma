@@ -6,6 +6,7 @@ using ProspeccaoMA.Web.Data;
 using ProspeccaoMA.Web.IA;
 using ProspeccaoMA.Web.Ingestao;
 using ProspeccaoMA.Web.Jobs;
+using ProspeccaoMA.Web.Matching;
 using ProspeccaoMA.Web.Models;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -68,6 +69,9 @@ builder.Services.AddHttpClient<IClassificadorIA, GeminiClassificador>(c =>
     c.BaseAddress = new Uri("https://generativelanguage.googleapis.com/");
     c.Timeout = TimeSpan.FromSeconds(40);
 });
+
+// Motor de sinergia alvo × comprador (buy-side).
+builder.Services.AddScoped<IMotorSinergia, MotorSinergia>();
 
 // Rotina de prospecção (compartilhada) + agendador diário às 12h.
 builder.Services.AddScoped<RotinaProspeccao>();

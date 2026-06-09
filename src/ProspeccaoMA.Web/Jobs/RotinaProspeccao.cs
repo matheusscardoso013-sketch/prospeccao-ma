@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using ProspeccaoMA.Web.Data;
 using ProspeccaoMA.Web.IA;
 using ProspeccaoMA.Web.Ingestao;
+using ProspeccaoMA.Web.Matching;
 using ProspeccaoMA.Web.Models;
 
 namespace ProspeccaoMA.Web.Jobs;
@@ -21,17 +22,19 @@ public class RotinaProspeccao
     private readonly AppDbContext _db;
     private readonly IClassificadorIA _ia;
     private readonly IConectorBrasilApi _brasilApi;
+    private readonly IMotorSinergia _motor;
     private readonly ILogger<RotinaProspeccao> _log;
     private readonly int _leadsPorDia;
 
     private const string FonteReceita = "Receita Federal — base pública";
 
     public RotinaProspeccao(AppDbContext db, IClassificadorIA ia, IConectorBrasilApi brasilApi,
-        ILogger<RotinaProspeccao> log, IConfiguration cfg)
+        IMotorSinergia motor, ILogger<RotinaProspeccao> log, IConfiguration cfg)
     {
         _db = db;
         _ia = ia;
         _brasilApi = brasilApi;
+        _motor = motor;
         _log = log;
         _leadsPorDia = Math.Max(1, cfg.GetValue("Prospeccao:LeadsPorDia", 3));
     }
@@ -138,6 +141,15 @@ public class RotinaProspeccao
         }
 
         await _db.SaveChangesAsync(ct);
+
+        // Cruza cada novo lead com os compradores compatíveis (buy-side).
+        foreach (var lead in selecionados)
+        {
+            ct.ThrowIfCancellationRequested();
+            try { await _motor.CruzarLeadAsync(lead, ct); }
+            catch (Exception ex) { _log.LogWarning(ex, "Falha ao cruzar lead {Cnpj} com compradores", lead.Cnpj); }
+        }
+
         return novos;
     }
 

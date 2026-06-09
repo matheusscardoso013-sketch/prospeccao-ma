@@ -1,0 +1,56 @@
+@model List<ProspeccaoMA.Web.Models.SinergiaComprador>
+@{
+    var c = (ProspeccaoMA.Web.Models.Comprador)ViewData["Comprador"]!;
+    ViewData["Title"] = "Alvos compatíveis";
+    string ClasseScore(int s) => s >= 70 ? "hi" : s >= 50 ? "mid" : "lo";
+}
+
+<div class="pagehead">
+    <div>
+        <h1>Alvos compatíveis — @c.Nome</h1>
+        <div class="sub">Leads prospectados com maior sinergia com a tese deste comprador.</div>
+    </div>
+    <a class="btn ghost" asp-controller="Comprador" asp-action="Index">← Voltar aos compradores</a>
+</div>
+
+<div class="racional" style="margin:0 0 18px">
+    <div class="h">Tese de investimento</div>
+    <p>@c.Tese</p>
+</div>
+
+@if (Model.Count == 0)
+{
+    <div class="vazio">Ainda não há alvos cruzados com este comprador. Eles aparecem conforme novos leads são prospectados (ou abra "Compradores compatíveis" em um lead).</div>
+}
+else
+{
+    <div class="cards">
+        @foreach (var s in Model)
+        {
+            var l = s.Lead!;
+            <div class="lead">
+                <div class="lead-top">
+                    <div class="scorebox @ClasseScore(s.Score)"><span class="n">@s.Score</span><span class="l">sinergia</span></div>
+                    <div class="lead-id">
+                        <div class="razao">@l.RazaoSocial</div>
+                        <div class="cnpj">@ProspeccaoMA.Web.Ingestao.CnpjUtil.Formatar(l.Cnpj)</div>
+                        <div class="tags">
+                            @if (!string.IsNullOrWhiteSpace(l.Cnae)) { <span class="tag">CNAE @l.Cnae</span> }
+                            <span class="tag gray">📍 @l.Municipio/@l.Uf</span>
+                            <span class="tag gray">@l.CapitalSocial.ToString("C")</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="racional">
+                    <div class="h">Racional da sinergia (IA)</div>
+                    <p>@s.Racional</p>
+                </div>
+                <div class="lead-foot">
+                    <span class="src">@l.PorteEstimado</span>
+                    <div class="spacer"></div>
+                    <span class="ger">cruzado @s.GeradoEm.ToLocalTime().ToString("dd/MM HH:mm")</span>
+                </div>
+            </div>
+        }
+    </div>
+}

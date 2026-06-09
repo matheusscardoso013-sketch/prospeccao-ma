@@ -142,7 +142,8 @@ else
                 <div class="lead-foot">
                     <span class="src">Fonte: @x.Fonte</span>
                     <div class="spacer"></div>
-                    <span class="ger">Gerado @x.GeradoEm.ToLocalTime().ToString("dd/MM HH:mm")</span>
+                    <span class="ger">@x.GeradoEm.ToLocalTime().ToString("dd/MM HH:mm")</span>
+                    <a class="btn ghost sm" asp-controller="Lead" asp-action="Compradores" asp-route-id="@l.Id">🎯 Compradores</a>
                 </div>
             </div>
         }

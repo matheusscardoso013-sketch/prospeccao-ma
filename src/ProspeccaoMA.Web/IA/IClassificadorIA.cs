@@ -14,4 +14,11 @@ public interface IClassificadorIA
 {
     Task<ResultadoClassificacao> ClassificarAsync(
         Lead lead, ConfiguracaoProspeccao config, CancellationToken ct = default);
+
+    /// <summary>
+    /// Pontua a sinergia (0-100) entre um lead REAL e a TESE de investimento de um comprador
+    /// (buy-side). A IA não inventa dados — só avalia o fit com base no que foi fornecido.
+    /// </summary>
+    Task<ResultadoClassificacao> ClassificarSinergiaAsync(
+        Lead lead, Comprador comprador, CancellationToken ct = default);
 }

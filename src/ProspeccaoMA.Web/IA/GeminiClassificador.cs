@@ -44,14 +44,25 @@ public partial class GeminiClassificador : IClassificadorIA
             return new ResultadoClassificacao(0, "IA não configurada: defina Gemini:ApiKey para qualificar este lead.");
         }
 
-        var prompt = MontarPrompt(lead, config);
+        return await ChamarAsync(MontarPrompt(lead, config), lead.Cnpj, ct);
+    }
 
+    public async Task<ResultadoClassificacao> ClassificarSinergiaAsync(
+        Lead lead, Comprador comprador, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(_opt.ApiKey))
+            return new ResultadoClassificacao(0, "IA não configurada: defina Gemini:ApiKey.");
+        return await ChamarAsync(MontarPromptSinergia(lead, comprador), $"{lead.Cnpj}~{comprador.Nome}", ct);
+    }
+
+    /// <summary>Chamada genérica ao Gemini (JSON estrito) + parsing defensivo. Nunca lança.</summary>
+    private async Task<ResultadoClassificacao> ChamarAsync(string prompt, string idLog, CancellationToken ct)
+    {
         var corpo = new
         {
             contents = new[] { new { parts = new[] { new { text = prompt } } } },
             generationConfig = new { temperature = 0.2, responseMimeType = "application/json" }
         };
-
         var url = $"v1beta/models/{_opt.Modelo}:generateContent?key={_opt.ApiKey}";
 
         string textoResposta;
@@ -65,12 +76,45 @@ public partial class GeminiClassificador : IClassificadorIA
         }
         catch (Exception ex)
         {
-            _log.LogError(ex, "Falha na chamada ao Gemini para o lead {Cnpj}", lead.Cnpj);
-            return new ResultadoClassificacao(0, "Falha ao contatar a IA; lead mantido sem pontuação válida.");
+            _log.LogError(ex, "Falha na chamada ao Gemini ({Id})", idLog);
+            return new ResultadoClassificacao(0, "Falha ao contatar a IA.");
         }
 
-        return ParsearResultado(textoResposta, lead.Cnpj);
+        return ParsearResultado(textoResposta, idLog);
     }
+
+    /// <summary>Prompt buy-side: fit do lead REAL com a tese do comprador. Anti-invenção.</summary>
+    private static string MontarPromptSinergia(Lead lead, Comprador comprador)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("Você é um analista de M&A buy-side avaliando o fit entre uma empresa-alvo REAL e a TESE de investimento de um comprador.");
+        sb.AppendLine("Dê uma nota de sinergia (0-100) de quão bem o alvo se encaixa na tese do comprador (setor, porte, modelo, geografia).");
+        sb.AppendLine("Regras obrigatórias:");
+        sb.AppendLine("- NÃO invente informações. Avalie só com base nos dados fornecidos.");
+        sb.AppendLine("- Porte/faturamento do alvo são ESTIMADOS (capital social é proxy) — não trate como receita real.");
+        sb.AppendLine("- Se faltar dado relevante, diga no racional.");
+        sb.AppendLine("- Responda ESTRITAMENTE em JSON: {\"score\": <inteiro 0-100>, \"racional\": \"<texto curto>\"}.");
+        sb.AppendLine();
+        sb.AppendLine("## Comprador e sua tese");
+        sb.AppendLine($"- Nome: {comprador.Nome}");
+        if (!string.IsNullOrWhiteSpace(comprador.TipoEmpresa)) sb.AppendLine($"- Tipo: {comprador.TipoEmpresa}");
+        if (!string.IsNullOrWhiteSpace(comprador.Segmento)) sb.AppendLine($"- Segmento: {comprador.Segmento}");
+        if (!string.IsNullOrWhiteSpace(comprador.FaixaFaturamento)) sb.AppendLine($"- Faixa de faturamento alvo: {comprador.FaixaFaturamento}");
+        if (!string.IsNullOrWhiteSpace(comprador.Tags)) sb.AppendLine($"- Tags da tese: {comprador.Tags}");
+        sb.AppendLine($"- Tese: {Resumir(comprador.Tese, 1500)}");
+        sb.AppendLine();
+        sb.AppendLine("## Empresa-alvo (dados reais da Receita Federal)");
+        sb.AppendLine($"- Razão social: {lead.RazaoSocial}");
+        sb.AppendLine($"- CNAE: {lead.Cnae} | UF/Município: {lead.Uf}/{lead.Municipio}");
+        sb.AppendLine($"- Capital social: {lead.CapitalSocial:C} | Porte estimado: {lead.PorteEstimado}");
+        sb.AppendLine($"- Situação: {lead.Situacao}");
+        sb.AppendLine();
+        sb.AppendLine("Avalie o fit (0-100) e escreva um racional curto (1-3 frases).");
+        return sb.ToString();
+    }
+
+    private static string Resumir(string? s, int max)
+        => string.IsNullOrWhiteSpace(s) ? "(sem tese registrada)" : (s.Length > max ? s.Substring(0, max) + "…" : s);
 
     /// <summary>Prompt com SOMENTE dados reais e instrução anti-invenção (spec seção 4).</summary>
     private static string MontarPrompt(Lead lead, ConfiguracaoProspeccao config)

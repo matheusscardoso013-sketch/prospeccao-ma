@@ -15,14 +15,39 @@ public class LeadController : Controller
     private readonly AppDbContext _db;
     private readonly IImportadorCnpj _importador;
     private readonly RotinaProspeccao _rotina;
+    private readonly ProspeccaoMA.Web.Matching.IMotorSinergia _motor;
     private readonly ILogger<LeadController> _log;
 
-    public LeadController(AppDbContext db, IImportadorCnpj importador, RotinaProspeccao rotina, ILogger<LeadController> log)
+    public LeadController(AppDbContext db, IImportadorCnpj importador, RotinaProspeccao rotina,
+        ProspeccaoMA.Web.Matching.IMotorSinergia motor, ILogger<LeadController> log)
     {
         _db = db;
         _importador = importador;
         _rotina = rotina;
+        _motor = motor;
         _log = log;
+    }
+
+    /// <summary>Mostra os compradores com maior sinergia para um lead (calcula on-demand se ainda não houver).</summary>
+    public async Task<IActionResult> Compradores(int id)
+    {
+        var lead = await _db.Leads.FirstOrDefaultAsync(l => l.Id == id);
+        if (lead is null) return NotFound();
+
+        if (!await _db.SinergiasComprador.AnyAsync(s => s.LeadId == id))
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
+            await _motor.CruzarLeadAsync(lead, cts.Token);
+        }
+
+        var sinergias = await _db.SinergiasComprador
+            .Include(s => s.Comprador)
+            .Where(s => s.LeadId == id)
+            .OrderByDescending(s => s.Score)
+            .ToListAsync();
+
+        ViewData["Lead"] = lead;
+        return View(sinergias);
     }
 
     public async Task<IActionResult> Index(string? cnae, string? uf, int? scoreMin, OrdenacaoLeads ordenar = OrdenacaoLeads.Score)
