@@ -10,6 +10,9 @@ public interface IMotorSinergia
     /// <summary>Cruza um lead com os compradores compatíveis (pré-filtro + IA). Idempotente.</summary>
     Task<int> CruzarLeadAsync(int leadId, CancellationToken ct = default);
     Task<int> CruzarLeadAsync(Lead lead, CancellationToken ct = default);
+
+    /// <summary>Reavalia (re-pontua) as sinergias existentes de um comprador com a tese ATUAL.</summary>
+    Task<int> RecalcularCompradorAsync(int compradorId, CancellationToken ct = default);
 }
 
 /// <summary>
@@ -87,6 +90,33 @@ public class MotorSinergia : IMotorSinergia
         await _db.SaveChangesAsync(ct);
         _log.LogInformation("Lead {Cnpj}: {N} sinergia(s) de comprador gerada(s)", lead.Cnpj, novos);
         return novos;
+    }
+
+    public async Task<int> RecalcularCompradorAsync(int compradorId, CancellationToken ct = default)
+    {
+        var comprador = await _db.Compradores.FirstOrDefaultAsync(c => c.Id == compradorId, ct);
+        if (comprador is null) return 0;
+
+        var sinergias = await _db.SinergiasComprador
+            .Include(s => s.Lead)
+            .Where(s => s.CompradorId == compradorId)
+            .ToListAsync(ct);
+
+        var n = 0;
+        foreach (var s in sinergias)
+        {
+            if (s.Lead is null) continue;
+            ct.ThrowIfCancellationRequested();
+            var r = await _ia.ClassificarSinergiaAsync(s.Lead, comprador, ct);
+            s.Score = r.Score;
+            s.Racional = r.Racional;
+            s.GeradoEm = DateTime.UtcNow;
+            n++;
+        }
+
+        await _db.SaveChangesAsync(ct);
+        _log.LogInformation("Comprador {Nome}: {N} sinergia(s) recalculada(s) com a tese atual", comprador.Nome, n);
+        return n;
     }
 
     private static int Overlap(Comprador c, string[] kws)

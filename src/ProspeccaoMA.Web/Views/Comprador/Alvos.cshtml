@@ -10,7 +10,17 @@
         <h1>Alvos compatíveis — @c.Nome</h1>
         <div class="sub">Leads prospectados com maior sinergia com a tese deste comprador.</div>
     </div>
-    <a class="btn ghost" asp-controller="Comprador" asp-action="Index">← Voltar aos compradores</a>
+    <div style="display:flex;gap:10px;align-self:center">
+        <a class="btn ghost" asp-controller="Comprador" asp-action="Editar" asp-route-id="@c.Id">✏️ Editar tese</a>
+        @if (Model.Count > 0)
+        {
+            <form asp-controller="Comprador" asp-action="Recalcular" asp-route-id="@c.Id" method="post" class="inline-form">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn primary">↻ Recalcular sinergias</button>
+            </form>
+        }
+        <a class="btn ghost" asp-controller="Comprador" asp-action="Index">← Voltar</a>
+    </div>
 </div>
 
 <div class="racional" style="margin:0 0 18px">

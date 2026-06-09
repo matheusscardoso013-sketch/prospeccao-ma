@@ -10,7 +10,22 @@ namespace ProspeccaoMA.Web.Controllers;
 public class CompradorController : Controller
 {
     private readonly AppDbContext _db;
-    public CompradorController(AppDbContext db) => _db = db;
+    private readonly ProspeccaoMA.Web.Matching.IMotorSinergia _motor;
+    public CompradorController(AppDbContext db, ProspeccaoMA.Web.Matching.IMotorSinergia motor)
+    {
+        _db = db;
+        _motor = motor;
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Recalcular(int id)
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
+        var n = await _motor.RecalcularCompradorAsync(id, cts.Token);
+        TempData["Ok"] = $"{n} sinergia(s) recalculada(s) com a tese atual.";
+        return RedirectToAction(nameof(Alvos), new { id });
+    }
 
     public async Task<IActionResult> Index(string? busca)
     {
