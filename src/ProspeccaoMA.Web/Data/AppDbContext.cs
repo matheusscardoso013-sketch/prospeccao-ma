@@ -19,6 +19,8 @@ public class AppDbContext : IdentityDbContext<Usuario>, IDataProtectionKeyContex
     public DbSet<Lead> Leads => Set<Lead>();
     public DbSet<LeadScore> LeadScores => Set<LeadScore>();
     public DbSet<ExecucaoJob> ExecucoesJob => Set<ExecucaoJob>();
+    public DbSet<Comprador> Compradores => Set<Comprador>();
+    public DbSet<SinergiaComprador> SinergiasComprador => Set<SinergiaComprador>();
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
     protected override void OnModelCreating(ModelBuilder builder)
@@ -62,6 +64,28 @@ public class AppDbContext : IdentityDbContext<Usuario>, IDataProtectionKeyContex
             .HasOne(c => c.Usuario)
             .WithMany(u => u.Configuracoes)
             .HasForeignKey(c => c.UsuarioId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Nome único do comprador — deduplica a importação da planilha.
+        builder.Entity<Comprador>()
+            .HasIndex(c => c.Nome)
+            .IsUnique();
+
+        // Uma sinergia por par (lead, comprador) — idempotência do matching.
+        builder.Entity<SinergiaComprador>()
+            .HasIndex(s => new { s.LeadId, s.CompradorId })
+            .IsUnique();
+
+        builder.Entity<SinergiaComprador>()
+            .HasOne(s => s.Lead)
+            .WithMany()
+            .HasForeignKey(s => s.LeadId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<SinergiaComprador>()
+            .HasOne(s => s.Comprador)
+            .WithMany(c => c.Sinergias)
+            .HasForeignKey(s => s.CompradorId)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }
