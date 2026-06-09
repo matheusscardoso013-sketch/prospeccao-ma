@@ -1,0 +1,68 @@
+@model ProspeccaoMA.Web.Models.Comprador
+@{
+    ViewData["Title"] = "Editar comprador";
+}
+
+<div class="pagehead">
+    <div>
+        <h1>Editar comprador</h1>
+        <div class="sub">Atualize a tese de investimento e os contatos. A tese é o que a IA usa para cruzar com os alvos.</div>
+    </div>
+    <a class="btn ghost" asp-controller="Comprador" asp-action="Index">← Voltar</a>
+</div>
+
+<form asp-controller="Comprador" asp-action="Salvar" method="post">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="Id" />
+    <div asp-validation-summary="All" class="alert err" style="@(ViewData.ModelState.IsValid ? "display:none" : "")"></div>
+
+    <div class="formgrid">
+        <div class="field full">
+            <label>Nome</label>
+            <input type="text" asp-for="Nome" />
+        </div>
+        <div class="field">
+            <label>Tipo de empresa</label>
+            <input type="text" asp-for="TipoEmpresa" placeholder="Fundo, Tecnologia, Indústria…" />
+        </div>
+        <div class="field">
+            <label>Faixa de faturamento alvo</label>
+            <input type="text" asp-for="FaixaFaturamento" />
+        </div>
+        <div class="field full">
+            <label>Segmento</label>
+            <input type="text" asp-for="Segmento" />
+        </div>
+        <div class="field full">
+            <label>Tags da tese</label>
+            <input type="text" asp-for="Tags" placeholder="#saude #fintech #agro" />
+        </div>
+        <div class="field">
+            <label>Responsável (Valore)</label>
+            <input type="text" asp-for="Responsavel" />
+        </div>
+        <div class="field">
+            <label>Site</label>
+            <input type="text" asp-for="Site" />
+        </div>
+        <div class="field full">
+            <label>Contatos</label>
+            <textarea asp-for="Contato" style="min-height:90px" placeholder="Nome, e-mail e telefone dos contatos (um por linha)"></textarea>
+            <div class="hint">Pode adicionar vários contatos — um por linha (ex.: João Silva — joao@fundo.com — (11) 99999-0000).</div>
+        </div>
+        <div class="field full">
+            <label>Tese de investimento</label>
+            <textarea asp-for="Tese" style="min-height:200px" placeholder="Descreva a tese: setores, ticket, modelo, geografia, critérios…"></textarea>
+        </div>
+        <div class="field">
+            <label>Status</label>
+            <select asp-for="Ativo">
+                <option value="true">Ativo (entra no cruzamento)</option>
+                <option value="false">Inativo</option>
+            </select>
+        </div>
+        <div class="full">
+            <button type="submit" class="btn primary">Salvar comprador</button>
+        </div>
+    </div>
+</form>

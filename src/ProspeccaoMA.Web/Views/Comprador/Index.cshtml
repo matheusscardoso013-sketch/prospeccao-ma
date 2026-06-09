@@ -71,6 +71,7 @@ else
                     }
                     @if (!string.IsNullOrWhiteSpace(c.Responsavel)) { <span class="ger">resp.: @c.Responsavel</span> }
                     <div class="spacer"></div>
+                    <a class="btn ghost sm" asp-controller="Comprador" asp-action="Editar" asp-route-id="@c.Id">✏️ Editar</a>
                     <a class="btn ghost sm" asp-controller="Comprador" asp-action="Alvos" asp-route-id="@c.Id">🎯 @matches alvo(s)</a>
                 </div>
             </div>
