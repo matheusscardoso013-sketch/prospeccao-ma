@@ -55,7 +55,14 @@ public partial class GeminiClassificador : IClassificadorIA
         return await ChamarAsync(MontarPromptSinergia(lead, comprador), $"{lead.Cnpj}~{comprador.Nome}", ct);
     }
 
-    /// <summary>Chamada genérica ao Gemini (JSON estrito) + parsing defensivo. Nunca lança.</summary>
+    // Espaçamento mínimo entre chamadas (free tier ~15 req/min) para evitar rajadas/429.
+    private static readonly SemaphoreSlim _porta = new(1, 1);
+    private static DateTime _ultima = DateTime.MinValue;
+    private static readonly TimeSpan IntervaloMin = TimeSpan.FromMilliseconds(1500);
+    private const int MaxTentativas = 4;
+
+    /// <summary>Chamada genérica ao Gemini (JSON estrito) + parsing defensivo. Nunca lança.
+    /// Resiliente a rate limit (429) e erros transitórios (5xx): retry com backoff.</summary>
     private async Task<ResultadoClassificacao> ChamarAsync(string prompt, string idLog, CancellationToken ct)
     {
         var corpo = new
@@ -65,23 +72,53 @@ public partial class GeminiClassificador : IClassificadorIA
         };
         var url = $"v1beta/models/{_opt.Modelo}:generateContent?key={_opt.ApiKey}";
 
-        string textoResposta;
+        for (var tentativa = 1; tentativa <= MaxTentativas; tentativa++)
+        {
+            await EspacarAsync(ct);
+            try
+            {
+                using var req = new StringContent(JsonSerializer.Serialize(corpo), Encoding.UTF8, "application/json");
+                var resp = await _http.PostAsync(url, req, ct);
+
+                if ((int)resp.StatusCode == 429 || (int)resp.StatusCode >= 500)
+                {
+                    if (tentativa < MaxTentativas) { await BackoffAsync(tentativa, ct); continue; }
+                    _log.LogWarning("Gemini rate limit/erro {Status} após {N} tentativas ({Id})", (int)resp.StatusCode, tentativa, idLog);
+                    return new ResultadoClassificacao(0, "IA indisponível no momento (limite de uso); tente novamente.");
+                }
+
+                resp.EnsureSuccessStatusCode();
+                var json = await resp.Content.ReadAsStringAsync(ct);
+                return ParsearResultado(ExtrairTextoDaResposta(json), idLog);
+            }
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException && tentativa < MaxTentativas)
+            {
+                _log.LogWarning(ex, "Falha transitória no Gemini (tentativa {N}, {Id})", tentativa, idLog);
+                await BackoffAsync(tentativa, ct);
+            }
+            catch (Exception ex)
+            {
+                _log.LogError(ex, "Falha na chamada ao Gemini ({Id})", idLog);
+                return new ResultadoClassificacao(0, "Falha ao contatar a IA.");
+            }
+        }
+        return new ResultadoClassificacao(0, "IA indisponível no momento; tente novamente.");
+    }
+
+    private static async Task EspacarAsync(CancellationToken ct)
+    {
+        await _porta.WaitAsync(ct);
         try
         {
-            var resp = await _http.PostAsync(url,
-                new StringContent(JsonSerializer.Serialize(corpo), Encoding.UTF8, "application/json"), ct);
-            resp.EnsureSuccessStatusCode();
-            var json = await resp.Content.ReadAsStringAsync(ct);
-            textoResposta = ExtrairTextoDaResposta(json);
+            var decorrido = DateTime.UtcNow - _ultima;
+            if (decorrido < IntervaloMin) await Task.Delay(IntervaloMin - decorrido, ct);
+            _ultima = DateTime.UtcNow;
         }
-        catch (Exception ex)
-        {
-            _log.LogError(ex, "Falha na chamada ao Gemini ({Id})", idLog);
-            return new ResultadoClassificacao(0, "Falha ao contatar a IA.");
-        }
-
-        return ParsearResultado(textoResposta, idLog);
+        finally { _porta.Release(); }
     }
+
+    private static Task BackoffAsync(int tentativa, CancellationToken ct)
+        => Task.Delay(TimeSpan.FromSeconds(2 * Math.Pow(2, tentativa)), ct); // 4s,8s,16s
 
     /// <summary>Prompt buy-side: fit do lead REAL com a tese do comprador. Anti-invenção.</summary>
     private static string MontarPromptSinergia(Lead lead, Comprador comprador)
