@@ -47,6 +47,18 @@ public class Lead
     /// <summary>Resumo/descrição real da empresa (base curada) — enriquece o prompt da IA.</summary>
     public string? Descricao { get; set; }
 
+    /// <summary>Site da empresa (base curada).</summary>
+    public string? Site { get; set; }
+
+    /// <summary>Responsável Valore pelo relacionamento (base curada).</summary>
+    public string? Responsavel { get; set; }
+
+    /// <summary>Margem EBITDA declarada — estimativa, exibida com "~" (base curada).</summary>
+    public string? MargemEbitda { get; set; }
+
+    /// <summary>Valuation estimado declarado — estimativa, exibida com "~" (base curada).</summary>
+    public string? ValuationEstimado { get; set; }
+
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
 
     public List<LeadScore> Scores { get; set; } = new();

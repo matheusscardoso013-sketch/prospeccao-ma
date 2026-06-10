@@ -51,7 +51,6 @@ public class ImportadorAlvosValore : IImportadorAlvosValore
             linhasSell++;
 
             var razao = XlsxLeitor.Get(cels, "D") ?? nome;
-            var faixaFat = XlsxLeitor.Get(cels, "K");
             var descricao = MontarDescricao(XlsxLeitor.Get(cels, "G"), XlsxLeitor.Get(cels, "M"), XlsxLeitor.Get(cels, "P"));
 
             porNome[razao] = new Lead
@@ -60,7 +59,11 @@ public class ImportadorAlvosValore : IImportadorAlvosValore
                 RazaoSocial = razao,
                 Segmento = XlsxLeitor.Get(cels, "H"),
                 Contato = XlsxLeitor.Get(cels, "E"),
-                PorteEstimado = faixaFat is null ? "~ faturamento não informado" : $"~ {faixaFat}",
+                Site = XlsxLeitor.Get(cels, "J"),
+                Responsavel = XlsxLeitor.Get(cels, "F"),
+                PorteEstimado = FormatarMoeda(XlsxLeitor.Get(cels, "K")) ?? "~ faturamento não informado",
+                MargemEbitda = FormatarPercentual(XlsxLeitor.Get(cels, "L")),
+                ValuationEstimado = FormatarMoeda(XlsxLeitor.Get(cels, "N")),
                 Descricao = descricao,
                 Origem = Lead.OrigemValore,
                 Situacao = string.Empty // não entra no fluxo diário da Receita (que exige ATIVA)
@@ -83,7 +86,11 @@ public class ImportadorAlvosValore : IImportadorAlvosValore
             {
                 existente.Segmento = novo.Segmento;
                 existente.Contato = novo.Contato;
+                existente.Site = novo.Site;
+                existente.Responsavel = novo.Responsavel;
                 existente.PorteEstimado = novo.PorteEstimado;
+                existente.MargemEbitda = novo.MargemEbitda;
+                existente.ValuationEstimado = novo.ValuationEstimado;
                 existente.Descricao = novo.Descricao;
                 atualizados++;
             }
@@ -93,6 +100,32 @@ public class ImportadorAlvosValore : IImportadorAlvosValore
         _log.LogInformation("Alvos Valore importados: {Novos} novo(s), {Atu} atualizado(s) de {Linhas} linha(s) sell-side",
             novos, atualizados, linhasSell);
         return new ResultadoImportAlvos(linhasSell, novos, atualizados);
+    }
+
+    private static readonly System.Globalization.CultureInfo PtBr = new("pt-BR");
+
+    /// <summary>Célula do Excel pode vir numérica crua (ex.: "8000000.0") ou texto livre
+    /// (ex.: "R$ 5–10 mi"). Numérico vira moeda pt-BR; texto fica como está. Sempre com "~".</summary>
+    private static string? FormatarMoeda(string? bruto)
+    {
+        if (string.IsNullOrWhiteSpace(bruto)) return null;
+        return decimal.TryParse(bruto, System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture, out var v)
+            ? $"~ {v.ToString("C0", PtBr)}"
+            : $"~ {bruto.Trim()}";
+    }
+
+    /// <summary>Margem pode vir como fração (0.15), número (15) ou texto ("15%").</summary>
+    private static string? FormatarPercentual(string? bruto)
+    {
+        if (string.IsNullOrWhiteSpace(bruto)) return null;
+        if (decimal.TryParse(bruto, System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture, out var v))
+        {
+            var pct = v <= 1m ? v * 100m : v;
+            return $"~ {pct.ToString("0.#", PtBr)}%";
+        }
+        return $"~ {bruto.Trim()}";
     }
 
     private static string? MontarDescricao(string? tipo, string? resumo, string? descricao)

@@ -122,11 +122,15 @@ else
                     {
                         <div class="cell"><div class="k">Capital social</div><div class="v">@l.CapitalSocial.ToString("C")</div></div>
                     }
-                    else
+                    <div class="cell"><div class="k">@(l.Origem == ProspeccaoMA.Web.Models.Lead.OrigemValore ? "Faturamento (est.)" : "Porte estimado")</div><div class="v est">@l.PorteEstimado</div></div>
+                    @if (!string.IsNullOrWhiteSpace(l.ValuationEstimado))
                     {
-                        <div class="cell"><div class="k">Origem</div><div class="v" style="font-size:12px">@l.Origem</div></div>
+                        <div class="cell"><div class="k">Valuation (est.)</div><div class="v est">@l.ValuationEstimado</div></div>
                     }
-                    <div class="cell"><div class="k">Porte estimado</div><div class="v est">@l.PorteEstimado</div></div>
+                    @if (!string.IsNullOrWhiteSpace(l.MargemEbitda))
+                    {
+                        <div class="cell"><div class="k">Margem EBITDA (est.)</div><div class="v est">@l.MargemEbitda</div></div>
+                    }
                 </div>
 
                 <div class="contatos">
@@ -144,13 +148,29 @@ else
                     }
                 </div>
 
-                <div class="racional">
-                    <div class="h">Racional da IA</div>
-                    <p>@x.Racional</p>
-                </div>
+                @{ var aindaNaoCruzado = x.Racional.StartsWith("Ainda não cruzado"); }
+                @if (aindaNaoCruzado && !string.IsNullOrWhiteSpace(l.Descricao))
+                {
+                    <div class="racional">
+                        <div class="h">Resumo da empresa (base Valore)</div>
+                        <p>@(l.Descricao.Length > 320 ? l.Descricao.Substring(0, 320) + "…" : l.Descricao)</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="racional">
+                        <div class="h">Racional da IA</div>
+                        <p>@x.Racional</p>
+                    </div>
+                }
 
                 <div class="lead-foot">
                     <span class="src">Fonte: @x.Fonte</span>
+                    @if (!string.IsNullOrWhiteSpace(l.Site))
+                    {
+                        <a class="src" href="@(l.Site.StartsWith("http") ? l.Site : "https://" + l.Site)" target="_blank">🌐 site</a>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(l.Responsavel)) { <span class="ger">resp.: @l.Responsavel</span> }
                     <div class="spacer"></div>
                     <span class="ger">@x.GeradoEm.ToLocalTime().ToString("dd/MM HH:mm")</span>
                     <a class="btn ghost sm" asp-controller="Lead" asp-action="Compradores" asp-route-id="@l.Id">🎯 Compradores</a>
