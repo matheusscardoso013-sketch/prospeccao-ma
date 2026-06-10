@@ -13,6 +13,9 @@ public interface IMotorSinergia
 
     /// <summary>Reavalia (re-pontua) as sinergias existentes de um comprador com a tese ATUAL.</summary>
     Task<int> RecalcularCompradorAsync(int compradorId, CancellationToken ct = default);
+
+    /// <summary>Reavalia as sinergias existentes de um lead com os dados ATUAIS dele (após edição).</summary>
+    Task<int> RecalcularLeadAsync(int leadId, CancellationToken ct = default);
 }
 
 /// <summary>
@@ -119,6 +122,33 @@ public class MotorSinergia : IMotorSinergia
 
         await _db.SaveChangesAsync(ct);
         _log.LogInformation("Comprador {Nome}: {N} sinergia(s) recalculada(s) com a tese atual", comprador.Nome, n);
+        return n;
+    }
+
+    public async Task<int> RecalcularLeadAsync(int leadId, CancellationToken ct = default)
+    {
+        var lead = await _db.Leads.FirstOrDefaultAsync(l => l.Id == leadId, ct);
+        if (lead is null) return 0;
+
+        var sinergias = await _db.SinergiasComprador
+            .Include(s => s.Comprador)
+            .Where(s => s.LeadId == leadId)
+            .ToListAsync(ct);
+
+        var n = 0;
+        foreach (var s in sinergias)
+        {
+            if (s.Comprador is null) continue;
+            ct.ThrowIfCancellationRequested();
+            var r = await _ia.ClassificarSinergiaAsync(lead, s.Comprador, ct);
+            s.Score = r.Score;
+            s.Racional = r.Racional;
+            s.GeradoEm = DateTime.UtcNow;
+            n++;
+        }
+
+        await _db.SaveChangesAsync(ct);
+        _log.LogInformation("Lead {Nome}: {N} sinergia(s) recalculada(s) com os dados atuais", lead.RazaoSocial, n);
         return n;
     }
 

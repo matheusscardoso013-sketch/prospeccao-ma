@@ -1,0 +1,60 @@
+@model ProspeccaoMA.Web.Models.Lead
+@{
+    ViewData["Title"] = "Editar alvo";
+}
+
+<div class="pagehead">
+    <div>
+        <h1>Editar alvo (base Valore)</h1>
+        <div class="sub">O resumo e o segmento alimentam o cruzamento com os compradores. Valores estimados continuam exibidos com "~".</div>
+    </div>
+    <a class="btn ghost" asp-controller="Lead" asp-action="Index">← Voltar aos leads</a>
+</div>
+
+<form asp-controller="Lead" asp-action="SalvarLead" method="post">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="Id" />
+    <div asp-validation-summary="All" class="alert err" style="@(ViewData.ModelState.IsValid ? "display:none" : "")"></div>
+
+    <div class="formgrid">
+        <div class="field full">
+            <label>Razão social / nome</label>
+            <input type="text" asp-for="RazaoSocial" />
+        </div>
+        <div class="field full">
+            <label>Segmento</label>
+            <input type="text" asp-for="Segmento" placeholder="ex.: Tech Software (SaaS, aplicativos)" />
+        </div>
+        <div class="field">
+            <label>Faturamento estimado</label>
+            <input type="text" asp-for="PorteEstimado" placeholder="~ R$ 10.000.000" />
+        </div>
+        <div class="field">
+            <label>Valuation estimado</label>
+            <input type="text" asp-for="ValuationEstimado" placeholder="~ R$ 50.000.000" />
+        </div>
+        <div class="field">
+            <label>Margem EBITDA</label>
+            <input type="text" asp-for="MargemEbitda" placeholder="~ 15%" />
+        </div>
+        <div class="field">
+            <label>Responsável (Valore)</label>
+            <input type="text" asp-for="Responsavel" />
+        </div>
+        <div class="field full">
+            <label>Site</label>
+            <input type="text" asp-for="Site" />
+        </div>
+        <div class="field full">
+            <label>Contatos</label>
+            <textarea asp-for="Contato" style="min-height:80px" placeholder="Nome — e-mail — telefone (um por linha)"></textarea>
+        </div>
+        <div class="field full">
+            <label>Resumo da empresa (usado pela IA no cruzamento)</label>
+            <textarea asp-for="Descricao" style="min-height:180px" placeholder="O que a empresa faz, produtos, clientes, diferenciais, motivação de venda…"></textarea>
+        </div>
+        <div class="full">
+            <button type="submit" class="btn primary">Salvar alvo</button>
+        </div>
+    </div>
+</form>

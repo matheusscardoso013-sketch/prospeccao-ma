@@ -173,6 +173,10 @@ else
                     @if (!string.IsNullOrWhiteSpace(l.Responsavel)) { <span class="ger">resp.: @l.Responsavel</span> }
                     <div class="spacer"></div>
                     <span class="ger">@x.GeradoEm.ToLocalTime().ToString("dd/MM HH:mm")</span>
+                    @if (l.Origem == ProspeccaoMA.Web.Models.Lead.OrigemValore)
+                    {
+                        <a class="btn ghost sm" asp-controller="Lead" asp-action="Editar" asp-route-id="@l.Id">✏️ Editar</a>
+                    }
                     <a class="btn ghost sm" asp-controller="Lead" asp-action="Compradores" asp-route-id="@l.Id">🎯 Compradores</a>
                 </div>
             </div>

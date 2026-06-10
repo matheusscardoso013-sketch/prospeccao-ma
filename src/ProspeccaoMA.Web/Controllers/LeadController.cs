@@ -29,6 +29,54 @@ public class LeadController : Controller
         _log = log;
     }
 
+    /// <summary>Edição de alvo CURADO (base Valore). Leads da Receita não são editáveis —
+    /// são dado oficial; alterá-los à mão violaria a rastreabilidade da fonte.</summary>
+    [HttpGet]
+    public async Task<IActionResult> Editar(int id)
+    {
+        var lead = await _db.Leads.FirstOrDefaultAsync(l => l.Id == id && l.Origem == Models.Lead.OrigemValore);
+        if (lead is null) return NotFound();
+        return View(lead);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SalvarLead(Models.Lead modelo)
+    {
+        var lead = await _db.Leads.FirstOrDefaultAsync(l => l.Id == modelo.Id && l.Origem == Models.Lead.OrigemValore);
+        if (lead is null) return NotFound();
+
+        if (string.IsNullOrWhiteSpace(modelo.RazaoSocial))
+        {
+            ModelState.AddModelError(string.Empty, "A razão social é obrigatória.");
+            return View("Editar", modelo);
+        }
+
+        lead.RazaoSocial = modelo.RazaoSocial.Trim();
+        lead.Segmento = modelo.Segmento;
+        lead.Contato = modelo.Contato;
+        lead.Site = modelo.Site;
+        lead.Responsavel = modelo.Responsavel;
+        lead.PorteEstimado = modelo.PorteEstimado ?? string.Empty;
+        lead.MargemEbitda = modelo.MargemEbitda;
+        lead.ValuationEstimado = modelo.ValuationEstimado;
+        lead.Descricao = modelo.Descricao;
+
+        await _db.SaveChangesAsync();
+        TempData["Ok"] = "Alvo atualizado. Se mudou o resumo/segmento, use ↻ Recalcular na tela de compradores compatíveis.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Recalcular(int id)
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
+        var n = await _motor.RecalcularLeadAsync(id, cts.Token);
+        TempData["Ok"] = $"{n} sinergia(s) recalculada(s) com os dados atuais do alvo.";
+        return RedirectToAction(nameof(Compradores), new { id });
+    }
+
     /// <summary>Mostra os compradores com maior sinergia para um lead (calcula on-demand se ainda não houver).</summary>
     public async Task<IActionResult> Compradores(int id)
     {
