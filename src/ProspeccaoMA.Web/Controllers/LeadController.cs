@@ -73,6 +73,20 @@ public class LeadController : Controller
         return RedirectToAction(nameof(Index));
     }
 
+    /// <summary>Exclui a empresa e seus cruzamentos. Obs.: um lead da Receita excluído pode
+    /// reaparecer num futuro reimport em massa do recorte (a exclusão não é uma lista de bloqueio).</summary>
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Excluir(int id)
+    {
+        var lead = await _db.Leads.FirstOrDefaultAsync(l => l.Id == id);
+        if (lead is null) return NotFound();
+        _db.Leads.Remove(lead); // LeadScores e SinergiasComprador caem em cascata
+        await _db.SaveChangesAsync();
+        TempData["Ok"] = $"Empresa \"{lead.RazaoSocial}\" excluída (com seus cruzamentos).";
+        return RedirectToAction(nameof(Index));
+    }
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Recalcular(int id)

@@ -109,6 +109,20 @@ public class CompradorController : Controller
         }
     }
 
+    /// <summary>Exclui o comprador e seus cruzamentos. Obs.: um reimport da planilha buy-side
+    /// pode recriá-lo (a exclusão não é uma lista de bloqueio).</summary>
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Excluir(int id)
+    {
+        var c = await _db.Compradores.FirstOrDefaultAsync(x => x.Id == id);
+        if (c is null) return NotFound();
+        _db.Compradores.Remove(c); // SinergiasComprador caem em cascata
+        await _db.SaveChangesAsync();
+        TempData["Ok"] = $"Comprador \"{c.Nome}\" excluído (com seus cruzamentos).";
+        return RedirectToAction(nameof(Index));
+    }
+
     /// <summary>Alvos (leads) com maior sinergia para a tese deste comprador.</summary>
     public async Task<IActionResult> Alvos(int id)
     {

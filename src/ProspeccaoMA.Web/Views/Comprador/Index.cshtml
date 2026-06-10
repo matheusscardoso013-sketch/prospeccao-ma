@@ -88,6 +88,11 @@ else
                     <div class="spacer"></div>
                     <a class="btn ghost sm" asp-controller="Comprador" asp-action="Editar" asp-route-id="@c.Id">✏️ Editar</a>
                     <a class="btn ghost sm" asp-controller="Comprador" asp-action="Alvos" asp-route-id="@c.Id">🎯 @matches alvo(s)</a>
+                    <form asp-controller="Comprador" asp-action="Excluir" asp-route-id="@c.Id" method="post" class="inline-form"
+                          onsubmit="return confirm('Excluir este comprador e seus cruzamentos? Esta ação não pode ser desfeita.');">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn danger sm" title="Excluir comprador">🗑</button>
+                    </form>
                 </div>
             </div>
         }

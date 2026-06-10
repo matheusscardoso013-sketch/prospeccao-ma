@@ -176,6 +176,11 @@ else
                     <span class="ger">@ProspeccaoMA.Web.Util.Fuso.Brasil(x.GeradoEm).ToString("dd/MM HH:mm")</span>
                     <a class="btn ghost sm" asp-controller="Lead" asp-action="Editar" asp-route-id="@l.Id">✏️ Editar</a>
                     <a class="btn ghost sm" asp-controller="Lead" asp-action="Compradores" asp-route-id="@l.Id">🎯 Compradores</a>
+                    <form asp-controller="Lead" asp-action="Excluir" asp-route-id="@l.Id" method="post" class="inline-form"
+                          onsubmit="return confirm('Excluir esta empresa e seus cruzamentos? Esta ação não pode ser desfeita.');">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn danger sm" title="Excluir empresa">🗑</button>
+                    </form>
                 </div>
             </div>
         }
