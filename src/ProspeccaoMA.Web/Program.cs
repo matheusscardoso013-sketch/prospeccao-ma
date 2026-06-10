@@ -104,6 +104,29 @@ if (args.Length >= 2 && string.Equals(args[0], "importar-compradores", StringCom
     return;
 }
 
+// Preenche teses de compradores a partir de um JSON {nome: tese} (pesquisa pública).
+// SÓ preenche quem está sem tese (não sobrescreve teses vindas de reunião).
+if (args.Length >= 2 && string.Equals(args[0], "importar-teses", StringComparison.OrdinalIgnoreCase))
+{
+    using var escopoT = app.Services.CreateScope();
+    var dbT = escopoT.ServiceProvider.GetRequiredService<AppDbContext>();
+    var json = await File.ReadAllTextAsync(args[1]);
+    var teses = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(json)!;
+    int aplicadas = 0, puladas = 0, naoEncontrados = 0;
+    foreach (var (nome, tese) in teses)
+    {
+        var c = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions
+            .FirstOrDefaultAsync(dbT.Compradores, x => x.Nome == nome);
+        if (c is null) { Console.WriteLine($"NÃO ENCONTRADO: {nome}"); naoEncontrados++; continue; }
+        if (c.Tese.Trim().Length >= 20) { puladas++; continue; } // já tem tese real — não mexe
+        c.Tese = "[Pesquisa pública — validar] " + tese.Trim();
+        aplicadas++;
+    }
+    await dbT.SaveChangesAsync();
+    Console.WriteLine($"Teses: {aplicadas} aplicada(s), {puladas} pulada(s) (já tinham tese), {naoEncontrados} não encontrado(s).");
+    return;
+}
+
 if (args.Length >= 2 && string.Equals(args[0], "importar-alvos", StringComparison.OrdinalIgnoreCase))
 {
     using var escopoA = app.Services.CreateScope();
