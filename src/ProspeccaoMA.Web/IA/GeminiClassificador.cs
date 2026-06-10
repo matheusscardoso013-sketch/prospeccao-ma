@@ -173,11 +173,16 @@ public partial class GeminiClassificador : IClassificadorIA
         if (lead.CapitalSocial > 0) sb.AppendLine($"- Capital social: {lead.CapitalSocial:C}");
         if (!string.IsNullOrWhiteSpace(lead.Descricao)) sb.AppendLine($"- Resumo: {Resumir(lead.Descricao, 500)}");
         sb.AppendLine();
-        sb.AppendLine("## Compradores (id | nome | tese)");
+        sb.AppendLine("## Compradores (id | nome | tese | critérios)");
         foreach (var c in compradores)
         {
             var setor = string.Join("/", new[] { c.TipoEmpresa, c.Segmento }.Where(s => !string.IsNullOrWhiteSpace(s)));
-            sb.AppendLine($"[{c.Id}] {c.Nome}{(setor.Length > 0 ? $" ({setor})" : "")} — {Resumir(c.Tese, 220)}");
+            var extras = new List<string>();
+            if (c.FaturamentoMinAlvo is not null || c.FaturamentoMaxAlvo is not null)
+                extras.Add($"fat. alvo {c.FaturamentoMinAlvo?.ToString("C0") ?? "até"}–{c.FaturamentoMaxAlvo?.ToString("C0") ?? "s/ teto"}");
+            if (!string.IsNullOrWhiteSpace(c.Exclusoes)) extras.Add($"NÃO olha: {Resumir(c.Exclusoes, 60)}");
+            var sufixo = extras.Count > 0 ? $" [{string.Join("; ", extras)}]" : "";
+            sb.AppendLine($"[{c.Id}] {c.Nome}{(setor.Length > 0 ? $" ({setor})" : "")} — {Resumir(c.Tese, 200)}{sufixo}");
         }
         return sb.ToString();
     }
@@ -219,9 +224,25 @@ public partial class GeminiClassificador : IClassificadorIA
         sb.AppendLine($"- Nome: {comprador.Nome}");
         if (!string.IsNullOrWhiteSpace(comprador.TipoEmpresa)) sb.AppendLine($"- Tipo: {comprador.TipoEmpresa}");
         if (!string.IsNullOrWhiteSpace(comprador.Segmento)) sb.AppendLine($"- Segmento: {comprador.Segmento}");
-        if (!string.IsNullOrWhiteSpace(comprador.FaixaFaturamento)) sb.AppendLine($"- Faixa de faturamento alvo: {comprador.FaixaFaturamento}");
         if (!string.IsNullOrWhiteSpace(comprador.Tags)) sb.AppendLine($"- Tags da tese: {comprador.Tags}");
         sb.AppendLine($"- Tese: {Resumir(comprador.Tese, 1500)}");
+        sb.AppendLine("### Critérios estruturados do comprador (quando informados, têm prioridade sobre o texto da tese)");
+        if (comprador.FaturamentoMinAlvo is not null || comprador.FaturamentoMaxAlvo is not null)
+            sb.AppendLine($"- Faixa de faturamento alvo: {(comprador.FaturamentoMinAlvo is null ? "até" : comprador.FaturamentoMinAlvo.Value.ToString("C0"))} a {(comprador.FaturamentoMaxAlvo is null ? "sem teto" : comprador.FaturamentoMaxAlvo.Value.ToString("C0"))} — pontue a subnota 'porte' comparando com o faturamento estimado do alvo.");
+        else if (!string.IsNullOrWhiteSpace(comprador.FaixaFaturamento))
+            sb.AppendLine($"- Faixa de faturamento alvo (texto): {comprador.FaixaFaturamento}");
+        if (comprador.MargemEbitdaMinima is not null)
+            sb.AppendLine($"- Margem EBITDA mínima exigida: {comprador.MargemEbitdaMinima}% — alvo abaixo disso perde pontos em 'porte'.");
+        if (!string.IsNullOrWhiteSpace(comprador.TipoOperacao))
+            sb.AppendLine($"- Tipo de operação buscada: {comprador.TipoOperacao}");
+        if (!string.IsNullOrWhiteSpace(comprador.GeografiaAlvo))
+            sb.AppendLine($"- Geografia alvo: {comprador.GeografiaAlvo}");
+        if (!string.IsNullOrWhiteSpace(comprador.ModeloNegocioAlvo))
+            sb.AppendLine($"- Modelo de negócio buscado: {comprador.ModeloNegocioAlvo}");
+        if (!string.IsNullOrWhiteSpace(comprador.Exclusoes))
+            sb.AppendLine($"- EXCLUSÕES (red flags ELIMINATÓRIAS — score máximo 20 se o alvo violar): {comprador.Exclusoes}");
+        if (!string.IsNullOrWhiteSpace(comprador.Cultura))
+            sb.AppendLine($"- Cultura/fit desejado: {comprador.Cultura}");
         sb.AppendLine();
         sb.AppendLine($"## Empresa-alvo (dados reais — {lead.Origem})");
         sb.AppendLine($"- Razão social: {lead.RazaoSocial}");
@@ -236,6 +257,16 @@ public partial class GeminiClassificador : IClassificadorIA
         sb.AppendLine($"- Porte estimado: {lead.PorteEstimado}");
         if (!string.IsNullOrWhiteSpace(lead.Situacao))
             sb.AppendLine($"- Situação: {lead.Situacao}");
+        if (!string.IsNullOrWhiteSpace(lead.MargemEbitda))
+            sb.AppendLine($"- Margem EBITDA (estimada): {lead.MargemEbitda}");
+        if (!string.IsNullOrWhiteSpace(lead.ValuationEstimado))
+            sb.AppendLine($"- Valuation (estimado): {lead.ValuationEstimado}");
+        if (!string.IsNullOrWhiteSpace(lead.ModeloNegocio))
+            sb.AppendLine($"- Modelo de negócio: {lead.ModeloNegocio}");
+        if (!string.IsNullOrWhiteSpace(lead.Abrangencia))
+            sb.AppendLine($"- Abrangência de atuação: {lead.Abrangencia}");
+        if (!string.IsNullOrWhiteSpace(lead.Cultura))
+            sb.AppendLine($"- Cultura/gestão: {lead.Cultura}");
         if (!string.IsNullOrWhiteSpace(lead.Descricao))
             sb.AppendLine($"- Resumo da empresa: {Resumir(lead.Descricao, 1200)}");
         sb.AppendLine();

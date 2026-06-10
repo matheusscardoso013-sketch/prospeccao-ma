@@ -66,6 +66,24 @@
             <label>Contatos</label>
             <textarea asp-for="Contato" style="min-height:80px" placeholder="Nome — e-mail — telefone (um por linha)"></textarea>
         </div>
+        <div class="field">
+            <label>Modelo de negócio</label>
+            <input type="text" asp-for="ModeloNegocio" placeholder="SaaS B2B recorrente; indústria; serviços…" />
+        </div>
+        <div class="field">
+            <label>Abrangência</label>
+            <select asp-for="Abrangencia">
+                <option value="">(não definida)</option>
+                <option>Local</option>
+                <option>Regional</option>
+                <option>Nacional</option>
+                <option>Internacional</option>
+            </select>
+        </div>
+        <div class="field full">
+            <label>Cultura / gestão</label>
+            <textarea asp-for="Cultura" style="min-height:60px" placeholder="ex.: gestão familiar, fundador quer permanecer; equipe profissionalizada…"></textarea>
+        </div>
         <div class="field full">
             <label>Resumo da empresa (usado pela IA no cruzamento)</label>
             <textarea asp-for="Descricao" style="min-height:180px" placeholder="O que a empresa faz, produtos, clientes, diferenciais, motivação de venda…"></textarea>

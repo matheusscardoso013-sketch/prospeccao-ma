@@ -76,6 +76,10 @@ public class AppDbContext : IdentityDbContext<Usuario>, IDataProtectionKeyContex
             .HasIndex(c => c.Nome)
             .IsUnique();
 
+        builder.Entity<Comprador>().Property(c => c.FaturamentoMinAlvo).HasPrecision(18, 2);
+        builder.Entity<Comprador>().Property(c => c.FaturamentoMaxAlvo).HasPrecision(18, 2);
+        builder.Entity<Comprador>().Property(c => c.MargemEbitdaMinima).HasPrecision(5, 2);
+
         // Uma sinergia por par (lead, comprador) — idempotência do matching.
         builder.Entity<SinergiaComprador>()
             .HasIndex(s => new { s.LeadId, s.CompradorId })

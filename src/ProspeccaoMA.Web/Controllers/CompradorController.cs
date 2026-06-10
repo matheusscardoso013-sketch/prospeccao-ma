@@ -86,6 +86,14 @@ public class CompradorController : Controller
         c.FaixaFaturamento = modelo.FaixaFaturamento;
         c.Tags = modelo.Tags;
         c.Tese = modelo.Tese ?? string.Empty;
+        c.FaturamentoMinAlvo = modelo.FaturamentoMinAlvo;
+        c.FaturamentoMaxAlvo = modelo.FaturamentoMaxAlvo;
+        c.MargemEbitdaMinima = modelo.MargemEbitdaMinima;
+        c.TipoOperacao = modelo.TipoOperacao;
+        c.GeografiaAlvo = modelo.GeografiaAlvo;
+        c.ModeloNegocioAlvo = modelo.ModeloNegocioAlvo;
+        c.Exclusoes = modelo.Exclusoes;
+        c.Cultura = modelo.Cultura;
         c.Ativo = modelo.Ativo;
 
         try

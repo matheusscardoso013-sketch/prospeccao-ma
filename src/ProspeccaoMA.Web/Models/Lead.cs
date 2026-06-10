@@ -59,6 +59,15 @@ public class Lead
     /// <summary>Valuation estimado declarado — estimativa, exibida com "~" (base curada).</summary>
     public string? ValuationEstimado { get; set; }
 
+    /// <summary>Modelo de negócio (ex.: "SaaS B2B recorrente", "indústria sob encomenda").</summary>
+    public string? ModeloNegocio { get; set; }
+
+    /// <summary>Abrangência de atuação (local, regional, nacional, internacional).</summary>
+    public string? Abrangencia { get; set; }
+
+    /// <summary>Aspectos de cultura/gestão relevantes para fit com compradores.</summary>
+    public string? Cultura { get; set; }
+
     /// <summary>Marcado quando o usuário editou o lead à mão (rastreabilidade da fonte;
     /// reimportações preservam leads editados em vez de sobrescrevê-los).</summary>
     public bool EditadoManualmente { get; set; }

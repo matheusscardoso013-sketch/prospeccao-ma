@@ -62,6 +62,9 @@ public class LeadController : Controller
         lead.PorteEstimado = modelo.PorteEstimado ?? string.Empty;
         lead.MargemEbitda = modelo.MargemEbitda;
         lead.ValuationEstimado = modelo.ValuationEstimado;
+        lead.ModeloNegocio = modelo.ModeloNegocio;
+        lead.Abrangencia = modelo.Abrangencia;
+        lead.Cultura = modelo.Cultura;
         lead.Descricao = modelo.Descricao;
         lead.EditadoManualmente = true;
 

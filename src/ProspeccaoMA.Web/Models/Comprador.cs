@@ -31,6 +31,32 @@ public class Comprador
     /// <summary>Tese de investimento — texto usado pela IA no matching.</summary>
     public string Tese { get; set; } = string.Empty;
 
+    // ----- Critérios estruturados da tese (deixam o matching da IA mais preciso) -----
+
+    /// <summary>Faturamento anual mínimo buscado no alvo (R$).</summary>
+    public decimal? FaturamentoMinAlvo { get; set; }
+
+    /// <summary>Faturamento anual máximo buscado no alvo (R$).</summary>
+    public decimal? FaturamentoMaxAlvo { get; set; }
+
+    /// <summary>Margem EBITDA mínima exigida (%).</summary>
+    public decimal? MargemEbitdaMinima { get; set; }
+
+    /// <summary>Tipo de operação buscada (Controle, Minoritária, 100%, Indiferente).</summary>
+    public string? TipoOperacao { get; set; }
+
+    /// <summary>Geografia alvo (ex.: "Nacional", "Sudeste", "SP e PR").</summary>
+    public string? GeografiaAlvo { get; set; }
+
+    /// <summary>Modelo de negócio buscado (ex.: "B2B com receita recorrente; serviços").</summary>
+    public string? ModeloNegocioAlvo { get; set; }
+
+    /// <summary>O que o comprador NÃO olha — red flags eliminatórias no matching.</summary>
+    public string? Exclusoes { get; set; }
+
+    /// <summary>Aspectos de cultura/fit desejados (ex.: "fundador permanece; gestão profissionalizada").</summary>
+    public string? Cultura { get; set; }
+
     public bool Ativo { get; set; } = true;
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
 
