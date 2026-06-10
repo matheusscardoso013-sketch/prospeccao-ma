@@ -30,6 +30,7 @@ public class MotorSinergia : IMotorSinergia
     private readonly IClassificadorIA _ia;
     private readonly ILogger<MotorSinergia> _log;
     private readonly int _max;
+    private readonly bool _usarTriagemIA;
 
     public MotorSinergia(AppDbContext db, IClassificadorIA ia, ILogger<MotorSinergia> log, IConfiguration cfg)
     {
@@ -37,6 +38,7 @@ public class MotorSinergia : IMotorSinergia
         _ia = ia;
         _log = log;
         _max = Math.Max(1, cfg.GetValue("Sinergia:MaxCompradoresPorLead", 12));
+        _usarTriagemIA = cfg.GetValue("Sinergia:UsarTriagemIA", true);
     }
 
     public async Task<int> CruzarLeadAsync(int leadId, CancellationToken ct = default)
@@ -47,29 +49,31 @@ public class MotorSinergia : IMotorSinergia
 
     public async Task<int> CruzarLeadAsync(Lead lead, CancellationToken ct = default)
     {
-        var kws = KeywordsDoCnae(lead.Cnae);
-        // Alvos curados da Valore não têm CNAE — derivamos as keywords do segmento textual.
-        if (kws.Length == 0)
-            kws = KeywordsDeTexto(lead.Segmento, lead.Descricao);
-
         // Sem tese não há contra o que avaliar — fica fora do confronto (e aparece no
         // filtro "⚠ Sem tese" da aba Compradores para o time correr atrás da informação).
         var compradores = await _db.Compradores
             .Where(c => c.Ativo && c.Tese.Length >= 20)
             .ToListAsync(ct);
 
-        // Pré-filtro barato: ordena por aderência de setor; só os de overlap > 0, até _max.
-        var shortlist = compradores
-            .Select(c => new { Comprador = c, Peso = Overlap(c, kws) })
-            .Where(x => x.Peso > 0)
-            .OrderByDescending(x => x.Peso)
-            .Take(_max)
-            .Select(x => x.Comprador)
-            .ToList();
+        // Triagem semântica (1 chamada de IA escolhe os candidatos lendo as teses);
+        // em falha/desligada, cai para o pré-filtro por palavras-chave do setor.
+        List<Comprador> shortlist = new();
+        if (_usarTriagemIA)
+        {
+            var ids = await _ia.SelecionarCompradoresAsync(lead, compradores, _max, ct);
+            if (ids is { Count: > 0 })
+            {
+                shortlist = compradores.Where(c => ids.Contains(c.Id)).ToList();
+                _log.LogInformation("Lead {Nome}: triagem IA selecionou {N} comprador(es)", lead.RazaoSocial, shortlist.Count);
+            }
+        }
+
+        if (shortlist.Count == 0)
+            shortlist = ShortlistPorKeywords(lead, compradores);
 
         if (shortlist.Count == 0)
         {
-            _log.LogInformation("Lead {Cnpj}: nenhum comprador aderente no pré-filtro", lead.Cnpj);
+            _log.LogInformation("Lead {Nome}: nenhum comprador aderente na triagem/pré-filtro", lead.RazaoSocial);
             return 0;
         }
 
@@ -154,6 +158,23 @@ public class MotorSinergia : IMotorSinergia
         await _db.SaveChangesAsync(ct);
         _log.LogInformation("Lead {Nome}: {N} sinergia(s) recalculada(s) com os dados atuais", lead.RazaoSocial, n);
         return n;
+    }
+
+    /// <summary>Fallback barato: ordena compradores por sobreposição de palavras-chave do setor.</summary>
+    private List<Comprador> ShortlistPorKeywords(Lead lead, List<Comprador> compradores)
+    {
+        var kws = KeywordsDoCnae(lead.Cnae);
+        // Alvos curados da Valore não têm CNAE — derivamos as keywords do segmento textual.
+        if (kws.Length == 0)
+            kws = KeywordsDeTexto(lead.Segmento, lead.Descricao);
+
+        return compradores
+            .Select(c => new { Comprador = c, Peso = Overlap(c, kws) })
+            .Where(x => x.Peso > 0)
+            .OrderByDescending(x => x.Peso)
+            .Take(_max)
+            .Select(x => x.Comprador)
+            .ToList();
     }
 
     private static int Overlap(Comprador c, string[] kws)

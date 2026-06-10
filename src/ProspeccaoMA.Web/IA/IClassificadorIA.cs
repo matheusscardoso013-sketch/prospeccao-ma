@@ -21,4 +21,12 @@ public interface IClassificadorIA
     /// </summary>
     Task<ResultadoClassificacao> ClassificarSinergiaAsync(
         Lead lead, Comprador comprador, CancellationToken ct = default);
+
+    /// <summary>
+    /// Triagem semântica: dado um lead real e a lista de compradores (com tese), devolve os
+    /// ids dos mais aderentes (máx <paramref name="max"/>). Null em falha — o chamador deve
+    /// usar um fallback. A IA escolhe apenas dentre os compradores listados.
+    /// </summary>
+    Task<List<int>?> SelecionarCompradoresAsync(
+        Lead lead, IReadOnlyList<Comprador> compradores, int max, CancellationToken ct = default);
 }

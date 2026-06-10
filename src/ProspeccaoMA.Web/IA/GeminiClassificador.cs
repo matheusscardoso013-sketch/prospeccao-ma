@@ -61,9 +61,18 @@ public partial class GeminiClassificador : IClassificadorIA
     private static readonly TimeSpan IntervaloMin = TimeSpan.FromMilliseconds(1500);
     private const int MaxTentativas = 4;
 
-    /// <summary>Chamada genérica ao Gemini (JSON estrito) + parsing defensivo. Nunca lança.
-    /// Resiliente a rate limit (429) e erros transitórios (5xx): retry com backoff.</summary>
+    /// <summary>Chamada genérica ao Gemini (score+racional) com parsing defensivo. Nunca lança.</summary>
     private async Task<ResultadoClassificacao> ChamarAsync(string prompt, string idLog, CancellationToken ct)
+    {
+        var texto = await ChamarTextoAsync(prompt, idLog, ct);
+        if (texto is null)
+            return new ResultadoClassificacao(0, "IA indisponível no momento (limite de uso); tente novamente.");
+        return ParsearResultado(texto, idLog);
+    }
+
+    /// <summary>Chamada bruta ao Gemini (JSON estrito): devolve o texto da resposta ou null.
+    /// Resiliente a rate limit (429) e erros transitórios (5xx): retry com backoff.</summary>
+    private async Task<string?> ChamarTextoAsync(string prompt, string idLog, CancellationToken ct)
     {
         var corpo = new
         {
@@ -84,12 +93,12 @@ public partial class GeminiClassificador : IClassificadorIA
                 {
                     if (tentativa < MaxTentativas) { await BackoffAsync(tentativa, ct); continue; }
                     _log.LogWarning("Gemini rate limit/erro {Status} após {N} tentativas ({Id})", (int)resp.StatusCode, tentativa, idLog);
-                    return new ResultadoClassificacao(0, "IA indisponível no momento (limite de uso); tente novamente.");
+                    return null;
                 }
 
                 resp.EnsureSuccessStatusCode();
                 var json = await resp.Content.ReadAsStringAsync(ct);
-                return ParsearResultado(ExtrairTextoDaResposta(json), idLog);
+                return ExtrairTextoDaResposta(json);
             }
             catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException && tentativa < MaxTentativas)
             {
@@ -99,10 +108,78 @@ public partial class GeminiClassificador : IClassificadorIA
             catch (Exception ex)
             {
                 _log.LogError(ex, "Falha na chamada ao Gemini ({Id})", idLog);
-                return new ResultadoClassificacao(0, "Falha ao contatar a IA.");
+                return null;
             }
         }
-        return new ResultadoClassificacao(0, "IA indisponível no momento; tente novamente.");
+        return null;
+    }
+
+    /// <summary>
+    /// Triagem semântica (1 chamada): dado o alvo e a lista de compradores com tese, a IA
+    /// devolve os ids dos mais aderentes. Null em falha — o chamador usa o fallback por
+    /// palavras-chave. A IA só escolhe dentre os listados (não inventa compradores).
+    /// </summary>
+    public async Task<List<int>?> SelecionarCompradoresAsync(
+        Lead lead, IReadOnlyList<Comprador> compradores, int max, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(_opt.ApiKey) || compradores.Count == 0) return null;
+
+        var texto = await ChamarTextoAsync(MontarPromptTriagem(lead, compradores, max),
+            $"triagem~{lead.RazaoSocial}", ct);
+        if (string.IsNullOrWhiteSpace(texto)) return null;
+
+        try
+        {
+            var bruto = texto.Trim();
+            var m = BlocoJson().Match(bruto);
+            if (m.Success) bruto = m.Value;
+
+            using var doc = JsonDocument.Parse(bruto);
+            if (!doc.RootElement.TryGetProperty("ids", out var arr) || arr.ValueKind != JsonValueKind.Array)
+                return null;
+
+            var validos = compradores.Select(c => c.Id).ToHashSet();
+            var ids = arr.EnumerateArray()
+                .Where(e => e.ValueKind == JsonValueKind.Number && e.TryGetInt32(out _))
+                .Select(e => e.GetInt32())
+                .Where(validos.Contains)
+                .Distinct()
+                .Take(max)
+                .ToList();
+
+            return ids.Count > 0 ? ids : null;
+        }
+        catch (Exception ex)
+        {
+            _log.LogWarning(ex, "Triagem da IA fora do formato esperado; usando fallback. Resposta: {Texto}", texto);
+            return null;
+        }
+    }
+
+    private static string MontarPromptTriagem(Lead lead, IReadOnlyList<Comprador> compradores, int max)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("Você é um analista de M&A buy-side. Dada UMA empresa-alvo real e a lista de compradores");
+        sb.AppendLine($"com suas teses, selecione os até {max} compradores com MAIOR potencial de fit (setor, porte, modelo, geografia).");
+        sb.AppendLine("Regras: escolha SOMENTE ids da lista; não invente; prefira aderência de tese a fama do nome.");
+        sb.AppendLine("Responda ESTRITAMENTE em JSON: {\"ids\": [<id>, <id>, ...]} — nada além disso.");
+        sb.AppendLine();
+        sb.AppendLine("## Empresa-alvo (dados reais)");
+        sb.AppendLine($"- Razão social: {lead.RazaoSocial}");
+        if (!string.IsNullOrWhiteSpace(lead.Cnae)) sb.AppendLine($"- CNAE: {lead.Cnae}");
+        if (!string.IsNullOrWhiteSpace(lead.Segmento)) sb.AppendLine($"- Segmento: {lead.Segmento}");
+        if (!string.IsNullOrWhiteSpace(lead.Uf)) sb.AppendLine($"- UF: {lead.Uf}");
+        sb.AppendLine($"- Porte estimado: {lead.PorteEstimado}");
+        if (lead.CapitalSocial > 0) sb.AppendLine($"- Capital social: {lead.CapitalSocial:C}");
+        if (!string.IsNullOrWhiteSpace(lead.Descricao)) sb.AppendLine($"- Resumo: {Resumir(lead.Descricao, 500)}");
+        sb.AppendLine();
+        sb.AppendLine("## Compradores (id | nome | tese)");
+        foreach (var c in compradores)
+        {
+            var setor = string.Join("/", new[] { c.TipoEmpresa, c.Segmento }.Where(s => !string.IsNullOrWhiteSpace(s)));
+            sb.AppendLine($"[{c.Id}] {c.Nome}{(setor.Length > 0 ? $" ({setor})" : "")} — {Resumir(c.Tese, 220)}");
+        }
+        return sb.ToString();
     }
 
     private static async Task EspacarAsync(CancellationToken ct)
@@ -125,12 +202,18 @@ public partial class GeminiClassificador : IClassificadorIA
     {
         var sb = new StringBuilder();
         sb.AppendLine("Você é um analista de M&A buy-side avaliando o fit entre uma empresa-alvo REAL e a TESE de investimento de um comprador.");
-        sb.AppendLine("Dê uma nota de sinergia (0-100) de quão bem o alvo se encaixa na tese do comprador (setor, porte, modelo, geografia).");
+        sb.AppendLine("Pontue usando ESTA RUBRICA (subnotas independentes):");
+        sb.AppendLine("- setor (0-40): aderência da atividade do alvo aos setores/segmentos da tese.");
+        sb.AppendLine("- porte (0-25): compatibilidade do porte/ticket do alvo com a faixa buscada. Se a tese não especifica faixa, máximo 15.");
+        sb.AppendLine("- modelo (0-20): fit do modelo de negócio (recorrência, B2B/B2C, serviços vs produto, contratos).");
+        sb.AppendLine("- geografia (0-15): fit geográfico. Se a tese não restringe geografia, dê 10.");
+        sb.AppendLine("score = setor + porte + modelo + geografia.");
         sb.AppendLine("Regras obrigatórias:");
-        sb.AppendLine("- NÃO invente informações. Avalie só com base nos dados fornecidos.");
-        sb.AppendLine("- Porte/faturamento do alvo são ESTIMADOS (capital social é proxy) — não trate como receita real.");
-        sb.AppendLine("- Se faltar dado relevante, diga no racional.");
-        sb.AppendLine("- Responda ESTRITAMENTE em JSON: {\"score\": <inteiro 0-100>, \"racional\": \"<texto curto>\"}.");
+        sb.AppendLine("- RED FLAG: se o alvo viola uma exclusão explícita da tese (ex.: 'não olham produto', 'sem muitos PJs'), o score final é no MÁXIMO 20 e o racional cita a violação.");
+        sb.AppendLine("- DADOS FALTANTES: não presuma a favor — reduza a subnota correspondente e cite a lacuna no racional.");
+        sb.AppendLine("- NÃO invente informações; porte/faturamento do alvo são ESTIMADOS (capital social é proxy).");
+        sb.AppendLine("- Responda ESTRITAMENTE em JSON:");
+        sb.AppendLine("{\"setor\":n,\"porte\":n,\"modelo\":n,\"geografia\":n,\"score\":n,\"racional\":\"<1-3 frases, terminando com a linha 'Setor n/40 · Porte n/25 · Modelo n/20 · Geo n/15'>\"}");
         sb.AppendLine();
         sb.AppendLine("## Comprador e sua tese");
         sb.AppendLine($"- Nome: {comprador.Nome}");
@@ -168,13 +251,17 @@ public partial class GeminiClassificador : IClassificadorIA
     {
         var sb = new StringBuilder();
         sb.AppendLine("Você é um analista de M&A sell-side de uma boutique focada em MIDDLE MARKET.");
-        sb.AppendLine("Avalie o potencial desta empresa-alvo REAL como candidata a uma operação de VENDA (sell-side),");
-        sb.AppendLine("considerando aderência setorial ao mandato, porte de middle market e atratividade para compradores.");
+        sb.AppendLine("Avalie o potencial desta empresa-alvo REAL como candidata a uma operação de VENDA (sell-side).");
+        sb.AppendLine("Pontue usando ESTA RUBRICA (subnotas independentes):");
+        sb.AppendLine("- setor (0-50): aderência exata da atividade (CNAE) aos setores do mandato. Atividade genérica/adjacente vale menos.");
+        sb.AppendLine("- porte (0-30): posição do capital social DENTRO da faixa do mandato (meio da faixa vale mais que as bordas; gigantes acima da faixa valem pouco).");
+        sb.AppendLine("- dados (0-20): completude e qualidade dos dados disponíveis (contato, situação, clareza da atividade).");
+        sb.AppendLine("score = setor + porte + dados. Use a escala inteira: candidatos medianos devem ficar em 40-70, não em 90+.");
         sb.AppendLine("Regras obrigatórias:");
-        sb.AppendLine("- NÃO invente informações. Avalie somente com base nos dados fornecidos.");
-        sb.AppendLine("- Lembre que porte/faturamento são ESTIMADOS (capital social é proxy) — não trate como receita real.");
-        sb.AppendLine("- Se faltar dado relevante, diga explicitamente que falta no racional.");
-        sb.AppendLine("- Responda ESTRITAMENTE em JSON no formato: {\"score\": <inteiro 0-100>, \"racional\": \"<texto curto>\"}.");
+        sb.AppendLine("- NÃO invente informações; porte/faturamento são ESTIMADOS (capital social é proxy).");
+        sb.AppendLine("- DADOS FALTANTES: não presuma a favor; reduza a subnota e cite a lacuna.");
+        sb.AppendLine("- Responda ESTRITAMENTE em JSON:");
+        sb.AppendLine("{\"setor\":n,\"porte\":n,\"dados\":n,\"score\":n,\"racional\":\"<1-3 frases, terminando com a linha 'Setor n/50 · Porte n/30 · Dados n/20'>\"}");
         sb.AppendLine();
         sb.AppendLine("## Mandato (setores de interesse do cliente)");
         sb.AppendLine($"- CNAEs alvo: {config.Cnaes}");
