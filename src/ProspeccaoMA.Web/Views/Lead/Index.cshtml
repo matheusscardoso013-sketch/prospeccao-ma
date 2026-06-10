@@ -33,7 +33,7 @@
             {
                 var ex = Model.UltimaExecucao;
                 var clsDot = ex.Status == ProspeccaoMA.Web.Models.StatusExecucao.Erro ? "dot err" : "dot";
-                <span class="@clsDot"></span>@ex.IniciadoEm.ToLocalTime().ToString("dd/MM HH:mm") <small>· @ex.Status</small>
+                <span class="@clsDot"></span>@ProspeccaoMA.Web.Util.Fuso.Brasil(ex.IniciadoEm).ToString("dd/MM HH:mm") <small>· @ex.Status</small>
             }
         </div>
     </div>
@@ -173,7 +173,7 @@ else
                     }
                     @if (!string.IsNullOrWhiteSpace(l.Responsavel)) { <span class="ger">resp.: @l.Responsavel</span> }
                     <div class="spacer"></div>
-                    <span class="ger">@x.GeradoEm.ToLocalTime().ToString("dd/MM HH:mm")</span>
+                    <span class="ger">@ProspeccaoMA.Web.Util.Fuso.Brasil(x.GeradoEm).ToString("dd/MM HH:mm")</span>
                     <a class="btn ghost sm" asp-controller="Lead" asp-action="Editar" asp-route-id="@l.Id">✏️ Editar</a>
                     <a class="btn ghost sm" asp-controller="Lead" asp-action="Compradores" asp-route-id="@l.Id">🎯 Compradores</a>
                 </div>

@@ -26,6 +26,7 @@ public class RotinaProspeccao
     private readonly ILogger<RotinaProspeccao> _log;
     private readonly int _leadsPorDia;
     private readonly int _curadosPorDia;
+    private readonly int _reprocessarPorDia;
 
     private const string FonteReceita = Lead.OrigemReceita;
 
@@ -39,6 +40,7 @@ public class RotinaProspeccao
         _log = log;
         _leadsPorDia = Math.Max(1, cfg.GetValue("Prospeccao:LeadsPorDia", 3));
         _curadosPorDia = Math.Max(0, cfg.GetValue("Prospeccao:AlvosCuradosPorDia", 10));
+        _reprocessarPorDia = Math.Max(0, cfg.GetValue("Prospeccao:ReprocessarFalhasPorDia", 30));
     }
 
     public async Task<ExecucaoJob> ExecutarAsync(CancellationToken ct = default)
@@ -68,6 +70,9 @@ public class RotinaProspeccao
             // Esteira dos alvos curados da Valore: cruza alguns por dia com os compradores
             // (espalha a cota gratuita do Gemini em vez de processar os 117 de uma vez).
             await CruzarCuradosPendentesAsync(ct);
+
+            // Auto-cura: reavalia pontuações que falharam (rate limit/erros transitórios).
+            await ReprocessarFalhasAsync(_reprocessarPorDia, ct);
 
             execucao.LeadsGerados = totalNovos;
             execucao.Status = StatusExecucao.Sucesso;
@@ -204,6 +209,79 @@ public class RotinaProspeccao
             try { await _motor.CruzarLeadAsync(lead, ct); }
             catch (Exception ex) { _log.LogWarning(ex, "Falha ao cruzar alvo curado {Nome}", lead.RazaoSocial); }
         }
+    }
+
+    private static readonly string[] MarcasFalha =
+    {
+        "Falha ao contatar a IA",
+        "IA indisponível",
+        "Resposta da IA fora do formato",
+        "Resposta vazia da IA",
+        "IA não configurada"
+    };
+
+    /// <summary>
+    /// Reavalia pontuações que ficaram com falha (score 0 por rate limit/erro transitório),
+    /// tanto LeadScores (lead × configuração) quanto SinergiasComprador (lead × comprador).
+    /// </summary>
+    public async Task<(int Leads, int Sinergias)> ReprocessarFalhasAsync(int max, CancellationToken ct = default)
+    {
+        if (max <= 0) return (0, 0);
+        int leadsOk = 0, sinergiasOk = 0;
+
+        var scoresFalha = (await _db.LeadScores
+                .Include(s => s.Lead)
+                .Where(s => s.Score == 0)
+                .ToListAsync(ct))
+            .Where(s => MarcasFalha.Any(m => s.Racional.StartsWith(m)))
+            .Take(max)
+            .ToList();
+
+        foreach (var s in scoresFalha)
+        {
+            ct.ThrowIfCancellationRequested();
+            if (s.Lead is null) continue;
+            var config = await _db.Configuracoes.FirstOrDefaultAsync(c => c.Id == s.ConfiguracaoId, ct);
+            if (config is null) continue;
+
+            var r = await _ia.ClassificarAsync(s.Lead, config, ct);
+            s.Score = r.Score;
+            s.Racional = r.Racional;
+            s.GeradoEm = DateTime.UtcNow;
+            leadsOk++;
+        }
+
+        var restante = max - leadsOk;
+        if (restante > 0)
+        {
+            var sinFalha = (await _db.SinergiasComprador
+                    .Include(s => s.Lead).Include(s => s.Comprador)
+                    .Where(s => s.Score == 0)
+                    .ToListAsync(ct))
+                .Where(s => MarcasFalha.Any(m => s.Racional.StartsWith(m)))
+                .Take(restante)
+                .ToList();
+
+            foreach (var s in sinFalha)
+            {
+                ct.ThrowIfCancellationRequested();
+                if (s.Lead is null || s.Comprador is null) continue;
+
+                var r = await _ia.ClassificarSinergiaAsync(s.Lead, s.Comprador, ct);
+                s.Score = r.Score;
+                s.Racional = r.Racional;
+                s.GeradoEm = DateTime.UtcNow;
+                sinergiasOk++;
+            }
+        }
+
+        if (leadsOk + sinergiasOk > 0)
+        {
+            await _db.SaveChangesAsync(ct);
+            _log.LogInformation("Reprocessamento de falhas: {L} lead score(s) e {S} sinergia(s) reavaliado(s)",
+                leadsOk, sinergiasOk);
+        }
+        return (leadsOk, sinergiasOk);
     }
 
     private static List<string> SepararLista(string? csv)

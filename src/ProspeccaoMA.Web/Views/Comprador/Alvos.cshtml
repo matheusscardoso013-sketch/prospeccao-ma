@@ -61,7 +61,7 @@ else
                 <div class="lead-foot">
                     <span class="src">@l.PorteEstimado</span>
                     <div class="spacer"></div>
-                    <span class="ger">cruzado @s.GeradoEm.ToLocalTime().ToString("dd/MM HH:mm")</span>
+                    <span class="ger">cruzado @ProspeccaoMA.Web.Util.Fuso.Brasil(s.GeradoEm).ToString("dd/MM HH:mm")</span>
                 </div>
             </div>
         }

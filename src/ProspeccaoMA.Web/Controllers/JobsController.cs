@@ -26,7 +26,7 @@ public class JobsController : Controller
 
     [HttpGet]
     [HttpPost]
-    public IActionResult Disparar(string? token)
+    public IActionResult Disparar(string? token, string? modo = null)
     {
         var esperado = _cfg["Prospeccao:TokenJob"];
         if (string.IsNullOrWhiteSpace(esperado) || !string.Equals(token, esperado, StringComparison.Ordinal))
@@ -35,6 +35,9 @@ public class JobsController : Controller
             return Unauthorized("Token inválido.");
         }
 
+        // modo=falhas: só reavalia pontuações que falharam, sem rodar a prospecção do dia.
+        var soFalhas = string.Equals(modo, "falhas", StringComparison.OrdinalIgnoreCase);
+
         // Fire-and-forget com escopo próprio (o request retorna imediatamente).
         _ = Task.Run(async () =>
         {
@@ -42,7 +45,10 @@ public class JobsController : Controller
             {
                 using var escopo = _escopos.CreateScope();
                 var rotina = escopo.ServiceProvider.GetRequiredService<RotinaProspeccao>();
-                await rotina.ExecutarAsync(CancellationToken.None);
+                if (soFalhas)
+                    await rotina.ReprocessarFalhasAsync(100, CancellationToken.None);
+                else
+                    await rotina.ExecutarAsync(CancellationToken.None);
             }
             catch (Exception ex)
             {
@@ -50,6 +56,8 @@ public class JobsController : Controller
             }
         });
 
-        return Content("Prospecção disparada. Acompanhe em Execuções.");
+        return Content(soFalhas
+            ? "Reprocessamento de falhas disparado."
+            : "Prospecção disparada. Acompanhe em Execuções.");
     }
 }

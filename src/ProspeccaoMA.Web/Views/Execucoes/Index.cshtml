@@ -32,8 +32,8 @@ else
             @foreach (var e in Model)
             {
                 <tr>
-                    <td>@e.IniciadoEm.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss")</td>
-                    <td>@(e.FinalizadoEm?.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss") ?? "—")</td>
+                    <td>@ProspeccaoMA.Web.Util.Fuso.Brasil(e.IniciadoEm).ToString("dd/MM/yyyy HH:mm:ss")</td>
+                    <td>@(e.FinalizadoEm is null ? "—" : ProspeccaoMA.Web.Util.Fuso.Brasil(e.FinalizadoEm.Value).ToString("dd/MM/yyyy HH:mm:ss"))</td>
                     <td>@e.LeadsGerados</td>
                     <td><span class="badge @Badge(e.Status)">@e.Status</span></td>
                     <td style="color:#9d3535">@e.Erro</td>

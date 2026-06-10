@@ -9,6 +9,12 @@ using ProspeccaoMA.Web.Jobs;
 using ProspeccaoMA.Web.Matching;
 using ProspeccaoMA.Web.Models;
 
+// Cultura pt-BR em todo o app (o container do Render roda em cultura neutra, que
+// renderiza moeda como "¤" — aqui garantimos R$ e datas brasileiras).
+var ptBr = new System.Globalization.CultureInfo("pt-BR");
+System.Globalization.CultureInfo.DefaultThreadCurrentCulture = ptBr;
+System.Globalization.CultureInfo.DefaultThreadCurrentUICulture = ptBr;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Hospedagem (Render/Railway): escutar a porta informada pela plataforma via env PORT.
