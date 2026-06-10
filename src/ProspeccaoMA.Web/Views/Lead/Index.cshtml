@@ -109,6 +109,7 @@ else
                         @if (!string.IsNullOrWhiteSpace(cnpjFmt)) { <div class="cnpj">@cnpjFmt</div> }
                         <div class="tags">
                             @if (l.Origem == ProspeccaoMA.Web.Models.Lead.OrigemValore) { <span class="tag ativa">★ Curado Valore</span> }
+                            @if (l.EditadoManualmente) { <span class="tag gray">✎ editado</span> }
                             @if (!string.IsNullOrWhiteSpace(l.Cnae)) { <span class="tag">CNAE @l.Cnae</span> }
                             @if (!string.IsNullOrWhiteSpace(l.Segmento)) { <span class="tag">@l.Segmento</span> }
                             @if (!string.IsNullOrWhiteSpace(l.Uf)) { <span class="tag gray">📍 @l.Municipio/@l.Uf</span> }
@@ -173,10 +174,7 @@ else
                     @if (!string.IsNullOrWhiteSpace(l.Responsavel)) { <span class="ger">resp.: @l.Responsavel</span> }
                     <div class="spacer"></div>
                     <span class="ger">@x.GeradoEm.ToLocalTime().ToString("dd/MM HH:mm")</span>
-                    @if (l.Origem == ProspeccaoMA.Web.Models.Lead.OrigemValore)
-                    {
-                        <a class="btn ghost sm" asp-controller="Lead" asp-action="Editar" asp-route-id="@l.Id">✏️ Editar</a>
-                    }
+                    <a class="btn ghost sm" asp-controller="Lead" asp-action="Editar" asp-route-id="@l.Id">✏️ Editar</a>
                     <a class="btn ghost sm" asp-controller="Lead" asp-action="Compradores" asp-route-id="@l.Id">🎯 Compradores</a>
                 </div>
             </div>

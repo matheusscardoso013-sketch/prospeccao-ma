@@ -164,6 +164,10 @@ public class ImportadorReceita : IImportadorReceita
                 _db.Leads.Add(novo);
                 novos++;
             }
+            else if (existente.EditadoManualmente)
+            {
+                continue; // ajustado à mão na plataforma — o reimport não sobrescreve
+            }
             else
             {
                 existente.RazaoSocial = novo.RazaoSocial;

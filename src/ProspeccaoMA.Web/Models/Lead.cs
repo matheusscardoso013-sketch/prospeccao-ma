@@ -59,6 +59,10 @@ public class Lead
     /// <summary>Valuation estimado declarado — estimativa, exibida com "~" (base curada).</summary>
     public string? ValuationEstimado { get; set; }
 
+    /// <summary>Marcado quando o usuário editou o lead à mão (rastreabilidade da fonte;
+    /// reimportações preservam leads editados em vez de sobrescrevê-los).</summary>
+    public bool EditadoManualmente { get; set; }
+
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
 
     public List<LeadScore> Scores { get; set; } = new();

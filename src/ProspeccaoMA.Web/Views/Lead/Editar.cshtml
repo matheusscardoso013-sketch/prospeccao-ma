@@ -3,13 +3,30 @@
     ViewData["Title"] = "Editar alvo";
 }
 
+@{
+    var ehReceita = Model.Origem == ProspeccaoMA.Web.Models.Lead.OrigemReceita;
+}
 <div class="pagehead">
     <div>
-        <h1>Editar alvo (base Valore)</h1>
+        <h1>Editar empresa</h1>
         <div class="sub">O resumo e o segmento alimentam o cruzamento com os compradores. Valores estimados continuam exibidos com "~".</div>
     </div>
     <a class="btn ghost" asp-controller="Lead" asp-action="Index">← Voltar aos leads</a>
 </div>
+
+@if (ehReceita)
+{
+    <div class="panel" style="padding:14px 18px;margin-bottom:16px">
+        <div class="hint" style="margin-bottom:8px">Dados oficiais da Receita Federal (não editáveis — preservam a rastreabilidade da fonte):</div>
+        <div class="tags">
+            <span class="tag">CNPJ @ProspeccaoMA.Web.Ingestao.CnpjUtil.Formatar(Model.Cnpj)</span>
+            @if (!string.IsNullOrWhiteSpace(Model.Cnae)) { <span class="tag">CNAE @Model.Cnae</span> }
+            @if (!string.IsNullOrWhiteSpace(Model.Uf)) { <span class="tag gray">📍 @Model.Municipio/@Model.Uf</span> }
+            @if (Model.CapitalSocial > 0) { <span class="tag gray">Capital @Model.CapitalSocial.ToString("C")</span> }
+            @if (!string.IsNullOrWhiteSpace(Model.Situacao)) { <span class="tag ativa">● @Model.Situacao</span> }
+        </div>
+    </div>
+}
 
 <form asp-controller="Lead" asp-action="SalvarLead" method="post">
     @Html.AntiForgeryToken()

@@ -29,12 +29,14 @@ public class LeadController : Controller
         _log = log;
     }
 
-    /// <summary>Edição de alvo CURADO (base Valore). Leads da Receita não são editáveis —
-    /// são dado oficial; alterá-los à mão violaria a rastreabilidade da fonte.</summary>
+    /// <summary>Edição de qualquer lead. Os dados oficiais de identidade (CNPJ, CNAE, UF,
+    /// capital — vindos da Receita) não são editáveis para preservar a rastreabilidade;
+    /// o restante (contatos, segmento, resumo, estimativas) pode ser ajustado à mão, e o
+    /// lead fica marcado como "editado manualmente".</summary>
     [HttpGet]
     public async Task<IActionResult> Editar(int id)
     {
-        var lead = await _db.Leads.FirstOrDefaultAsync(l => l.Id == id && l.Origem == Models.Lead.OrigemValore);
+        var lead = await _db.Leads.FirstOrDefaultAsync(l => l.Id == id);
         if (lead is null) return NotFound();
         return View(lead);
     }
@@ -43,7 +45,7 @@ public class LeadController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SalvarLead(Models.Lead modelo)
     {
-        var lead = await _db.Leads.FirstOrDefaultAsync(l => l.Id == modelo.Id && l.Origem == Models.Lead.OrigemValore);
+        var lead = await _db.Leads.FirstOrDefaultAsync(l => l.Id == modelo.Id);
         if (lead is null) return NotFound();
 
         if (string.IsNullOrWhiteSpace(modelo.RazaoSocial))
@@ -61,6 +63,7 @@ public class LeadController : Controller
         lead.MargemEbitda = modelo.MargemEbitda;
         lead.ValuationEstimado = modelo.ValuationEstimado;
         lead.Descricao = modelo.Descricao;
+        lead.EditadoManualmente = true;
 
         await _db.SaveChangesAsync();
         TempData["Ok"] = "Alvo atualizado. Se mudou o resumo/segmento, use ↻ Recalcular na tela de compradores compatíveis.";

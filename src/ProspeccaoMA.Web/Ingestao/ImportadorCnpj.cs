@@ -69,6 +69,11 @@ public class ImportadorCnpj : IImportadorCnpj
             }
 
             var existente = await _db.Leads.FirstOrDefaultAsync(l => l.Cnpj == cnpj, ct);
+            if (existente is not null && existente.EditadoManualmente)
+            {
+                atualizados++; // ajustado à mão na plataforma — não sobrescreve
+                continue;
+            }
             var lead = existente ?? new Lead { Cnpj = cnpj };
 
             lead.RazaoSocial = dados.RazaoSocial?.Trim() ?? lead.RazaoSocial;

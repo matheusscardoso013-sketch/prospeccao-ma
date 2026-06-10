@@ -82,6 +82,11 @@ public class ImportadorAlvosValore : IImportadorAlvosValore
                 _db.Leads.Add(novo);
                 novos++;
             }
+            else if (existente.EditadoManualmente)
+            {
+                // Lead ajustado à mão na plataforma: o reimport não sobrescreve.
+                continue;
+            }
             else
             {
                 existente.Segmento = novo.Segmento;
