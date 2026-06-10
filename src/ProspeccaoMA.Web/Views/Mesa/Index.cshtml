@@ -1,0 +1,98 @@
+@using ProspeccaoMA.Web.Models
+@using ProspeccaoMA.Web.Util
+@model List<ProspeccaoMA.Web.Models.SinergiaComprador>
+@{
+    ViewData["Title"] = "Mesa de operações";
+    var kpis = (Dictionary<StatusSinergia, int>)ViewData["Kpis"]!;
+    int K(StatusSinergia s) => kpis.TryGetValue(s, out var n) ? n : 0;
+    var statusAtual = (StatusSinergia?)ViewData["Status"];
+    string ClasseScore(int s) => s >= 70 ? "hi" : s >= 50 ? "mid" : "lo";
+}
+
+<div class="pagehead">
+    <div>
+        <h1>Mesa de operações</h1>
+        <div class="sub">Melhores pares alvo × comprador em aberto, ordenados por score. Atualize o status conforme o time trabalha.</div>
+    </div>
+</div>
+
+<div class="kpis" style="grid-template-columns:repeat(5,1fr)">
+    <div class="kpi"><div class="label">Novos</div><div class="value">@K(StatusSinergia.Novo)</div></div>
+    <div class="kpi"><div class="label">Abordados</div><div class="value">@K(StatusSinergia.Abordado)</div></div>
+    <div class="kpi"><div class="label">Reunião</div><div class="value">@K(StatusSinergia.Reuniao)</div></div>
+    <div class="kpi ok"><div class="label">Em negociação</div><div class="value">@K(StatusSinergia.EmNegociacao)</div></div>
+    <div class="kpi"><div class="label">Descartados</div><div class="value">@K(StatusSinergia.Descartado)</div></div>
+</div>
+
+<form method="get" asp-controller="Mesa" asp-action="Index" class="toolbar">
+    <div class="field">
+        <label>Status</label>
+        <select name="status">
+            <option value="">Em aberto (todos)</option>
+            @foreach (var s in StatusUi.Todos)
+            {
+                <option value="@((int)s)" selected="@(statusAtual == s)">@StatusUi.Rotulo(s)</option>
+            }
+        </select>
+    </div>
+    <div class="field">
+        <label>Score mínimo</label>
+        <select name="scoreMin">
+            <option value="">Qualquer</option>
+            <option value="70" selected="@((int?)ViewData["ScoreMin"] == 70)">70+</option>
+            <option value="50" selected="@((int?)ViewData["ScoreMin"] == 50)">50+</option>
+        </select>
+    </div>
+    <div class="field" style="flex:1">
+        <label>Buscar</label>
+        <input type="text" name="busca" value="@ViewData["Busca"]" placeholder="alvo, comprador ou responsável" style="width:100%" />
+    </div>
+    <button type="submit" class="btn ghost">Filtrar</button>
+</form>
+
+@if (Model.Count == 0)
+{
+    <div class="vazio">Nenhum match neste filtro. Os pares surgem conforme a prospecção diária cruza alvos e compradores.</div>
+}
+else
+{
+    <div class="panel">
+        <table>
+            <thead>
+                <tr><th>Score</th><th>Alvo</th><th>Comprador</th><th>Resp.</th><th style="width:330px">Status / anotações</th><th>Atualizado</th></tr>
+            </thead>
+            <tbody>
+            @foreach (var s in Model)
+            {
+                <tr>
+                    <td><span class="score @ClasseScore(s.Score)">@s.Score</span></td>
+                    <td>
+                        <a asp-controller="Lead" asp-action="Compradores" asp-route-id="@s.LeadId"><strong>@s.Lead?.RazaoSocial</strong></a>
+                        <div class="hint">@(s.Lead?.Segmento ?? s.Lead?.Cnae)</div>
+                    </td>
+                    <td>
+                        <a asp-controller="Comprador" asp-action="Alvos" asp-route-id="@s.CompradorId"><strong>@s.Comprador?.Nome</strong></a>
+                        <div class="hint">@s.Comprador?.TipoEmpresa</div>
+                    </td>
+                    <td>@s.Comprador?.Responsavel</td>
+                    <td>
+                        <form asp-controller="Sinergia" asp-action="Atualizar" asp-route-id="@s.Id" method="post" class="statusform">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="voltar" value="@(Context.Request.Path + Context.Request.QueryString)" />
+                            <select name="status">
+                                @foreach (var st in StatusUi.Todos)
+                                {
+                                    <option value="@((int)st)" selected="@(s.Status == st)">@StatusUi.Rotulo(st)</option>
+                                }
+                            </select>
+                            <input type="text" name="anotacoes" value="@s.Anotacoes" placeholder="anotações…" />
+                            <button type="submit" class="btn ghost sm">💾</button>
+                        </form>
+                    </td>
+                    <td class="hint">@(s.AtualizadoEm is null ? "—" : Fuso.Brasil(s.AtualizadoEm.Value).ToString("dd/MM HH:mm"))</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}

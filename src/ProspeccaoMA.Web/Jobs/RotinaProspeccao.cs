@@ -4,6 +4,7 @@ using ProspeccaoMA.Web.IA;
 using ProspeccaoMA.Web.Ingestao;
 using ProspeccaoMA.Web.Matching;
 using ProspeccaoMA.Web.Models;
+using ProspeccaoMA.Web.Notificacoes;
 
 namespace ProspeccaoMA.Web.Jobs;
 
@@ -23,6 +24,7 @@ public class RotinaProspeccao
     private readonly IClassificadorIA _ia;
     private readonly IConectorBrasilApi _brasilApi;
     private readonly IMotorSinergia _motor;
+    private readonly INotificadorEmail _email;
     private readonly ILogger<RotinaProspeccao> _log;
     private readonly int _leadsPorDia;
     private readonly int _curadosPorDia;
@@ -31,12 +33,13 @@ public class RotinaProspeccao
     private const string FonteReceita = Lead.OrigemReceita;
 
     public RotinaProspeccao(AppDbContext db, IClassificadorIA ia, IConectorBrasilApi brasilApi,
-        IMotorSinergia motor, ILogger<RotinaProspeccao> log, IConfiguration cfg)
+        IMotorSinergia motor, INotificadorEmail email, ILogger<RotinaProspeccao> log, IConfiguration cfg)
     {
         _db = db;
         _ia = ia;
         _brasilApi = brasilApi;
         _motor = motor;
+        _email = email;
         _log = log;
         _leadsPorDia = Math.Max(1, cfg.GetValue("Prospeccao:LeadsPorDia", 3));
         _curadosPorDia = Math.Max(0, cfg.GetValue("Prospeccao:AlvosCuradosPorDia", 10));
@@ -73,6 +76,9 @@ public class RotinaProspeccao
 
             // Auto-cura: reavalia pontuações que falharam (rate limit/erros transitórios).
             await ReprocessarFalhasAsync(_reprocessarPorDia, ct);
+
+            // Resumo diário por e-mail (leads do dia + melhores matches). Nunca derruba a rotina.
+            await _email.EnviarResumoDiarioAsync(ct);
 
             execucao.LeadsGerados = totalNovos;
             execucao.Status = StatusExecucao.Sucesso;

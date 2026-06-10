@@ -134,6 +134,20 @@ tbody tr:last-child td{border-bottom:none}
 .badge.err{background:#fbe7e7;color:#9d3535}
 .badge.run{background:#fff4d6;color:#8a6d00}
 
+/* ---- Pipeline de matches ---- */
+.score{display:inline-flex;align-items:center;justify-content:center;width:44px;height:28px;
+       border-radius:8px;font-weight:700;color:#fff;font-size:13.5px}
+.score.hi{background:var(--score-hi)} .score.mid{background:var(--score-mid)} .score.lo{background:var(--score-lo)}
+.statusform{display:flex;gap:6px;align-items:center}
+.statusform select{min-width:130px;padding:6px 8px;font-size:12.5px}
+.statusform input[type=text]{min-width:110px;flex:1;padding:6px 8px;font-size:12.5px}
+.st-badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600}
+.st-novo{background:#eef3ff;color:#2f5bd0}
+.st-abordado{background:#fff4d6;color:#8a6d00}
+.st-reuniao{background:#f3e8ff;color:#7a3fb8}
+.st-negociacao{background:#e3f5ef;color:#1b7c69}
+.st-descartado{background:#eef1f6;color:#6b7686}
+
 /* ---- Config form ---- */
 .formgrid{display:grid;grid-template-columns:1fr 1fr;gap:18px;max-width:760px;
           background:#fff;border:1px solid var(--line);border-radius:12px;padding:22px}

@@ -1,3 +1,5 @@
+@using ProspeccaoMA.Web.Util
+@using ProspeccaoMA.Web.Models
 @model List<ProspeccaoMA.Web.Models.SinergiaComprador>
 @{
     var lead = (ProspeccaoMA.Web.Models.Lead)ViewData["Lead"]!;
@@ -62,9 +64,20 @@ else
                     <p>@s.Racional</p>
                 </div>
                 <div class="lead-foot">
-                    @if (!string.IsNullOrWhiteSpace(c.Contato)) { <span class="src">@c.Contato</span> }
-                    <div class="spacer"></div>
-                    <a class="btn ghost sm" asp-controller="Comprador" asp-action="Alvos" asp-route-id="@c.Id">Ver tese / alvos</a>
+                    <span class="st-badge @StatusUi.Css(s.Status)">@StatusUi.Rotulo(s.Status)</span>
+                    <form asp-controller="Sinergia" asp-action="Atualizar" asp-route-id="@s.Id" method="post" class="statusform" style="flex:1">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="voltar" value="@(Context.Request.Path + Context.Request.QueryString)" />
+                        <select name="status">
+                            @foreach (var st in StatusUi.Todos)
+                            {
+                                <option value="@((int)st)" selected="@(s.Status == st)">@StatusUi.Rotulo(st)</option>
+                            }
+                        </select>
+                        <input type="text" name="anotacoes" value="@s.Anotacoes" placeholder="anotações…" />
+                        <button type="submit" class="btn ghost sm">💾</button>
+                    </form>
+                    <a class="btn ghost sm" asp-controller="Comprador" asp-action="Alvos" asp-route-id="@c.Id">Tese/alvos</a>
                 </div>
             </div>
         }

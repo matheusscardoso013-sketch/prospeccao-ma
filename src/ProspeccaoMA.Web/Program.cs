@@ -80,6 +80,9 @@ builder.Services.AddHttpClient<IClassificadorIA, GeminiClassificador>(c =>
 // Motor de sinergia alvo × comprador (buy-side).
 builder.Services.AddScoped<IMotorSinergia, MotorSinergia>();
 
+// Resumo diário por e-mail (pós-rotina das 12h). Configurar seção Email via env vars.
+builder.Services.AddScoped<ProspeccaoMA.Web.Notificacoes.INotificadorEmail, ProspeccaoMA.Web.Notificacoes.NotificadorEmail>();
+
 // Rotina de prospecção (compartilhada) + agendador diário às 12h.
 builder.Services.AddScoped<RotinaProspeccao>();
 builder.Services.AddHostedService<JobProspeccaoService>();

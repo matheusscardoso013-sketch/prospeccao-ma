@@ -16,6 +16,7 @@
     <header class="topbar">
         <a class="brand" asp-controller="Lead" asp-action="Index"><span class="logo">◆</span> Prospecção M&amp;A</a>
         <nav class="nav">
+            <a class="@Ativo("Mesa")" asp-controller="Mesa" asp-action="Index">Mesa</a>
             <a class="@Ativo("Lead")" asp-controller="Lead" asp-action="Index">Leads</a>
             <a class="@Ativo("Comprador")" asp-controller="Comprador" asp-action="Index">Compradores</a>
             <a class="@Ativo("Configuracao")" asp-controller="Configuracao" asp-action="Index">Configurações</a>
