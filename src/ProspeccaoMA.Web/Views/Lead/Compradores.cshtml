@@ -8,7 +8,16 @@
 <div class="pagehead">
     <div>
         <h1>Compradores compatíveis</h1>
-        <div class="sub">Sinergia entre <strong>@lead.RazaoSocial</strong> (@ProspeccaoMA.Web.Ingestao.CnpjUtil.Formatar(lead.Cnpj) · CNAE @lead.Cnae · @lead.Municipio/@lead.Uf) e a tese de cada comprador.</div>
+        @{
+            var detalhes = string.Join(" · ", new[]
+            {
+                ProspeccaoMA.Web.Ingestao.CnpjUtil.Formatar(lead.Cnpj),
+                string.IsNullOrWhiteSpace(lead.Cnae) ? null : $"CNAE {lead.Cnae}",
+                lead.Segmento,
+                string.IsNullOrWhiteSpace(lead.Uf) ? null : $"{lead.Municipio}/{lead.Uf}"
+            }.Where(p => !string.IsNullOrWhiteSpace(p)));
+        }
+        <div class="sub">Sinergia entre <strong>@lead.RazaoSocial</strong> (@detalhes) e a tese de cada comprador.</div>
     </div>
     <a class="btn ghost" asp-controller="Lead" asp-action="Index">← Voltar aos leads</a>
 </div>

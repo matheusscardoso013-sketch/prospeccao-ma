@@ -105,17 +105,27 @@ else
                     </div>
                     <div class="lead-id">
                         <div class="razao">@l.RazaoSocial</div>
-                        <div class="cnpj">@ProspeccaoMA.Web.Ingestao.CnpjUtil.Formatar(l.Cnpj)</div>
+                        @{ var cnpjFmt = ProspeccaoMA.Web.Ingestao.CnpjUtil.Formatar(l.Cnpj); }
+                        @if (!string.IsNullOrWhiteSpace(cnpjFmt)) { <div class="cnpj">@cnpjFmt</div> }
                         <div class="tags">
+                            @if (l.Origem == ProspeccaoMA.Web.Models.Lead.OrigemValore) { <span class="tag ativa">★ Curado Valore</span> }
                             @if (!string.IsNullOrWhiteSpace(l.Cnae)) { <span class="tag">CNAE @l.Cnae</span> }
-                            <span class="tag gray">📍 @l.Municipio/@l.Uf</span>
+                            @if (!string.IsNullOrWhiteSpace(l.Segmento)) { <span class="tag">@l.Segmento</span> }
+                            @if (!string.IsNullOrWhiteSpace(l.Uf)) { <span class="tag gray">📍 @l.Municipio/@l.Uf</span> }
                             @if (!string.IsNullOrWhiteSpace(l.Situacao)) { <span class="tag ativa">● @l.Situacao</span> }
                         </div>
                     </div>
                 </div>
 
                 <div class="lead-grid">
-                    <div class="cell"><div class="k">Capital social</div><div class="v">@l.CapitalSocial.ToString("C")</div></div>
+                    @if (l.CapitalSocial > 0)
+                    {
+                        <div class="cell"><div class="k">Capital social</div><div class="v">@l.CapitalSocial.ToString("C")</div></div>
+                    }
+                    else
+                    {
+                        <div class="cell"><div class="k">Origem</div><div class="v" style="font-size:12px">@l.Origem</div></div>
+                    }
                     <div class="cell"><div class="k">Porte estimado</div><div class="v est">@l.PorteEstimado</div></div>
                 </div>
 

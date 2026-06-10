@@ -44,7 +44,7 @@ public partial class GeminiClassificador : IClassificadorIA
             return new ResultadoClassificacao(0, "IA não configurada: defina Gemini:ApiKey para qualificar este lead.");
         }
 
-        return await ChamarAsync(MontarPrompt(lead, config), lead.Cnpj, ct);
+        return await ChamarAsync(MontarPrompt(lead, config), lead.Cnpj ?? lead.RazaoSocial, ct);
     }
 
     public async Task<ResultadoClassificacao> ClassificarSinergiaAsync(
@@ -140,11 +140,21 @@ public partial class GeminiClassificador : IClassificadorIA
         if (!string.IsNullOrWhiteSpace(comprador.Tags)) sb.AppendLine($"- Tags da tese: {comprador.Tags}");
         sb.AppendLine($"- Tese: {Resumir(comprador.Tese, 1500)}");
         sb.AppendLine();
-        sb.AppendLine("## Empresa-alvo (dados reais da Receita Federal)");
+        sb.AppendLine($"## Empresa-alvo (dados reais — {lead.Origem})");
         sb.AppendLine($"- Razão social: {lead.RazaoSocial}");
-        sb.AppendLine($"- CNAE: {lead.Cnae} | UF/Município: {lead.Uf}/{lead.Municipio}");
-        sb.AppendLine($"- Capital social: {lead.CapitalSocial:C} | Porte estimado: {lead.PorteEstimado}");
-        sb.AppendLine($"- Situação: {lead.Situacao}");
+        if (!string.IsNullOrWhiteSpace(lead.Cnae))
+            sb.AppendLine($"- CNAE: {lead.Cnae}");
+        if (!string.IsNullOrWhiteSpace(lead.Uf))
+            sb.AppendLine($"- UF/Município: {lead.Uf}/{lead.Municipio}");
+        if (!string.IsNullOrWhiteSpace(lead.Segmento))
+            sb.AppendLine($"- Segmento: {lead.Segmento}");
+        if (lead.CapitalSocial > 0)
+            sb.AppendLine($"- Capital social: {lead.CapitalSocial:C}");
+        sb.AppendLine($"- Porte estimado: {lead.PorteEstimado}");
+        if (!string.IsNullOrWhiteSpace(lead.Situacao))
+            sb.AppendLine($"- Situação: {lead.Situacao}");
+        if (!string.IsNullOrWhiteSpace(lead.Descricao))
+            sb.AppendLine($"- Resumo da empresa: {Resumir(lead.Descricao, 1200)}");
         sb.AppendLine();
         sb.AppendLine("Avalie o fit (0-100) e escreva um racional curto (1-3 frases).");
         return sb.ToString();

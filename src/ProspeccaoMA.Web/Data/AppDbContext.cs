@@ -27,10 +27,15 @@ public class AppDbContext : IdentityDbContext<Usuario>, IDataProtectionKeyContex
     {
         base.OnModelCreating(builder);
 
-        // CNPJ único — base da deduplicação idempotente do job diário.
+        // CNPJ único quando presente — base da deduplicação idempotente do job diário.
+        // (No Postgres, NULLs não colidem no índice único — alvos curados sem CNPJ coexistem.)
         builder.Entity<Lead>()
             .HasIndex(l => l.Cnpj)
             .IsUnique();
+
+        builder.Entity<Lead>()
+            .Property(l => l.Origem)
+            .HasDefaultValue(Lead.OrigemReceita);
 
         builder.Entity<Lead>()
             .Property(l => l.CapitalSocial)

@@ -43,11 +43,14 @@ else
                     <div class="scorebox @ClasseScore(s.Score)"><span class="n">@s.Score</span><span class="l">sinergia</span></div>
                     <div class="lead-id">
                         <div class="razao">@l.RazaoSocial</div>
-                        <div class="cnpj">@ProspeccaoMA.Web.Ingestao.CnpjUtil.Formatar(l.Cnpj)</div>
+                        @{ var cnpjFmt = ProspeccaoMA.Web.Ingestao.CnpjUtil.Formatar(l.Cnpj); }
+                        @if (!string.IsNullOrWhiteSpace(cnpjFmt)) { <div class="cnpj">@cnpjFmt</div> }
                         <div class="tags">
+                            @if (l.Origem == ProspeccaoMA.Web.Models.Lead.OrigemValore) { <span class="tag ativa">★ Curado Valore</span> }
                             @if (!string.IsNullOrWhiteSpace(l.Cnae)) { <span class="tag">CNAE @l.Cnae</span> }
-                            <span class="tag gray">📍 @l.Municipio/@l.Uf</span>
-                            <span class="tag gray">@l.CapitalSocial.ToString("C")</span>
+                            @if (!string.IsNullOrWhiteSpace(l.Segmento)) { <span class="tag">@l.Segmento</span> }
+                            @if (!string.IsNullOrWhiteSpace(l.Uf)) { <span class="tag gray">📍 @l.Municipio/@l.Uf</span> }
+                            @if (l.CapitalSocial > 0) { <span class="tag gray">@l.CapitalSocial.ToString("C")</span> }
                         </div>
                     </div>
                 </div>

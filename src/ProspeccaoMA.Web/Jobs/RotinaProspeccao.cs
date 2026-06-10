@@ -25,8 +25,9 @@ public class RotinaProspeccao
     private readonly IMotorSinergia _motor;
     private readonly ILogger<RotinaProspeccao> _log;
     private readonly int _leadsPorDia;
+    private readonly int _curadosPorDia;
 
-    private const string FonteReceita = "Receita Federal — base pública";
+    private const string FonteReceita = Lead.OrigemReceita;
 
     public RotinaProspeccao(AppDbContext db, IClassificadorIA ia, IConectorBrasilApi brasilApi,
         IMotorSinergia motor, ILogger<RotinaProspeccao> log, IConfiguration cfg)
@@ -37,6 +38,7 @@ public class RotinaProspeccao
         _motor = motor;
         _log = log;
         _leadsPorDia = Math.Max(1, cfg.GetValue("Prospeccao:LeadsPorDia", 3));
+        _curadosPorDia = Math.Max(0, cfg.GetValue("Prospeccao:AlvosCuradosPorDia", 10));
     }
 
     public async Task<ExecucaoJob> ExecutarAsync(CancellationToken ct = default)
@@ -62,6 +64,10 @@ public class RotinaProspeccao
                 totalNovos += n;
                 restante -= n;
             }
+
+            // Esteira dos alvos curados da Valore: cruza alguns por dia com os compradores
+            // (espalha a cota gratuita do Gemini em vez de processar os 117 de uma vez).
+            await CruzarCuradosPendentesAsync(ct);
 
             execucao.LeadsGerados = totalNovos;
             execucao.Status = StatusExecucao.Sucesso;
@@ -156,6 +162,7 @@ public class RotinaProspeccao
     /// <summary>Enriquece contatos via BrasilAPI (só os escolhidos do dia → não estoura rate limit).</summary>
     private async Task EnriquecerAsync(Lead lead, CancellationToken ct)
     {
+        if (string.IsNullOrWhiteSpace(lead.Cnpj)) return; // alvo curado sem CNPJ não consulta a BrasilAPI
         try
         {
             var dados = await _brasilApi.ConsultarAsync(lead.Cnpj, ct);
@@ -174,6 +181,28 @@ public class RotinaProspeccao
         catch (Exception ex)
         {
             _log.LogWarning(ex, "Enriquecimento falhou para {Cnpj} (seguindo sem contatos)", lead.Cnpj);
+        }
+    }
+
+    /// <summary>Cruza até N alvos curados (Base Valore) ainda sem sinergias com os compradores.</summary>
+    private async Task CruzarCuradosPendentesAsync(CancellationToken ct)
+    {
+        if (_curadosPorDia == 0) return;
+
+        var pendentes = await _db.Leads
+            .Where(l => l.Origem != FonteReceita && !_db.SinergiasComprador.Any(s => s.LeadId == l.Id))
+            .OrderBy(l => l.Id)
+            .Take(_curadosPorDia)
+            .ToListAsync(ct);
+
+        if (pendentes.Count == 0) return;
+        _log.LogInformation("Esteira de alvos curados: cruzando {N} pendente(s)", pendentes.Count);
+
+        foreach (var lead in pendentes)
+        {
+            ct.ThrowIfCancellationRequested();
+            try { await _motor.CruzarLeadAsync(lead, ct); }
+            catch (Exception ex) { _log.LogWarning(ex, "Falha ao cruzar alvo curado {Nome}", lead.RazaoSocial); }
         }
     }
 

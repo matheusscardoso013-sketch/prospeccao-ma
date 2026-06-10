@@ -45,6 +45,9 @@ public class MotorSinergia : IMotorSinergia
     public async Task<int> CruzarLeadAsync(Lead lead, CancellationToken ct = default)
     {
         var kws = KeywordsDoCnae(lead.Cnae);
+        // Alvos curados da Valore não têm CNAE — derivamos as keywords do segmento textual.
+        if (kws.Length == 0)
+            kws = KeywordsDeTexto(lead.Segmento, lead.Descricao);
 
         var compradores = await _db.Compradores.Where(c => c.Ativo).ToListAsync(ct);
 
@@ -126,6 +129,18 @@ public class MotorSinergia : IMotorSinergia
         var n = kws.Count(k => texto.Contains(k));
         if (texto.Contains("diversificad")) n += 1; // fundos generalistas entram na disputa
         return n;
+    }
+
+    /// <summary>Keywords a partir do segmento textual (alvos curados): palavras significativas (≥4 letras).</summary>
+    private static string[] KeywordsDeTexto(string? segmento, string? descricao)
+    {
+        var fonte = $"{segmento} {(descricao ?? "").Split('\n').FirstOrDefault()}".ToLowerInvariant();
+        return fonte
+            .Split(new[] { ' ', ',', ';', '/', '(', ')', '.', '-' }, StringSplitOptions.RemoveEmptyEntries)
+            .Where(p => p.Length >= 4 && p != "para" && p != "como" && p != "empresa" && p != "tipo")
+            .Distinct()
+            .Take(15)
+            .ToArray();
     }
 
     private static string[] KeywordsDoCnae(string cnae)

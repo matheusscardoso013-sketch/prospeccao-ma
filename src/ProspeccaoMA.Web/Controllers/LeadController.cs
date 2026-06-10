@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using ProspeccaoMA.Web.Data;
 using ProspeccaoMA.Web.Ingestao;
 using ProspeccaoMA.Web.Jobs;
+using ProspeccaoMA.Web.Models;
 using ProspeccaoMA.Web.Models.ViewModels;
 
 namespace ProspeccaoMA.Web.Controllers;
@@ -71,11 +72,13 @@ public class LeadController : Controller
         return View(vm);
     }
 
-    /// <summary>Monta as linhas (lead + melhor score) aplicando os filtros. Reusado pelo export.</summary>
+    /// <summary>Monta as linhas (lead + melhor score) aplicando os filtros. Reusado pelo export.
+    /// Inclui os alvos curados da Valore (sem LeadScore): para eles, o score exibido é o da
+    /// melhor sinergia com um comprador.</summary>
     private async Task<List<LeadLinha>> CarregarLinhasAsync(string? cnae, string? uf, int? scoreMin, OrdenacaoLeads ordenar)
     {
-        // Só exibimos leads que já foram pontuados pela IA.
-        var query = _db.Leads.Include(l => l.Scores).Where(l => l.Scores.Any());
+        var query = _db.Leads.Include(l => l.Scores)
+            .Where(l => l.Scores.Any() || l.Origem != Models.Lead.OrigemReceita);
 
         if (!string.IsNullOrWhiteSpace(uf))
             query = query.Where(l => l.Uf == uf);
@@ -84,10 +87,30 @@ public class LeadController : Controller
 
         var leads = await query.ToListAsync();
 
+        // Melhor sinergia de comprador para os curados (que não têm LeadScore).
+        var idsSemScore = leads.Where(l => l.Scores.Count == 0).Select(l => l.Id).ToList();
+        var melhoresSinergias = idsSemScore.Count == 0
+            ? new Dictionary<int, SinergiaComprador>()
+            : (await _db.SinergiasComprador.Include(s => s.Comprador)
+                  .Where(s => idsSemScore.Contains(s.LeadId)).ToListAsync())
+              .GroupBy(s => s.LeadId)
+              .ToDictionary(g => g.Key, g => g.OrderByDescending(s => s.Score).First());
+
         var linhas = leads.Select(l =>
         {
-            var melhor = l.Scores.OrderByDescending(s => s.Score).First();
-            return new LeadLinha(l, melhor.Score, melhor.Racional, melhor.Fonte, melhor.GeradoEm);
+            if (l.Scores.Count > 0)
+            {
+                var melhor = l.Scores.OrderByDescending(s => s.Score).First();
+                return new LeadLinha(l, melhor.Score, melhor.Racional, melhor.Fonte, melhor.GeradoEm);
+            }
+
+            if (melhoresSinergias.TryGetValue(l.Id, out var sin))
+                return new LeadLinha(l, sin.Score,
+                    $"Melhor fit: {sin.Comprador?.Nome} — {sin.Racional}", l.Origem, sin.GeradoEm);
+
+            return new LeadLinha(l, 0,
+                "Ainda não cruzado com compradores — abra 🎯 Compradores ou aguarde a esteira diária.",
+                l.Origem, l.CriadoEm);
         });
 
         if (scoreMin is not null)

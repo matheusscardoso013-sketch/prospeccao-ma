@@ -62,6 +62,7 @@ builder.Services.AddHttpClient<IConectorBrasilApi, ConectorBrasilApi>(c =>
 builder.Services.AddScoped<IImportadorCnpj, ImportadorCnpj>();
 builder.Services.AddScoped<IImportadorReceita, ImportadorReceita>();
 builder.Services.AddScoped<IImportadorCompradores, ImportadorCompradores>();
+builder.Services.AddScoped<IImportadorAlvosValore, ImportadorAlvosValore>();
 
 // Qualificação por IA (Gemini free tier). Abstração IClassificadorIA — trocável por config.
 builder.Services.AddHttpClient<IClassificadorIA, GeminiClassificador>(c =>
@@ -94,6 +95,15 @@ if (args.Length >= 2 && string.Equals(args[0], "importar-compradores", StringCom
     var imp = escopoC.ServiceProvider.GetRequiredService<IImportadorCompradores>();
     var rc = await imp.ImportarAsync(args[1]);
     Console.WriteLine($"Compradores: {rc.Novos} novo(s), {rc.Atualizados} atualizado(s) de {rc.LinhasBuySide} linha(s) buy-side.");
+    return;
+}
+
+if (args.Length >= 2 && string.Equals(args[0], "importar-alvos", StringComparison.OrdinalIgnoreCase))
+{
+    using var escopoA = app.Services.CreateScope();
+    var impA = escopoA.ServiceProvider.GetRequiredService<IImportadorAlvosValore>();
+    var ra = await impA.ImportarAsync(args[1]);
+    Console.WriteLine($"Alvos Valore: {ra.Novos} novo(s), {ra.Atualizados} atualizado(s) de {ra.LinhasSellSide} linha(s) sell-side.");
     return;
 }
 
