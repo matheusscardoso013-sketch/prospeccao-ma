@@ -52,7 +52,11 @@ public class MotorSinergia : IMotorSinergia
         if (kws.Length == 0)
             kws = KeywordsDeTexto(lead.Segmento, lead.Descricao);
 
-        var compradores = await _db.Compradores.Where(c => c.Ativo).ToListAsync(ct);
+        // Sem tese não há contra o que avaliar — fica fora do confronto (e aparece no
+        // filtro "⚠ Sem tese" da aba Compradores para o time correr atrás da informação).
+        var compradores = await _db.Compradores
+            .Where(c => c.Ativo && c.Tese.Length >= 20)
+            .ToListAsync(ct);
 
         // Pré-filtro barato: ordena por aderência de setor; só os de overlap > 0, até _max.
         var shortlist = compradores

@@ -27,9 +27,15 @@ public class CompradorController : Controller
         return RedirectToAction(nameof(Alvos), new { id });
     }
 
-    public async Task<IActionResult> Index(string? busca)
+    // Tese com menos de 20 caracteres é tratada como "sem tese" (vazia ou inservível p/ matching).
+    private const int TamanhoMinimoTese = 20;
+
+    public async Task<IActionResult> Index(string? busca, bool semTese = false)
     {
         var query = _db.Compradores.Include(c => c.Sinergias).Where(c => c.Ativo);
+
+        if (semTese)
+            query = query.Where(c => c.Tese.Length < TamanhoMinimoTese);
 
         if (!string.IsNullOrWhiteSpace(busca))
         {
@@ -42,7 +48,9 @@ public class CompradorController : Controller
         }
 
         ViewData["Busca"] = busca;
+        ViewData["SemTese"] = semTese;
         ViewData["Total"] = await _db.Compradores.CountAsync(c => c.Ativo);
+        ViewData["TotalSemTese"] = await _db.Compradores.CountAsync(c => c.Ativo && c.Tese.Length < TamanhoMinimoTese);
         var lista = await query.OrderBy(c => c.Nome).ToListAsync();
         return View(lista);
     }

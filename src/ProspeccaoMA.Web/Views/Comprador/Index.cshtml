@@ -12,13 +12,28 @@
     <div style="color:var(--muted);font-size:13px;align-self:center">@ViewData["Total"] compradores ativos</div>
 </div>
 
+@{
+    var semTese = (bool)(ViewData["SemTese"] ?? false);
+}
 <form method="get" asp-controller="Comprador" asp-action="Index" class="toolbar">
     <div class="field" style="flex:1">
         <label>Buscar</label>
         <input type="text" name="busca" value="@ViewData["Busca"]" placeholder="nome, tese, setor ou tag (ex.: saúde, fintech, agro)" style="width:100%" />
     </div>
     <button type="submit" class="btn ghost">Filtrar</button>
+    @if (semTese)
+    {
+        <a class="btn primary" asp-controller="Comprador" asp-action="Index">Mostrar todos</a>
+    }
+    else
+    {
+        <a class="btn danger" asp-controller="Comprador" asp-action="Index" asp-route-semTese="true">⚠ Sem tese (@ViewData["TotalSemTese"])</a>
+    }
 </form>
+@if (semTese)
+{
+    <div class="alert err">Compradores <strong>sem tese de investimento</strong> registrada — eles ficam <strong>fora do cruzamento com alvos</strong> até a tese ser preenchida (✏️ Editar).</div>
+}
 
 @if (Model.Count == 0)
 {
