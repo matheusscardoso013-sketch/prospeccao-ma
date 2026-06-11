@@ -48,6 +48,19 @@ public class RotinaProspeccao
 
     public async Task<ExecucaoJob> ExecutarAsync(CancellationToken ct = default)
     {
+        // Higieniza execuções órfãs (ficaram "EmAndamento" porque o servidor reiniciou no meio).
+        var limite = DateTime.UtcNow.AddHours(-2);
+        var orfas = await _db.ExecucoesJob
+            .Where(e => e.Status == StatusExecucao.EmAndamento && e.IniciadoEm < limite)
+            .ToListAsync(ct);
+        foreach (var o in orfas)
+        {
+            o.Status = StatusExecucao.Erro;
+            o.Erro = "Interrompida (servidor reiniciou durante a execução).";
+            o.FinalizadoEm = o.FinalizadoEm ?? DateTime.UtcNow;
+        }
+        if (orfas.Count > 0) await _db.SaveChangesAsync(ct);
+
         var execucao = new ExecucaoJob { IniciadoEm = DateTime.UtcNow, Status = StatusExecucao.EmAndamento };
         _db.ExecucoesJob.Add(execucao);
         await _db.SaveChangesAsync(ct);

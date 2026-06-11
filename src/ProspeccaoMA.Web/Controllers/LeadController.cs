@@ -132,7 +132,11 @@ public class LeadController : Controller
             Leads = linhas,
             TotalLeads = await _db.Leads.CountAsync(),
             GeradosHoje = await _db.LeadScores.CountAsync(s => s.GeradoEm.Date == DateTime.UtcNow.Date),
-            ScoreMedio = linhas.Count > 0 ? (int)Math.Round(linhas.Average(l => l.Score)) : 0,
+            // Média só de quem já foi pontuado (score > 0) — alvos curados ainda não
+            // cruzados não diluem o indicador.
+            ScoreMedio = linhas.Any(l => l.Score > 0)
+                ? (int)Math.Round(linhas.Where(l => l.Score > 0).Average(l => l.Score))
+                : 0,
             UltimaExecucao = await _db.ExecucoesJob.OrderByDescending(e => e.IniciadoEm).FirstOrDefaultAsync(),
             Ufs = await _db.Leads.Where(l => l.Uf != "").Select(l => l.Uf).Distinct().OrderBy(u => u).ToListAsync(),
             Cnaes = await _db.Leads.Where(l => l.Cnae != "").Select(l => l.Cnae).Distinct().OrderBy(c => c).ToListAsync()

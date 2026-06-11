@@ -8,7 +8,11 @@ namespace ProspeccaoMA.Web.IA;
 public class GeminiOptions
 {
     public string ApiKey { get; set; } = string.Empty;
-    public string Modelo { get; set; } = "gemini-2.5-flash";
+    public string Modelo { get; set; } = "gemini-2.5-flash-lite";
+
+    /// <summary>Modelo tentado automaticamente quando o principal esgota as tentativas
+    /// (o free tier do flash satura com frequência; o lite tem limites maiores).</summary>
+    public string ModeloFallback { get; set; } = "gemini-2.5-flash-lite";
 }
 
 /// <summary>
@@ -71,16 +75,29 @@ public partial class GeminiClassificador : IClassificadorIA
         return ParsearResultado(texto, idLog);
     }
 
-    /// <summary>Chamada bruta ao Gemini (JSON estrito): devolve o texto da resposta ou null.
-    /// Resiliente a rate limit (429) e erros transitórios (5xx): retry com backoff.</summary>
+    /// <summary>Chamada bruta ao Gemini: tenta o modelo principal e, se ele esgotar as
+    /// tentativas (cota/saturação do free tier), cai automaticamente para o ModeloFallback.</summary>
     private async Task<string?> ChamarTextoAsync(string prompt, string idLog, CancellationToken ct)
+    {
+        var texto = await TentarModeloAsync(_opt.Modelo, prompt, idLog, ct);
+        if (texto is null && !string.Equals(_opt.Modelo, _opt.ModeloFallback, StringComparison.OrdinalIgnoreCase))
+        {
+            _log.LogWarning("Modelo {Modelo} esgotado/saturado — tentando fallback {Fallback} ({Id})",
+                _opt.Modelo, _opt.ModeloFallback, idLog);
+            texto = await TentarModeloAsync(_opt.ModeloFallback, prompt, idLog, ct);
+        }
+        return texto;
+    }
+
+    /// <summary>Tenta um modelo específico com retry/backoff (429/5xx). Null se esgotar.</summary>
+    private async Task<string?> TentarModeloAsync(string modelo, string prompt, string idLog, CancellationToken ct)
     {
         var corpo = new
         {
             contents = new[] { new { parts = new[] { new { text = prompt } } } },
             generationConfig = new { temperature = 0.2, responseMimeType = "application/json" }
         };
-        var url = $"v1beta/models/{_opt.Modelo}:generateContent?key={_opt.ApiKey}";
+        var url = $"v1beta/models/{modelo}:generateContent?key={_opt.ApiKey}";
 
         for (var tentativa = 1; tentativa <= MaxTentativas; tentativa++)
         {
