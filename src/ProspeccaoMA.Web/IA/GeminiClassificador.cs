@@ -55,10 +55,11 @@ public partial class GeminiClassificador : IClassificadorIA
         return await ChamarAsync(MontarPromptSinergia(lead, comprador), $"{lead.Cnpj}~{comprador.Nome}", ct);
     }
 
-    // Espaçamento mínimo entre chamadas (free tier ~15 req/min) para evitar rajadas/429.
+    // Espaçamento mínimo entre chamadas: o free tier do gemini-2.5-flash permite ~10 req/min,
+    // então ~6,5s/chamada (~9/min) evita o 429 por RPM (1,5s causava rajada de ~40/min).
     private static readonly SemaphoreSlim _porta = new(1, 1);
     private static DateTime _ultima = DateTime.MinValue;
-    private static readonly TimeSpan IntervaloMin = TimeSpan.FromMilliseconds(1500);
+    private static readonly TimeSpan IntervaloMin = TimeSpan.FromMilliseconds(6500);
     private const int MaxTentativas = 4;
 
     /// <summary>Chamada genérica ao Gemini (score+racional) com parsing defensivo. Nunca lança.</summary>
