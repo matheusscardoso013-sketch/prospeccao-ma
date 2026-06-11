@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prévia — Plataforma Valore Brasil</title>
+<style>
+  :root{
+    /* Paleta Valore Brasil (extraída do logo) */
+    --vb-ciano:#29A9E0;        /* "valore" */
+    --vb-azul:#16608F;         /* "BRASIL" */
+    --vb-navy:#0E3A56;         /* fundos escuros */
+    --accent:var(--vb-ciano);
+    --bg:#f2f6f9; --card:#ffffff; --line:#dfe8ef; --txt:#1c2533; --muted:#64748b;
+    --score-hi:#1b9c85; --score-mid:#d9a400; --score-lo:#b04646;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',system-ui,Arial,sans-serif}
+  body{background:var(--bg);color:var(--txt);padding:32px}
+  .screen{max-width:1180px;margin:0 auto 56px;background:var(--card);border-radius:14px;
+          box-shadow:0 8px 30px rgba(14,58,86,.10);overflow:hidden;border:1px solid var(--line)}
+  .screen-label{font-size:13px;font-weight:700;letter-spacing:.5px;color:var(--muted);
+                text-transform:uppercase;max-width:1180px;margin:0 auto 10px;padding-left:4px}
+
+  /* ---- Logo Valore (recriação CSS) ---- */
+  .vb-logo{display:flex;align-items:baseline;gap:8px;text-decoration:none}
+  .vb-logo .v{font-size:26px;font-weight:800;color:var(--vb-ciano);letter-spacing:-1px;text-transform:lowercase}
+  .vb-logo .b{display:flex;align-items:center;gap:5px}
+  .vb-logo .tri{width:0;height:0;border-top:7px solid transparent;border-bottom:7px solid transparent;
+                border-left:11px solid var(--vb-ciano);border-radius:2px;transform:rotate(45deg)}
+  .vb-logo .brasil{font-size:15px;font-weight:700;color:var(--vb-azul);letter-spacing:2.5px}
+  .vb-logo.clara .v{color:#fff}
+  .vb-logo.clara .brasil{color:#bfe3f5}
+
+  /* ---- Top bar (clara, como o site da Valore) ---- */
+  .topbar{display:flex;align-items:center;justify-content:space-between;
+          background:#fff;border-bottom:3px solid var(--vb-ciano);padding:14px 28px}
+  .nav{display:flex;gap:24px;font-size:14.5px}
+  .nav a{color:#3d4f5e;text-decoration:none;font-weight:500}
+  .nav a.active{color:var(--vb-azul);font-weight:700;border-bottom:3px solid var(--vb-ciano);padding-bottom:14px;margin-bottom:-17px}
+  .userbox{display:flex;align-items:center;gap:10px;font-size:13px;color:#3d4f5e}
+  .avatar{width:32px;height:32px;border-radius:50%;background:var(--vb-azul);display:flex;
+          align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px}
+
+  .body{padding:24px}
+  .pagehead{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+  .pagehead h1{font-size:21px;color:var(--vb-navy)}
+  .pagehead .sub{color:var(--muted);font-size:13px;margin-top:3px}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:22px}
+  .kpi{background:#f6fafc;border:1px solid var(--line);border-left:4px solid var(--vb-ciano);border-radius:11px;padding:16px}
+  .kpi .label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+  .kpi .value{font-size:26px;font-weight:700;margin-top:6px;color:var(--vb-navy)}
+  .kpi .value small{font-size:13px;color:var(--muted);font-weight:500}
+  .btn{padding:9px 16px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer}
+  .btn.primary{background:var(--vb-ciano);color:#fff}
+  .btn.escuro{background:var(--vb-azul);color:#fff}
+  .btn.ghost{background:#fff;border:1px solid var(--line);color:var(--vb-azul)}
+
+  /* cards de lead */
+  .cards{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}
+  .lead{border:1px solid var(--line);border-radius:13px;overflow:hidden;background:#fff}
+  .lead-top{display:flex;gap:14px;padding:16px}
+  .scorebox{flex-shrink:0;width:62px;height:62px;border-radius:12px;color:#fff;display:flex;
+            flex-direction:column;align-items:center;justify-content:center;background:var(--score-hi)}
+  .scorebox .n{font-size:24px;font-weight:800}
+  .scorebox .l{font-size:9px;text-transform:uppercase;opacity:.9}
+  .razao{font-weight:700;font-size:15.5px;color:var(--vb-navy)}
+  .cnpj{color:var(--muted);font-size:12px;font-family:Consolas,monospace;margin-top:3px}
+  .tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+  .tag{font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:#e3f4fc;color:var(--vb-azul)}
+  .tag.ativa{background:#e3f5ef;color:#1b7c69}
+  .racional{margin:0 16px 14px;background:#f3fafd;border-left:3px solid var(--vb-ciano);
+            border-radius:0 8px 8px 0;padding:10px 12px}
+  .racional .h{font-size:10.5px;color:var(--vb-ciano);text-transform:uppercase;font-weight:700;margin-bottom:4px}
+  .racional p{font-size:12.8px;color:#3d4654;line-height:1.5}
+
+  /* login */
+  .login-wrap{display:flex;min-height:440px}
+  .login-side{flex:1;background:linear-gradient(150deg,var(--vb-navy) 0%,var(--vb-azul) 55%,var(--vb-ciano) 130%);
+              color:#fff;padding:46px;display:flex;flex-direction:column;justify-content:center}
+  .login-side h2{font-size:26px;line-height:1.3;margin:22px 0 14px}
+  .login-side p{color:#cfe8f6;font-size:14px;line-height:1.6;max-width:340px}
+  .login-side .pill{display:inline-block;margin-top:22px;background:rgba(255,255,255,.12);
+                    padding:7px 13px;border-radius:20px;font-size:12px;color:#dff2fb;width:fit-content}
+  .login-form{flex:1;padding:46px;display:flex;flex-direction:column;justify-content:center;max-width:420px}
+  .login-form h3{font-size:20px;margin-bottom:4px;color:var(--vb-navy)}
+  .login-form .sub{color:var(--muted);font-size:13px;margin-bottom:24px}
+  .field{display:flex;flex-direction:column;gap:4px;margin-bottom:16px}
+  .field label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+  input{padding:11px 13px;border:1px solid var(--line);border-radius:8px;font-size:13.5px;width:100%}
+  .login-form .btn{width:100%;padding:12px;margin-top:6px}
+</style>
+</head>
+<body>
+
+<div class="screen-label">Prévia 1 — Login com a marca Valore Brasil</div>
+<div class="screen">
+  <div class="login-wrap">
+    <div class="login-side">
+      <div class="vb-logo clara">
+        <span class="v">valore</span>
+        <span class="b"><span class="tri"></span><span class="brasil">BRASIL</span></span>
+      </div>
+      <h2>Decisões inteligentes em<br>fusões &amp; aquisições.</h2>
+      <p>Prospecção diária de alvos reais e sinergias com nossa base de compradores,
+         qualificadas por inteligência artificial.</p>
+      <span class="pill">● Atualizado todo dia às 12h</span>
+    </div>
+    <div class="login-form">
+      <h3>Entrar</h3>
+      <div class="sub">Acesse a plataforma de originação</div>
+      <div class="field"><label>E-mail</label><input type="text" value="equipe@valorebrasil.com.br"></div>
+      <div class="field"><label>Senha</label><input type="password" value="••••••••"></div>
+      <button class="btn primary">Entrar</button>
+    </div>
+  </div>
+</div>
+
+<div class="screen-label">Prévia 2 — Plataforma (topo claro com a marca + cores Valore)</div>
+<div class="screen">
+  <div class="topbar">
+    <a class="vb-logo">
+      <span class="v">valore</span>
+      <span class="b"><span class="tri"></span><span class="brasil">BRASIL</span></span>
+    </a>
+    <nav class="nav">
+      <a class="active">Mesa</a>
+      <a>Leads</a>
+      <a>Compradores</a>
+      <a>Configurações</a>
+      <a>Execuções</a>
+    </nav>
+    <div class="userbox"><span class="avatar">VB</span> equipe@valorebrasil.com.br</div>
+  </div>
+  <div class="body">
+    <div class="pagehead">
+      <div>
+        <h1>Mesa de operações</h1>
+        <div class="sub">Melhores pares alvo × comprador em aberto, ordenados por score.</div>
+      </div>
+      <button class="btn primary">▶ Rodar prospecção agora</button>
+    </div>
+    <div class="kpis">
+      <div class="kpi"><div class="label">Novos</div><div class="value">36</div></div>
+      <div class="kpi"><div class="label">Abordados</div><div class="value">4</div></div>
+      <div class="kpi"><div class="label">Reunião</div><div class="value">2</div></div>
+      <div class="kpi"><div class="label">Em negociação</div><div class="value">1</div></div>
+    </div>
+    <div class="cards">
+      <div class="lead">
+        <div class="lead-top">
+          <div class="scorebox"><span class="n">95</span><span class="l">sinergia</span></div>
+          <div>
+            <div class="razao">POLENGHI INDÚSTRIAS ALIMENTÍCIAS</div>
+            <div class="cnpj">24.949.232/0001-59 × 3G Capital Partners</div>
+            <div class="tags"><span class="tag">Alimentos</span><span class="tag ativa">● Novo</span><span class="tag">resp.: Jaziel</span></div>
+          </div>
+        </div>
+        <div class="racional">
+          <div class="h">Racional da sinergia (IA)</div>
+          <p>Indústria de laticínios de grande porte alinhada à tese de consolidação em alimentos. Setor 38/40 · Porte 22/25 · Modelo 18/20 · Geo 12/15</p>
+        </div>
+      </div>
+      <div class="lead">
+        <div class="lead-top">
+          <div class="scorebox" style="background:var(--score-hi)"><span class="n">90</span><span class="l">sinergia</span></div>
+          <div>
+            <div class="razao">SaaS de HCM / Recursos Humanos</div>
+            <div class="cnpj">★ Curado Valore × Grupo Volaris</div>
+            <div class="tags"><span class="tag">Tech Software</span><span class="tag ativa">● Abordado</span><span class="tag">resp.: Orivaldo</span></div>
+          </div>
+        </div>
+        <div class="racional">
+          <div class="h">Racional da sinergia (IA)</div>
+          <p>Excelente fit com a tese de software B2B com receita recorrente. Setor 36/40 · Porte 24/25 · Modelo 20/20 · Geo 10/15</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

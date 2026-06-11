@@ -73,8 +73,8 @@ public class NotificadorEmail : INotificadorEmail
             var de = _cfg["Email:De"] ?? _cfg["Email:Usuario"] ?? "prospeccao@valore.local";
             using var msg = new MailMessage
             {
-                From = new MailAddress(de, "Prospecção M&A"),
-                Subject = $"Prospecção M&A — {Fuso.Brasil(DateTime.UtcNow):dd/MM}: {leadsHoje.Count} lead(s) novo(s), {paresHoje.Count} match(es)",
+                From = new MailAddress(de, "Valore Brasil — Originação M&A"),
+                Subject = $"Valore Brasil — {Fuso.Brasil(DateTime.UtcNow):dd/MM}: {leadsHoje.Count} lead(s) novo(s), {paresHoje.Count} match(es)",
                 Body = html,
                 IsBodyHtml = true
             };
@@ -99,7 +99,7 @@ public class NotificadorEmail : INotificadorEmail
     {
         var sb = new StringBuilder();
         sb.Append("<div style='font-family:Segoe UI,Arial,sans-serif;color:#1c2533;max-width:640px'>");
-        sb.Append("<h2 style='color:#0f1f3d'>Prospecção M&amp;A — resumo do dia</h2>");
+        sb.Append("<h2 style='color:#0E3A56'><span style='color:#29A9E0'>valore</span> BRASIL — resumo do dia</h2>");
 
         if (leads.Count > 0)
         {
@@ -119,7 +119,7 @@ public class NotificadorEmail : INotificadorEmail
             sb.Append("</ul>");
         }
 
-        sb.Append("<p><a href='https://prospeccao-ma.onrender.com/Mesa' style='background:#2f6df6;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none'>Abrir a Mesa de operações</a></p>");
+        sb.Append("<p><a href='https://prospeccao-ma.onrender.com/Mesa' style='background:#29A9E0;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none'>Abrir a Mesa de operações</a></p>");
         sb.Append("</div>");
         return sb.ToString();
     }

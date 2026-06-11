@@ -1,6 +1,8 @@
 :root{
-  --navy:#0f1f3d; --navy2:#15294f; --accent:#2f6df6; --accent2:#1b9c85;
-  --bg:#eef1f6; --card:#ffffff; --line:#e2e7f0; --txt:#1c2533; --muted:#6b7686;
+  /* Paleta Valore Brasil (logo: "valore" ciano + "BRASIL" azul-escuro) */
+  --vb-ciano:#29A9E0; --vb-azul:#16608F; --vb-navy:#0E3A56;
+  --navy:var(--vb-navy); --navy2:var(--vb-azul); --accent:var(--vb-ciano); --accent2:#1b9c85;
+  --bg:#f2f6f9; --card:#ffffff; --line:#dfe8ef; --txt:#1c2533; --muted:#64748b;
   --score-hi:#1b9c85; --score-mid:#d9a400; --score-lo:#b04646;
 }
 *{box-sizing:border-box}
@@ -8,23 +10,30 @@ body{background:var(--bg);color:var(--txt);margin:0;
      font-family:'Segoe UI',system-ui,Arial,sans-serif}
 a{color:var(--accent);text-decoration:none}
 
-/* ---- Top bar ---- */
+/* ---- Top bar (clara, identidade Valore Brasil) ---- */
 .topbar{display:flex;align-items:center;justify-content:space-between;
-        background:var(--navy);color:#fff;padding:14px 28px}
-.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px;color:#fff}
-.brand .logo{width:30px;height:30px;border-radius:7px;background:linear-gradient(135deg,var(--accent),var(--accent2));
-             display:flex;align-items:center;justify-content:center;font-size:15px}
-.nav{display:flex;gap:22px;font-size:14px}
-.nav a{color:#c5cee0}
-.nav a.active{color:#fff;font-weight:600;border-bottom:2px solid var(--accent);padding-bottom:4px}
-.userbox{display:flex;align-items:center;gap:10px;font-size:13px;color:#c5cee0}
-.avatar{width:30px;height:30px;border-radius:50%;background:#33508c;display:flex;
+        background:#fff;border-bottom:3px solid var(--vb-ciano);padding:12px 28px}
+.nav{display:flex;gap:24px;font-size:14.5px}
+.nav a{color:#3d4f5e;font-weight:500}
+.nav a.active{color:var(--vb-azul);font-weight:700;border-bottom:3px solid var(--vb-ciano);padding-bottom:4px}
+.userbox{display:flex;align-items:center;gap:10px;font-size:13px;color:#3d4f5e}
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--vb-azul);display:flex;
         align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px}
-.linkout{background:none;border:none;color:#c5cee0;cursor:pointer;font-size:13px}
+.linkout{background:none;border:none;color:#3d4f5e;cursor:pointer;font-size:13px}
+
+/* ---- Logo Valore Brasil (CSS) ---- */
+.vb-logo{display:flex;align-items:baseline;gap:8px;text-decoration:none}
+.vb-logo .v{font-size:24px;font-weight:800;color:var(--vb-ciano);letter-spacing:-1px;text-transform:lowercase;line-height:1}
+.vb-logo .b{display:flex;align-items:center;gap:5px}
+.vb-logo .tri{width:0;height:0;border-top:6px solid transparent;border-bottom:6px solid transparent;
+              border-left:10px solid var(--vb-ciano);border-radius:2px;transform:rotate(45deg)}
+.vb-logo .brasil{font-size:13px;font-weight:700;color:var(--vb-azul);letter-spacing:2.5px}
+.vb-logo.clara .v{color:#fff}
+.vb-logo.clara .brasil{color:#bfe3f5}
 
 .container{max-width:1180px;margin:26px auto;padding:0 20px}
 .pagehead{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;gap:16px}
-.pagehead h1{font-size:21px;margin:0}
+.pagehead h1{font-size:21px;margin:0;color:var(--vb-navy)}
 .pagehead .sub{color:var(--muted);font-size:13px;margin-top:3px}
 
 /* ---- Alerts ---- */
@@ -34,9 +43,9 @@ a{color:var(--accent);text-decoration:none}
 
 /* ---- KPI cards ---- */
 .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:22px}
-.kpi{background:var(--card);border:1px solid var(--line);border-radius:11px;padding:16px}
+.kpi{background:#f6fafc;border:1px solid var(--line);border-left:4px solid var(--vb-ciano);border-radius:11px;padding:16px}
 .kpi .label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
-.kpi .value{font-size:26px;font-weight:700;margin-top:6px}
+.kpi .value{font-size:26px;font-weight:700;margin-top:6px;color:var(--vb-navy)}
 .kpi .value small{font-size:13px;color:var(--muted);font-weight:500}
 .kpi.ok .value{color:var(--accent2);font-size:17px}
 .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent2);margin-right:6px}
@@ -74,7 +83,7 @@ textarea{min-height:150px;resize:vertical;width:100%}
 .lead-id .razao{font-weight:700;font-size:15.5px;line-height:1.25}
 .lead-id .cnpj{color:var(--muted);font-size:12px;font-family:'Consolas',monospace;margin-top:3px}
 .tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
-.tag{font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:#eef3ff;color:#2f5bd0}
+.tag{font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:#e3f4fc;color:var(--vb-azul)}
 .tag.gray{background:#eef1f6;color:#5b6677}
 .tag.ativa{background:#e3f5ef;color:#1b7c69}
 
@@ -107,12 +116,12 @@ textarea{min-height:150px;resize:vertical;width:100%}
 .login-page{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
 .login-card{display:flex;max-width:880px;width:100%;background:#fff;border-radius:14px;overflow:hidden;
             box-shadow:0 12px 40px rgba(15,31,61,.16)}
-.login-side{flex:1;background:linear-gradient(150deg,var(--navy),var(--navy2));color:#fff;
+.login-side{flex:1;background:linear-gradient(150deg,var(--vb-navy) 0%,var(--vb-azul) 55%,var(--vb-ciano) 130%);color:#fff;
             padding:46px;display:flex;flex-direction:column;justify-content:center}
-.login-side h2{font-size:25px;line-height:1.25;margin:14px 0}
-.login-side p{color:#b9c4dc;font-size:14px;line-height:1.6}
-.login-side .pill{display:inline-block;margin-top:22px;background:rgba(255,255,255,.1);
-                  padding:7px 13px;border-radius:20px;font-size:12px;color:#dbe4f5}
+.login-side h2{font-size:25px;line-height:1.3;margin:18px 0 14px}
+.login-side p{color:#cfe8f6;font-size:14px;line-height:1.6}
+.login-side .pill{display:inline-block;margin-top:22px;background:rgba(255,255,255,.12);
+                  padding:7px 13px;border-radius:20px;font-size:12px;color:#dff2fb;width:fit-content}
 .login-form{flex:1;padding:46px;display:flex;flex-direction:column;justify-content:center}
 .login-form h3{font-size:20px;margin:0 0 4px}
 .login-form .sub{color:var(--muted);font-size:13px;margin-bottom:24px}

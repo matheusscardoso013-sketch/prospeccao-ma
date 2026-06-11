@@ -9,12 +9,15 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] · Prospecção M&A</title>
+    <title>@ViewData["Title"] · Valore Brasil — Originação M&A</title>
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
 <body>
     <header class="topbar">
-        <a class="brand" asp-controller="Lead" asp-action="Index"><span class="logo">◆</span> Prospecção M&amp;A</a>
+        <a class="vb-logo" asp-controller="Mesa" asp-action="Index">
+            <span class="v">valore</span>
+            <span class="b"><span class="tri"></span><span class="brasil">BRASIL</span></span>
+        </a>
         <nav class="nav">
             <a class="@Ativo("Mesa")" asp-controller="Mesa" asp-action="Index">Mesa</a>
             <a class="@Ativo("Lead")" asp-controller="Lead" asp-action="Index">Leads</a>

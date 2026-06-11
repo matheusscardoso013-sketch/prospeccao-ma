@@ -6,22 +6,25 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Entrar · Prospecção M&A</title>
+    <title>Entrar · Valore Brasil — Originação M&A</title>
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
 <body>
 <div class="login-page">
   <div class="login-card">
     <div class="login-side">
-      <div class="brand"><span class="logo">◆</span> Prospecção M&amp;A</div>
-      <h2>Leads reais de M&amp;A,<br>qualificados por IA.</h2>
-      <p>Prospecção diária automática a partir da base pública da Receita Federal.
-         A IA pontua a sinergia — nunca inventa empresas.</p>
+      <div class="vb-logo clara">
+        <span class="v" style="font-size:30px">valore</span>
+        <span class="b"><span class="tri"></span><span class="brasil" style="font-size:15px">BRASIL</span></span>
+      </div>
+      <h2>Decisões inteligentes em<br>fusões &amp; aquisições.</h2>
+      <p>Prospecção diária de alvos reais e sinergias com nossa base de compradores,
+         qualificadas por inteligência artificial.</p>
       <span class="pill">● Atualizado todo dia às 12h</span>
     </div>
     <div class="login-form">
       <h3>Entrar</h3>
-      <div class="sub">Acesse o painel de prospecção</div>
+      <div class="sub">Acesse a plataforma de originação</div>
       <form asp-controller="Conta" asp-action="Login" method="post">
         @Html.AntiForgeryToken()
         <input type="hidden" name="returnUrl" value="@ViewData["ReturnUrl"]" />
