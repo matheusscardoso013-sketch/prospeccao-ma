@@ -159,30 +159,35 @@ public class LeadController : Controller
 
         var leads = await query.ToListAsync();
 
-        // Melhor sinergia de comprador para os curados (que não têm LeadScore).
-        var idsSemScore = leads.Where(l => l.Scores.Count == 0).Select(l => l.Id).ToList();
-        var melhoresSinergias = idsSemScore.Count == 0
+        // Melhor sinergia de comprador para TODOS os leads exibidos (vira a tag "🎯 melhor
+        // comprador" no card; para curados sem LeadScore, é também o score principal).
+        var ids = leads.Select(l => l.Id).ToList();
+        var melhoresSinergias = ids.Count == 0
             ? new Dictionary<int, SinergiaComprador>()
             : (await _db.SinergiasComprador.Include(s => s.Comprador)
-                  .Where(s => idsSemScore.Contains(s.LeadId)).ToListAsync())
+                  .Where(s => ids.Contains(s.LeadId)).ToListAsync())
               .GroupBy(s => s.LeadId)
               .ToDictionary(g => g.Key, g => g.OrderByDescending(s => s.Score).First());
 
         var linhas = leads.Select(l =>
         {
+            melhoresSinergias.TryGetValue(l.Id, out var sin);
+
             if (l.Scores.Count > 0)
             {
+                // Leads da Receita: a nota principal é a ADERÊNCIA ao mandato configurado.
                 var melhor = l.Scores.OrderByDescending(s => s.Score).First();
-                return new LeadLinha(l, melhor.Score, melhor.Racional, melhor.Fonte, melhor.GeradoEm);
+                return new LeadLinha(l, melhor.Score, melhor.Racional, melhor.Fonte, melhor.GeradoEm,
+                    "aderência", sin?.Comprador?.Nome, sin?.Score);
             }
 
-            if (melhoresSinergias.TryGetValue(l.Id, out var sin))
-                return new LeadLinha(l, sin.Score,
-                    $"Melhor fit: {sin.Comprador?.Nome} — {sin.Racional}", l.Origem, sin.GeradoEm);
+            if (sin is not null)
+                return new LeadLinha(l, sin.Score, sin.Racional, l.Origem, sin.GeradoEm,
+                    "sinergia", sin.Comprador?.Nome, sin.Score);
 
             return new LeadLinha(l, 0,
                 "Ainda não cruzado com compradores — abra 🎯 Compradores ou aguarde a esteira diária.",
-                l.Origem, l.CriadoEm);
+                l.Origem, l.CriadoEm, "sinergia");
         });
 
         if (scoreMin is not null)
@@ -241,8 +246,9 @@ public class LeadController : Controller
         using var wb = new XLWorkbook();
         var ws = wb.AddWorksheet("Leads");
 
-        string[] cabec = { "Score", "Razão social", "CNPJ", "CNAE", "UF", "Município",
-            "Capital social", "Porte (estimado)", "Situação", "Contato", "Racional da IA", "Fonte", "Gerado em" };
+        string[] cabec = { "Score", "Tipo do score", "Razão social", "CNPJ", "CNAE", "UF", "Município",
+            "Capital social", "Porte (estimado)", "Situação", "Contato", "Racional da IA",
+            "Melhor comprador", "Sinergia do melhor comprador", "Fonte", "Gerado em" };
         for (var i = 0; i < cabec.Length; i++)
             ws.Cell(1, i + 1).Value = cabec[i];
         ws.Row(1).Style.Font.Bold = true;
@@ -252,19 +258,22 @@ public class LeadController : Controller
         {
             var l = x.Lead;
             ws.Cell(linha, 1).Value = x.Score;
-            ws.Cell(linha, 2).Value = l.RazaoSocial;
-            ws.Cell(linha, 3).Value = CnpjUtil.Formatar(l.Cnpj);
-            ws.Cell(linha, 4).Value = l.Cnae;
-            ws.Cell(linha, 5).Value = l.Uf;
-            ws.Cell(linha, 6).Value = l.Municipio;
-            ws.Cell(linha, 7).Value = l.CapitalSocial;
-            ws.Cell(linha, 7).Style.NumberFormat.Format = "#,##0.00";
-            ws.Cell(linha, 8).Value = l.PorteEstimado;
-            ws.Cell(linha, 9).Value = l.Situacao;
-            ws.Cell(linha, 10).Value = l.Contato ?? "não consta no cadastro";
-            ws.Cell(linha, 11).Value = x.Racional;
-            ws.Cell(linha, 12).Value = x.Fonte;
-            ws.Cell(linha, 13).Value = x.GeradoEm.ToString("dd/MM/yyyy HH:mm");
+            ws.Cell(linha, 2).Value = x.RotuloScore;
+            ws.Cell(linha, 3).Value = l.RazaoSocial;
+            ws.Cell(linha, 4).Value = CnpjUtil.Formatar(l.Cnpj);
+            ws.Cell(linha, 5).Value = l.Cnae;
+            ws.Cell(linha, 6).Value = l.Uf;
+            ws.Cell(linha, 7).Value = l.Municipio;
+            ws.Cell(linha, 8).Value = l.CapitalSocial;
+            ws.Cell(linha, 8).Style.NumberFormat.Format = "#,##0.00";
+            ws.Cell(linha, 9).Value = l.PorteEstimado;
+            ws.Cell(linha, 10).Value = l.Situacao;
+            ws.Cell(linha, 11).Value = l.Contato ?? "não consta no cadastro";
+            ws.Cell(linha, 12).Value = x.Racional;
+            ws.Cell(linha, 13).Value = x.MelhorComprador ?? "";
+            ws.Cell(linha, 14).Value = x.MelhorSinergiaScore?.ToString() ?? "";
+            ws.Cell(linha, 15).Value = x.Fonte;
+            ws.Cell(linha, 16).Value = x.GeradoEm.ToString("dd/MM/yyyy HH:mm");
             linha++;
         }
 

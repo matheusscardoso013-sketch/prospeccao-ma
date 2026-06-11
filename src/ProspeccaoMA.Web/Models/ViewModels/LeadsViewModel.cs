@@ -1,7 +1,13 @@
 namespace ProspeccaoMA.Web.Models.ViewModels;
 
-/// <summary>Uma linha do dashboard: o lead real + seu melhor score (entre as configs).</summary>
-public record LeadLinha(Lead Lead, int Score, string Racional, string Fonte, DateTime GeradoEm);
+/// <summary>
+/// Uma linha do dashboard. Score e RotuloScore distinguem a nota de ADERÊNCIA ao mandato
+/// (lead × configuração, leads da Receita) da SINERGIA com comprador (alvos curados).
+/// MelhorComprador/MelhorSinergiaScore trazem o top match de comprador quando já cruzado.
+/// </summary>
+public record LeadLinha(
+    Lead Lead, int Score, string Racional, string Fonte, DateTime GeradoEm,
+    string RotuloScore, string? MelhorComprador = null, int? MelhorSinergiaScore = null);
 
 public enum OrdenacaoLeads { Score, Capital, Recente }
 
