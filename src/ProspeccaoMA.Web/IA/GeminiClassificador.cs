@@ -75,15 +75,38 @@ public partial class GeminiClassificador : IClassificadorIA
         return ParsearResultado(texto, idLog);
     }
 
+    // Circuit breaker do modelo principal: se ele falhar 2x seguidas (saturação do free
+    // tier), vai direto ao fallback por 10 min — evita desperdiçar ~30s de retries por
+    // chamada numa rodada longa (60 alvos × 13 chamadas viraria horas perdidas).
+    private static int _falhasPrimarioSeguidas;
+    private static DateTime _primarioSuspensoAte = DateTime.MinValue;
+
     /// <summary>Chamada bruta ao Gemini: tenta o modelo principal e, se ele esgotar as
     /// tentativas (cota/saturação do free tier), cai automaticamente para o ModeloFallback.</summary>
     private async Task<string?> ChamarTextoAsync(string prompt, string idLog, CancellationToken ct)
     {
-        var texto = await TentarModeloAsync(_opt.Modelo, prompt, idLog, ct);
-        if (texto is null && !string.Equals(_opt.Modelo, _opt.ModeloFallback, StringComparison.OrdinalIgnoreCase))
+        var temFallback = !string.Equals(_opt.Modelo, _opt.ModeloFallback, StringComparison.OrdinalIgnoreCase);
+
+        string? texto = null;
+        if (!temFallback || DateTime.UtcNow >= _primarioSuspensoAte)
         {
-            _log.LogWarning("Modelo {Modelo} esgotado/saturado — tentando fallback {Fallback} ({Id})",
-                _opt.Modelo, _opt.ModeloFallback, idLog);
+            texto = await TentarModeloAsync(_opt.Modelo, prompt, idLog, ct);
+            if (texto is not null)
+            {
+                _falhasPrimarioSeguidas = 0;
+            }
+            else if (temFallback && Interlocked.Increment(ref _falhasPrimarioSeguidas) >= 2)
+            {
+                _primarioSuspensoAte = DateTime.UtcNow.AddMinutes(10);
+                _falhasPrimarioSeguidas = 0;
+                _log.LogWarning("Modelo {Modelo} saturado — usando só o fallback {Fallback} pelos próximos 10 min",
+                    _opt.Modelo, _opt.ModeloFallback);
+            }
+        }
+
+        if (texto is null && temFallback)
+        {
+            _log.LogInformation("Usando fallback {Fallback} ({Id})", _opt.ModeloFallback, idLog);
             texto = await TentarModeloAsync(_opt.ModeloFallback, prompt, idLog, ct);
         }
         return texto;

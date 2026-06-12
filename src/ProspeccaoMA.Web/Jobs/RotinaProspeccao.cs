@@ -85,7 +85,7 @@ public class RotinaProspeccao
 
             // Esteira dos alvos curados da Valore: cruza alguns por dia com os compradores
             // (espalha a cota gratuita do Gemini em vez de processar os 117 de uma vez).
-            await CruzarCuradosPendentesAsync(ct);
+            await CruzarCuradosPendentesAsync(ct: ct);
 
             // Auto-cura: reavalia pontuações que falharam (rate limit/erros transitórios).
             await ReprocessarFalhasAsync(_reprocessarPorDia, ct);
@@ -208,26 +208,30 @@ public class RotinaProspeccao
         }
     }
 
-    /// <summary>Cruza até N alvos curados (Base Valore) ainda sem sinergias com os compradores.</summary>
-    private async Task CruzarCuradosPendentesAsync(CancellationToken ct)
+    /// <summary>Cruza até N alvos curados (Base Valore) ainda sem sinergias com os compradores.
+    /// Quando a fila esvaziar, vira no-op — e o regime passa a ser só os leads novos do dia.</summary>
+    public async Task<int> CruzarCuradosPendentesAsync(int? max = null, CancellationToken ct = default)
     {
-        if (_curadosPorDia == 0) return;
+        var lote = max ?? _curadosPorDia;
+        if (lote <= 0) return 0;
 
         var pendentes = await _db.Leads
             .Where(l => l.Origem != FonteReceita && !_db.SinergiasComprador.Any(s => s.LeadId == l.Id))
             .OrderBy(l => l.Id)
-            .Take(_curadosPorDia)
+            .Take(lote)
             .ToListAsync(ct);
 
-        if (pendentes.Count == 0) return;
+        if (pendentes.Count == 0) return 0;
         _log.LogInformation("Esteira de alvos curados: cruzando {N} pendente(s)", pendentes.Count);
 
+        var ok = 0;
         foreach (var lead in pendentes)
         {
             ct.ThrowIfCancellationRequested();
-            try { await _motor.CruzarLeadAsync(lead, ct); }
+            try { await _motor.CruzarLeadAsync(lead, ct); ok++; }
             catch (Exception ex) { _log.LogWarning(ex, "Falha ao cruzar alvo curado {Nome}", lead.RazaoSocial); }
         }
+        return ok;
     }
 
     private static readonly string[] MarcasFalha =

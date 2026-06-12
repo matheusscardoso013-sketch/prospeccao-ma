@@ -36,7 +36,9 @@ public class JobsController : Controller
         }
 
         // modo=falhas: só reavalia pontuações que falharam, sem rodar a prospecção do dia.
+        // modo=curados: só cruza um lote de alvos curados pendentes (backfill sob demanda).
         var soFalhas = string.Equals(modo, "falhas", StringComparison.OrdinalIgnoreCase);
+        var soCurados = string.Equals(modo, "curados", StringComparison.OrdinalIgnoreCase);
 
         // Fire-and-forget com escopo próprio (o request retorna imediatamente).
         _ = Task.Run(async () =>
@@ -47,6 +49,8 @@ public class JobsController : Controller
                 var rotina = escopo.ServiceProvider.GetRequiredService<RotinaProspeccao>();
                 if (soFalhas)
                     await rotina.ReprocessarFalhasAsync(100, CancellationToken.None);
+                else if (soCurados)
+                    await rotina.CruzarCuradosPendentesAsync(60, CancellationToken.None);
                 else
                     await rotina.ExecutarAsync(CancellationToken.None);
             }
@@ -58,6 +62,8 @@ public class JobsController : Controller
 
         return Content(soFalhas
             ? "Reprocessamento de falhas disparado."
-            : "Prospecção disparada. Acompanhe em Execuções.");
+            : soCurados
+                ? "Backfill de alvos curados disparado (lote de até 60)."
+                : "Prospecção disparada. Acompanhe em Execuções.");
     }
 }
