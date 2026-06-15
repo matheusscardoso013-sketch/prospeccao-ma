@@ -46,7 +46,26 @@ public class RotinaProspeccao
         _reprocessarPorDia = Math.Max(0, cfg.GetValue("Prospeccao:ReprocessarFalhasPorDia", 30));
     }
 
+    // Trava global de execução única: impede rodadas sobrepostas (timer interno + cron
+    // disparando juntos, ou disparo manual durante uma rodada) que competiriam pela cota da IA.
+    private static readonly SemaphoreSlim _execucaoUnica = new(1, 1);
+
     public async Task<ExecucaoJob> ExecutarAsync(CancellationToken ct = default)
+    {
+        if (!await _execucaoUnica.WaitAsync(0, ct))
+        {
+            _log.LogInformation("Já há uma rodada em andamento — disparo ignorado.");
+            return new ExecucaoJob { IniciadoEm = DateTime.UtcNow, FinalizadoEm = DateTime.UtcNow,
+                Status = StatusExecucao.Erro, Erro = "Ignorada: já havia uma rodada em andamento." };
+        }
+        try
+        {
+            return await ExecutarInternoAsync(ct);
+        }
+        finally { _execucaoUnica.Release(); }
+    }
+
+    private async Task<ExecucaoJob> ExecutarInternoAsync(CancellationToken ct)
     {
         // Higieniza execuções órfãs (ficaram "EmAndamento" porque o servidor reiniciou no meio).
         var limite = DateTime.UtcNow.AddHours(-2);
@@ -85,10 +104,10 @@ public class RotinaProspeccao
 
             // Esteira dos alvos curados da Valore: cruza alguns por dia com os compradores
             // (espalha a cota gratuita do Gemini em vez de processar os 117 de uma vez).
-            await CruzarCuradosPendentesAsync(ct: ct);
+            await CruzarCuradosInternoAsync(_curadosPorDia, ct);
 
             // Auto-cura: reavalia pontuações que falharam (rate limit/erros transitórios).
-            await ReprocessarFalhasAsync(_reprocessarPorDia, ct);
+            await ReprocessarFalhasInternoAsync(_reprocessarPorDia, ct);
 
             // Resumo diário por e-mail (leads do dia + melhores matches). Nunca derruba a rotina.
             await _email.EnviarResumoDiarioAsync(ct);
@@ -210,7 +229,19 @@ public class RotinaProspeccao
 
     /// <summary>Cruza até N alvos curados (Base Valore) ainda sem sinergias com os compradores.
     /// Quando a fila esvaziar, vira no-op — e o regime passa a ser só os leads novos do dia.</summary>
+    /// <summary>Versão pública (endpoint): respeita a trava de execução única.</summary>
     public async Task<int> CruzarCuradosPendentesAsync(int? max = null, CancellationToken ct = default)
+    {
+        if (!await _execucaoUnica.WaitAsync(0, ct))
+        {
+            _log.LogInformation("Backfill ignorado — já há uma rodada em andamento.");
+            return 0;
+        }
+        try { return await CruzarCuradosInternoAsync(max, ct); }
+        finally { _execucaoUnica.Release(); }
+    }
+
+    private async Task<int> CruzarCuradosInternoAsync(int? max = null, CancellationToken ct = default)
     {
         var lote = max ?? _curadosPorDia;
         if (lote <= 0) return 0;
@@ -247,7 +278,19 @@ public class RotinaProspeccao
     /// Reavalia pontuações que ficaram com falha (score 0 por rate limit/erro transitório),
     /// tanto LeadScores (lead × configuração) quanto SinergiasComprador (lead × comprador).
     /// </summary>
+    /// <summary>Versão pública (endpoint): respeita a trava de execução única.</summary>
     public async Task<(int Leads, int Sinergias)> ReprocessarFalhasAsync(int max, CancellationToken ct = default)
+    {
+        if (!await _execucaoUnica.WaitAsync(0, ct))
+        {
+            _log.LogInformation("Reprocessamento ignorado — já há uma rodada em andamento.");
+            return (0, 0);
+        }
+        try { return await ReprocessarFalhasInternoAsync(max, ct); }
+        finally { _execucaoUnica.Release(); }
+    }
+
+    private async Task<(int Leads, int Sinergias)> ReprocessarFalhasInternoAsync(int max, CancellationToken ct = default)
     {
         if (max <= 0) return (0, 0);
         int leadsOk = 0, sinergiasOk = 0;
