@@ -243,12 +243,21 @@ public class LeadController : Controller
     {
         var linhas = await CarregarLinhasAsync(cnae, uf, scoreMin, ordenar);
 
+        // Todas as sinergias dos leads exibidos, agrupadas por lead (para listar os
+        // compradores compatíveis de cada empresa, não só o melhor).
+        var ids = linhas.Select(x => x.Lead.Id).ToList();
+        var sinergiasPorLead = (await _db.SinergiasComprador.Include(s => s.Comprador)
+                .Where(s => ids.Contains(s.LeadId))
+                .ToListAsync())
+            .GroupBy(s => s.LeadId)
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(s => s.Score).ToList());
+
         using var wb = new XLWorkbook();
         var ws = wb.AddWorksheet("Leads");
 
         string[] cabec = { "Score", "Tipo do score", "Razão social", "CNPJ", "CNAE", "UF", "Município",
             "Capital social", "Porte (estimado)", "Situação", "Contato", "Racional da IA",
-            "Melhor comprador", "Sinergia do melhor comprador", "Fonte", "Gerado em" };
+            "Compradores compatíveis (sinergia)", "Fonte", "Gerado em" };
         for (var i = 0; i < cabec.Length; i++)
             ws.Cell(1, i + 1).Value = cabec[i];
         ws.Row(1).Style.Font.Bold = true;
@@ -257,6 +266,10 @@ public class LeadController : Controller
         foreach (var x in linhas)
         {
             var l = x.Lead;
+            sinergiasPorLead.TryGetValue(l.Id, out var sins);
+            var compradores = sins is null ? "" : string.Join(" | ",
+                sins.Where(s => s.Score >= 50).Select(s => $"{s.Comprador?.Nome} ({s.Score})"));
+
             ws.Cell(linha, 1).Value = x.Score;
             ws.Cell(linha, 2).Value = x.RotuloScore;
             ws.Cell(linha, 3).Value = l.RazaoSocial;
@@ -270,14 +283,44 @@ public class LeadController : Controller
             ws.Cell(linha, 10).Value = l.Situacao;
             ws.Cell(linha, 11).Value = l.Contato ?? "não consta no cadastro";
             ws.Cell(linha, 12).Value = x.Racional;
-            ws.Cell(linha, 13).Value = x.MelhorComprador ?? "";
-            ws.Cell(linha, 14).Value = x.MelhorSinergiaScore?.ToString() ?? "";
-            ws.Cell(linha, 15).Value = x.Fonte;
-            ws.Cell(linha, 16).Value = x.GeradoEm.ToString("dd/MM/yyyy HH:mm");
+            ws.Cell(linha, 13).Value = compradores;
+            ws.Cell(linha, 14).Value = x.Fonte;
+            ws.Cell(linha, 15).Value = x.GeradoEm.ToString("dd/MM/yyyy HH:mm");
             linha++;
         }
-
         ws.Columns().AdjustToContents();
+        ws.Column(13).Width = 60;
+
+        // Aba 2: cada par alvo × comprador, detalhado — a "tabela de sinergias".
+        var wss = wb.AddWorksheet("Sinergias");
+        string[] cab2 = { "Empresa-alvo", "CNPJ", "Setor/CNAE", "UF", "Comprador", "Sinergia",
+            "Status", "Responsável", "Contato comprador", "Racional da sinergia (IA)", "Cruzado em" };
+        for (var i = 0; i < cab2.Length; i++) wss.Cell(1, i + 1).Value = cab2[i];
+        wss.Row(1).Style.Font.Bold = true;
+
+        var r2 = 2;
+        foreach (var x in linhas)
+        {
+            if (!sinergiasPorLead.TryGetValue(x.Lead.Id, out var sins)) continue;
+            foreach (var s in sins)
+            {
+                var l = x.Lead; var c = s.Comprador;
+                wss.Cell(r2, 1).Value = l.RazaoSocial;
+                wss.Cell(r2, 2).Value = CnpjUtil.Formatar(l.Cnpj);
+                wss.Cell(r2, 3).Value = string.IsNullOrWhiteSpace(l.Segmento) ? l.Cnae : l.Segmento;
+                wss.Cell(r2, 4).Value = l.Uf;
+                wss.Cell(r2, 5).Value = c?.Nome ?? "";
+                wss.Cell(r2, 6).Value = s.Score;
+                wss.Cell(r2, 7).Value = ProspeccaoMA.Web.Util.StatusUi.Rotulo(s.Status);
+                wss.Cell(r2, 8).Value = c?.Responsavel ?? "";
+                wss.Cell(r2, 9).Value = c?.Contato ?? "";
+                wss.Cell(r2, 10).Value = s.Racional;
+                wss.Cell(r2, 11).Value = ProspeccaoMA.Web.Util.Fuso.Brasil(s.GeradoEm).ToString("dd/MM/yyyy HH:mm");
+                r2++;
+            }
+        }
+        wss.Columns().AdjustToContents();
+        wss.Column(10).Width = 70;
 
         using var ms = new MemoryStream();
         wb.SaveAs(ms);
