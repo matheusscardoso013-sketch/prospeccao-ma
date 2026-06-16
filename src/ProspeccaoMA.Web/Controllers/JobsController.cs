@@ -40,6 +40,12 @@ public class JobsController : Controller
         var soFalhas = string.Equals(modo, "falhas", StringComparison.OrdinalIgnoreCase);
         var soCurados = string.Equals(modo, "curados", StringComparison.OrdinalIgnoreCase);
 
+        // Lotes pequenos (config Prospeccao:*) para cada disparo terminar em poucos
+        // minutos — no free tier a instância hiberna e mataria uma rodada longa no meio.
+        // O cron externo dispara modo=curados de hora em hora e vai drenando a fila aos poucos.
+        var loteCurados = _cfg.GetValue("Prospeccao:AlvosCuradosPorDia", 4);
+        var loteFalhas = _cfg.GetValue("Prospeccao:ReprocessarFalhasPorDia", 4);
+
         // Fire-and-forget com escopo próprio (o request retorna imediatamente).
         _ = Task.Run(async () =>
         {
@@ -48,9 +54,9 @@ public class JobsController : Controller
                 using var escopo = _escopos.CreateScope();
                 var rotina = escopo.ServiceProvider.GetRequiredService<RotinaProspeccao>();
                 if (soFalhas)
-                    await rotina.ReprocessarFalhasAsync(100, CancellationToken.None);
+                    await rotina.ReprocessarFalhasAsync(loteFalhas, CancellationToken.None);
                 else if (soCurados)
-                    await rotina.CruzarCuradosPendentesAsync(60, CancellationToken.None);
+                    await rotina.CruzarCuradosPendentesAsync(loteCurados, CancellationToken.None);
                 else
                     await rotina.ExecutarAsync(CancellationToken.None);
             }
@@ -61,9 +67,9 @@ public class JobsController : Controller
         });
 
         return Content(soFalhas
-            ? "Reprocessamento de falhas disparado."
+            ? $"Reprocessamento de falhas disparado (lote de até {loteFalhas})."
             : soCurados
-                ? "Backfill de alvos curados disparado (lote de até 60)."
+                ? $"Backfill de alvos curados disparado (lote de até {loteCurados})."
                 : "Prospecção disparada. Acompanhe em Execuções.");
     }
 }

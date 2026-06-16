@@ -65,9 +65,10 @@ public class RotinaProspeccao
         finally { _execucaoUnica.Release(); }
     }
 
-    private async Task<ExecucaoJob> ExecutarInternoAsync(CancellationToken ct)
+    /// <summary>Marca como Erro as execuções que ficaram "EmAndamento" (servidor hibernou/reiniciou
+    /// no meio). Roda no início de qualquer disparo, mantendo o painel de Execuções limpo.</summary>
+    private async Task HigienizarOrfasAsync(CancellationToken ct)
     {
-        // Higieniza execuções órfãs (ficaram "EmAndamento" porque o servidor reiniciou no meio).
         var limite = DateTime.UtcNow.AddHours(-2);
         var orfas = await _db.ExecucoesJob
             .Where(e => e.Status == StatusExecucao.EmAndamento && e.IniciadoEm < limite)
@@ -79,6 +80,11 @@ public class RotinaProspeccao
             o.FinalizadoEm = o.FinalizadoEm ?? DateTime.UtcNow;
         }
         if (orfas.Count > 0) await _db.SaveChangesAsync(ct);
+    }
+
+    private async Task<ExecucaoJob> ExecutarInternoAsync(CancellationToken ct)
+    {
+        await HigienizarOrfasAsync(ct);
 
         var execucao = new ExecucaoJob { IniciadoEm = DateTime.UtcNow, Status = StatusExecucao.EmAndamento };
         _db.ExecucoesJob.Add(execucao);
@@ -237,7 +243,7 @@ public class RotinaProspeccao
             _log.LogInformation("Backfill ignorado — já há uma rodada em andamento.");
             return 0;
         }
-        try { return await CruzarCuradosInternoAsync(max, ct); }
+        try { await HigienizarOrfasAsync(ct); return await CruzarCuradosInternoAsync(max, ct); }
         finally { _execucaoUnica.Release(); }
     }
 
@@ -286,7 +292,7 @@ public class RotinaProspeccao
             _log.LogInformation("Reprocessamento ignorado — já há uma rodada em andamento.");
             return (0, 0);
         }
-        try { return await ReprocessarFalhasInternoAsync(max, ct); }
+        try { await HigienizarOrfasAsync(ct); return await ReprocessarFalhasInternoAsync(max, ct); }
         finally { _execucaoUnica.Release(); }
     }
 
