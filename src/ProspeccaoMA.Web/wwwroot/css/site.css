@@ -212,3 +212,41 @@ tbody tr:last-child td{border-bottom:none}
 .px-legend .sw{width:16px;height:3px;border-radius:2px;display:inline-block}
 .px-legend .sw.teal{background:var(--teal)} .px-legend .sw.bronze{background:var(--bronze)}
 .px-vazio{font-size:13px;color:var(--muted);font-style:italic;padding:8px 0}
+
+/* ============ FICHA (Alvo / Comprador — redesenho refinado) ============ */
+.fa{max-width:940px;margin:2px auto 0}
+.fa-hd{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;
+       padding-bottom:20px;border-bottom:1px solid var(--line);margin-bottom:22px}
+.fa-ey{font-size:10.5px;text-transform:uppercase;letter-spacing:.18em;color:var(--vb-ciano);font-weight:600}
+.fa-h1{font-family:var(--serif);font-size:25px;font-weight:500;color:var(--vb-navy);margin:7px 0 9px;line-height:1.2}
+.fa-meta{display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;color:var(--muted)}
+.fa-meta b{color:var(--txt);font-weight:600}
+.fa-acts{display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end}
+.fa-btn{font-size:11.5px;letter-spacing:.02em;font-weight:600;padding:8px 14px;border-radius:8px;cursor:pointer;white-space:nowrap;display:inline-block}
+.fa-btn.p{background:var(--vb-navy);color:#fff;border:none}
+.fa-btn.s{background:#fff;color:var(--vb-azul);border:1px solid var(--line)}
+.fa-dados{margin-bottom:26px}
+.fa-blk{font-size:10.5px;text-transform:uppercase;letter-spacing:.15em;color:var(--muted);margin-bottom:12px}
+.fa-desc{font-size:13px;line-height:1.6;color:var(--muted);margin-bottom:18px;max-width:680px}
+.fa-facts{display:grid;grid-template-columns:1fr 1fr;gap:0 40px}
+.fa-fr{display:flex;justify-content:space-between;gap:14px;padding:9px 0;border-top:1px solid var(--line);font-size:12.5px}
+.fa-fr .k{color:var(--muted)}
+.fa-fr .v{color:var(--txt);font-weight:500;text-align:right}
+.fa-sect{font-size:11px;text-transform:uppercase;letter-spacing:.16em;color:var(--muted);
+         display:flex;gap:10px;align-items:baseline;margin:4px 0 16px}
+.fa-sect .c{font-family:var(--serif);font-size:14px;color:var(--vb-navy);letter-spacing:0}
+.fa-buyer{display:flex;gap:15px;padding:16px 2px;border-top:1px solid var(--line)}
+.fa-buyer:first-of-type{border-top:none}
+.fa-g{flex:0 0 auto;position:relative;width:44px;height:44px}
+.fa-g .val{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:13px;color:var(--vb-navy);font-variant-numeric:tabular-nums}
+.fa-b-main{flex:1;min-width:0}
+.fa-b-top{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.fa-b-nome{font-size:14.5px;font-weight:600;color:var(--txt)}
+.fa-b-faixa{font-size:10.5px;color:var(--muted)}
+.fa-b-rac{font-size:12px;line-height:1.55;color:var(--muted);margin-top:6px}
+.fa-b-ctrl{display:flex;align-items:center;gap:8px;margin-top:11px;flex-wrap:wrap}
+.fa-b-ctrl select,.fa-b-ctrl input[type=text]{padding:6px 9px;font-size:12px;min-width:0;border-radius:7px}
+.fa-b-ctrl input[type=text]{flex:1;min-width:120px}
+.fa-b-ctrl .tese{font-size:11.5px;color:var(--vb-azul);font-weight:600;white-space:nowrap}
+.stpill{font-size:9px;text-transform:uppercase;letter-spacing:.08em;padding:3px 9px;border-radius:20px;white-space:nowrap;font-weight:600}
+.fa-vazio{font-size:13px;color:var(--muted);font-style:italic;padding:12px 0}
