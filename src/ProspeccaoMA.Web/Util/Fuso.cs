@@ -22,4 +22,15 @@ public static class Fuso
         => TimeZoneInfo.ConvertTimeFromUtc(
             utc.Kind == DateTimeKind.Utc ? utc : DateTime.SpecifyKind(utc, DateTimeKind.Utc),
             Brasilia);
+
+    /// <summary>Agora, no horário de Brasília.</summary>
+    public static DateTime Agora => Brasil(DateTime.UtcNow);
+
+    /// <summary>Instante UTC correspondente à meia-noite de hoje em Brasília
+    /// (para filtrar registros "de hoje" cujo carimbo é gravado em UTC).</summary>
+    public static DateTime InicioHojeUtc()
+    {
+        var meiaNoiteBr = DateTime.SpecifyKind(Agora.Date, DateTimeKind.Unspecified);
+        return TimeZoneInfo.ConvertTimeToUtc(meiaNoiteBr, Brasilia);
+    }
 }

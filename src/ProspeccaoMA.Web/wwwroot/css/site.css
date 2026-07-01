@@ -4,6 +4,9 @@
   --navy:var(--vb-navy); --navy2:var(--vb-azul); --accent:var(--vb-ciano); --accent2:#1b9c85;
   --bg:#f2f6f9; --card:#ffffff; --line:#dfe8ef; --txt:#1c2533; --muted:#64748b;
   --score-hi:#1b9c85; --score-mid:#d9a400; --score-lo:#b04646;
+  /* Redesenho refinado (boutique M&A) */
+  --serif:'Newsreader',Georgia,'Times New Roman',serif;
+  --teal:#0e7c68; --bronze:#a97b1f;
 }
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--txt);margin:0;
@@ -11,11 +14,12 @@ body{background:var(--bg);color:var(--txt);margin:0;
 a{color:var(--accent);text-decoration:none}
 
 /* ---- Top bar (clara, identidade Valore Brasil) ---- */
-.topbar{display:flex;align-items:center;justify-content:space-between;
-        background:#fff;border-bottom:3px solid var(--vb-ciano);padding:12px 28px}
-.nav{display:flex;gap:24px;font-size:14.5px}
-.nav a{color:#3d4f5e;font-weight:500}
-.nav a.active{color:var(--vb-azul);font-weight:700;border-bottom:3px solid var(--vb-ciano);padding-bottom:4px}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:28px;
+        background:#fff;border-bottom:1px solid var(--line);padding:13px 26px;flex-wrap:wrap}
+.nav{display:flex;gap:20px;font-size:11px;flex-wrap:wrap}
+.nav a{color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:.13em;
+       padding-bottom:15px;margin-bottom:-15px}
+.nav a.active{color:var(--vb-navy);font-weight:600;border-bottom:2px solid var(--vb-ciano)}
 .userbox{display:flex;align-items:center;gap:10px;font-size:13px;color:#3d4f5e}
 .avatar{width:32px;height:32px;border-radius:50%;background:var(--vb-azul);display:flex;
         align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px}
@@ -23,11 +27,10 @@ a{color:var(--accent);text-decoration:none}
 
 /* ---- Logo Valore Brasil (CSS) ---- */
 .vb-logo{display:flex;align-items:baseline;gap:8px;text-decoration:none}
-.vb-logo .v{font-size:24px;font-weight:800;color:var(--vb-ciano);letter-spacing:-1px;text-transform:lowercase;line-height:1}
-.vb-logo .b{display:flex;align-items:center;gap:5px}
-.vb-logo .tri{width:0;height:0;border-top:6px solid transparent;border-bottom:6px solid transparent;
-              border-left:10px solid var(--vb-ciano);border-radius:2px;transform:rotate(45deg)}
-.vb-logo .brasil{font-size:13px;font-weight:700;color:var(--vb-azul);letter-spacing:2.5px}
+.vb-logo .v{font-family:var(--serif);font-size:21px;font-weight:600;color:var(--vb-navy);letter-spacing:.01em;text-transform:lowercase;line-height:1}
+.vb-logo .b{display:flex;align-items:center;gap:7px}
+.vb-logo .tri{width:6px;height:6px;border-radius:50%;background:var(--vb-ciano)}
+.vb-logo .brasil{font-size:11px;font-weight:600;color:var(--vb-azul);letter-spacing:.22em;text-transform:uppercase}
 .vb-logo.clara .v{color:#fff}
 .vb-logo.clara .brasil{color:#bfe3f5}
 
@@ -165,3 +168,47 @@ tbody tr:last-child td{border-bottom:none}
 .formgrid .field input,.formgrid .field select{width:100%}
 .hint{font-size:11.5px;color:var(--muted);margin-top:4px}
 .inline-form{display:inline}
+
+/* ============ PAINEL (redesenho refinado — boutique M&A) ============ */
+.px{max-width:900px;margin:6px auto 0}
+.px-ey{font-size:10.5px;text-transform:uppercase;letter-spacing:.18em;color:var(--vb-ciano);font-weight:600}
+.px-h1{font-family:var(--serif);font-size:27px;font-weight:500;color:var(--vb-navy);margin:8px 0 5px;letter-spacing:.005em}
+.px-sub{font-size:13px;color:var(--muted)}
+.px-kpis{display:grid;grid-template-columns:repeat(4,1fr);margin:26px 0 4px}
+.px-kpi{padding:2px 20px}
+.px-kpi+.px-kpi{border-left:1px solid var(--line)}
+.px-kpi:first-child{padding-left:0}
+.px-kpi .l{font-size:10px;text-transform:uppercase;letter-spacing:.11em;color:var(--muted)}
+.px-kpi .n{font-family:var(--serif);font-size:32px;font-weight:500;color:var(--vb-navy);line-height:1.15;margin-top:6px;font-variant-numeric:tabular-nums}
+.px-kpi .d{font-size:11px;color:var(--muted);margin-top:3px}
+.px-rule{height:1px;background:var(--line);margin:26px 0}
+.px-sect{font-size:11px;text-transform:uppercase;letter-spacing:.16em;color:var(--muted);
+         display:flex;justify-content:space-between;align-items:baseline;margin-bottom:20px}
+.px-sect a{font-size:11.5px;letter-spacing:.02em;text-transform:none;color:var(--vb-azul);font-weight:600}
+.px-funnel{display:flex;align-items:flex-end;gap:3px;height:104px;padding-bottom:24px;position:relative}
+.px-funnel::after{content:"";position:absolute;left:0;right:0;bottom:22px;height:1px;background:var(--line)}
+.px-stg{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;position:relative}
+.px-stg .sn{font-family:var(--serif);font-size:18px;color:var(--vb-navy);margin-bottom:8px;font-variant-numeric:tabular-nums}
+.px-stg .bar{width:60%;border-radius:3px 3px 0 0}
+.px-stg .bar.navy{background:var(--vb-navy);opacity:.9}
+.px-stg .bar.azul{background:var(--vb-azul);opacity:.82}
+.px-stg .bar.ciano{background:var(--vb-ciano)}
+.px-stg .bar.teal{background:var(--teal)}
+.px-stg .sl{position:absolute;bottom:-22px;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);white-space:nowrap}
+.px-opp{display:flex;align-items:center;gap:16px;padding:14px 4px;border-top:1px solid var(--line);text-decoration:none;color:inherit;transition:background .12s}
+.px-opp:first-of-type{border-top:none}
+.px-opp:hover{background:#f7fafc}
+.px-gauge{flex:0 0 auto;position:relative;width:42px;height:42px}
+.px-gauge .val{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:13px;color:var(--vb-navy);font-variant-numeric:tabular-nums}
+.px-opp-txt{flex:1;min-width:0}
+.px-opp-txt .co{font-size:14px;color:var(--txt);font-weight:600}
+.px-opp-txt .fl{font-size:11.5px;color:var(--muted);margin-top:2px}
+.px-opp-txt .fl b{color:var(--vb-azul);font-weight:600}
+.px-tag{font-size:9.5px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);
+        border:1px solid var(--line);border-radius:3px;padding:3px 8px;white-space:nowrap}
+.px-go{font-size:12px;color:var(--vb-azul);font-weight:600;white-space:nowrap}
+.px-legend{margin-top:16px;font-size:10px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);display:flex;gap:20px}
+.px-legend i{font-style:normal;display:inline-flex;align-items:center;gap:6px}
+.px-legend .sw{width:16px;height:3px;border-radius:2px;display:inline-block}
+.px-legend .sw.teal{background:var(--teal)} .px-legend .sw.bronze{background:var(--bronze)}
+.px-vazio{font-size:13px;color:var(--muted);font-style:italic;padding:8px 0}

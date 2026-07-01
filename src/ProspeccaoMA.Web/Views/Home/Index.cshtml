@@ -1,8 +1,92 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
+@model ProspeccaoMA.Web.Models.PainelVm
+@{
+    ViewData["Title"] = "Painel";
+    double Dash(int score) => System.Math.Round(106.8 * score / 100.0, 1);
+    string CorScore(int s) => s >= 80 ? "teal" : "bronze";
+    string Inv(double v) => v.ToString(System.Globalization.CultureInfo.InvariantCulture);
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<div class="px">
+    <div class="px-ey">Mesa de operações</div>
+    <h1 class="px-h1">@Model.Saudacao. Aqui está o seu dia de M&amp;A.</h1>
+    <div class="px-sub">
+        @Model.DataExtenso · @Model.MatchesNovosHoje novos matches hoje ·
+        @Model.AlvosNaBase.ToString("N0") empresas na base
+    </div>
+
+    <div class="px-kpis">
+        <div class="px-kpi">
+            <div class="l">Matches novos</div>
+            <div class="n">@Model.MatchesNovosHoje</div>
+            <div class="d">hoje</div>
+        </div>
+        <div class="px-kpi">
+            <div class="l">Oportunidades quentes</div>
+            <div class="n">@Model.OportunidadesQuentes</div>
+            <div class="d">score 80+</div>
+        </div>
+        <div class="px-kpi">
+            <div class="l">Em negociação</div>
+            <div class="n">@Model.EmNegociacao.ToString("00")</div>
+            <div class="d">no pipeline</div>
+        </div>
+        <div class="px-kpi">
+            <div class="l">Alvos na base</div>
+            <div class="n">@Model.AlvosNaBase.ToString("N0")</div>
+            <div class="d">middle market</div>
+        </div>
+    </div>
+
+    <div class="px-rule"></div>
+
+    <div class="px-sect">
+        Funil do pipeline
+        <a asp-controller="Mesa" asp-action="Index">ver a mesa completa →</a>
+    </div>
+    <div class="px-funnel">
+        @foreach (var e in Model.Funil)
+        {
+            <div class="px-stg">
+                <div class="sn">@e.Total</div>
+                <div class="bar @e.Cor" style="height:@(Inv(e.Altura))%"></div>
+                <div class="sl">@e.Rotulo</div>
+            </div>
+        }
+    </div>
+
+    <div class="px-rule"></div>
+
+    <div class="px-sect">Melhores oportunidades de hoje</div>
+
+    @if (Model.Melhores.Count == 0)
+    {
+        <div class="px-vazio">Ainda não há oportunidades pontuadas em aberto. Elas aparecem aqui conforme os cruzamentos rodam.</div>
+    }
+    else
+    {
+        foreach (var o in Model.Melhores)
+        {
+            <a class="px-opp" asp-controller="Lead" asp-action="Compradores" asp-route-id="@o.LeadId">
+                <div class="px-gauge">
+                    <svg width="42" height="42" viewBox="0 0 42 42">
+                        <circle cx="21" cy="21" r="17" fill="none" stroke="var(--line)" stroke-width="2.5" />
+                        <circle cx="21" cy="21" r="17" fill="none" stroke="var(--@CorScore(o.Score))" stroke-width="2.5"
+                                stroke-linecap="round" stroke-dasharray="@Inv(Dash(o.Score)) 106.8"
+                                transform="rotate(-90 21 21)" />
+                    </svg>
+                    <div class="val">@o.Score</div>
+                </div>
+                <div class="px-opp-txt">
+                    <div class="co">@o.Alvo</div>
+                    <div class="fl">encaixa com <b>@o.Comprador</b></div>
+                </div>
+                <span class="px-tag">@o.Setor</span>
+                <span class="px-go">Abrir →</span>
+            </a>
+        }
+        <div class="px-legend">
+            <i><span class="sw teal"></span>Quente · 80+</i>
+            <i><span class="sw bronze"></span>Médio · 60–79</i>
+        </div>
+    }
 </div>
