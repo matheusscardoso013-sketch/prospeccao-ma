@@ -28,4 +28,19 @@ public class SinergiaController : Controller
         TempData["Ok"] = "Match atualizado.";
         return LocalRedirect(string.IsNullOrWhiteSpace(voltar) ? "/Mesa" : voltar);
     }
+
+    /// <summary>Move um match para outro status (usado pelo arrastar-e-soltar do quadro Kanban).
+    /// Só altera o status; responde JSON sem redirecionar.</summary>
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Mover(int id, StatusSinergia status)
+    {
+        var s = await _db.SinergiasComprador.FirstOrDefaultAsync(x => x.Id == id);
+        if (s is null) return NotFound();
+
+        s.Status = status;
+        s.AtualizadoEm = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return Json(new { ok = true });
+    }
 }

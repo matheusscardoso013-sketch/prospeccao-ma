@@ -58,4 +58,37 @@ public class MesaController : Controller
         ViewData["Busca"] = busca;
         return View(linhas);
     }
+
+    /// <summary>Vista em quadro (Kanban): uma coluna por status, arrastar-e-soltar move o match.</summary>
+    public async Task<IActionResult> Kanban(int? scoreMin, string? busca)
+    {
+        var vm = new KanbanVm { ScoreMin = scoreMin, Busca = busca };
+        var b = busca?.Trim();
+
+        foreach (var st in Util.StatusUi.Todos)
+        {
+            var q = _db.SinergiasComprador
+                .Include(s => s.Lead).Include(s => s.Comprador)
+                .Where(s => s.Status == st);
+
+            if (scoreMin is not null) q = q.Where(s => s.Score >= scoreMin);
+            if (!string.IsNullOrWhiteSpace(b))
+                q = q.Where(s => EF.Functions.ILike(s.Lead!.RazaoSocial, $"%{b}%")
+                              || EF.Functions.ILike(s.Comprador!.Nome, $"%{b}%"));
+
+            var total = await q.CountAsync();
+            var cards = await q.OrderByDescending(s => s.Score).ThenByDescending(s => s.AtualizadoEm ?? s.GeradoEm)
+                .Take(40).ToListAsync();
+
+            vm.Colunas.Add(new KanbanColuna
+            {
+                Status = st,
+                Rotulo = Util.StatusUi.Rotulo(st),
+                Css = Util.StatusUi.Css(st),
+                Total = total,
+                Cards = cards
+            });
+        }
+        return View(vm);
+    }
 }

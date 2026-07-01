@@ -1,0 +1,135 @@
+@using ProspeccaoMA.Web.Models
+@model ProspeccaoMA.Web.Models.KanbanVm
+@{
+    ViewData["Title"] = "Pipeline";
+    string Cor(int s) => s >= 80 ? "teal" : s >= 60 ? "bronze" : "muted";
+}
+
+<div class="lead-wrap">
+    <div class="lead-head">
+        <div>
+            <div class="px-ey">Mesa de operações</div>
+            <h1 class="px-h1">Pipeline</h1>
+            <div class="px-sub">Arraste cada negócio entre as etapas conforme o time avança. O status é salvo na hora.</div>
+        </div>
+        <div class="view-toggle">
+            <a asp-controller="Mesa" asp-action="Index">Tabela</a>
+            <a class="on" asp-controller="Mesa" asp-action="Kanban">Quadro</a>
+        </div>
+    </div>
+
+    <form method="get" asp-controller="Mesa" asp-action="Kanban" class="lf">
+        <div class="field">
+            <label>Score mínimo</label>
+            <select name="scoreMin" onchange="this.form.submit()">
+                <option value="">Qualquer</option>
+                <option value="70" selected="@(Model.ScoreMin == 70)">70+</option>
+                <option value="50" selected="@(Model.ScoreMin == 50)">50+</option>
+            </select>
+        </div>
+        <div class="field" style="flex:1">
+            <label>Buscar</label>
+            <input type="text" name="busca" value="@Model.Busca" placeholder="alvo ou comprador" style="width:100%" />
+        </div>
+        <button type="submit" class="fa-btn s">Filtrar</button>
+    </form>
+
+    <div class="kb-hint">Mostrando os melhores 40 cartões por etapa (ordenados por score). Arraste para mover.</div>
+
+    @Html.AntiForgeryToken()
+
+    <div class="kb-board">
+        @foreach (var col in Model.Colunas)
+        {
+            <div class="kb-col kb-@col.Status.ToString().ToLowerInvariant()" data-status="@((int)col.Status)">
+                <div class="kb-col-h">
+                    <span class="lb">@col.Rotulo</span>
+                    <span class="n" data-total="@col.Total">@col.Total</span>
+                </div>
+                <div class="kb-list">
+                    @foreach (var s in col.Cards)
+                    {
+                        <div class="kb-card" draggable="true" data-id="@s.Id">
+                            <span class="sc @Cor(s.Score)">@s.Score</span>
+                            <div class="co">@s.Lead?.RazaoSocial</div>
+                            <div class="by">→ @s.Comprador?.Nome</div>
+                            @if (!string.IsNullOrWhiteSpace(s.Comprador?.Responsavel))
+                            {
+                                <div class="rp">resp. @s.Comprador!.Responsavel</div>
+                            }
+                        </div>
+                    }
+                    @if (col.Cards.Count == 0)
+                    {
+                        <div class="kb-empty">vazio</div>
+                    }
+                    else if (col.Total > col.Cards.Count)
+                    {
+                        <div class="kb-more">+@(col.Total - col.Cards.Count) neste status</div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+<script>
+(function () {
+    var tokenEl = document.querySelector('input[name="__RequestVerificationToken"]');
+    var token = tokenEl ? tokenEl.value : '';
+    var dragged = null;
+
+    function adjust(col, delta) {
+        var el = col.querySelector('.kb-col-h .n');
+        var v = parseInt(el.textContent, 10) || 0;
+        el.textContent = v + delta;
+    }
+
+    document.querySelectorAll('.kb-card').forEach(function (card) {
+        card.addEventListener('dragstart', function (e) {
+            dragged = card; card.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+        });
+        card.addEventListener('dragend', function () {
+            if (dragged) dragged.classList.remove('dragging');
+            dragged = null;
+            document.querySelectorAll('.kb-col').forEach(function (c) { c.classList.remove('over'); });
+        });
+    });
+
+    document.querySelectorAll('.kb-col').forEach(function (col) {
+        col.addEventListener('dragover', function (e) { e.preventDefault(); col.classList.add('over'); });
+        col.addEventListener('dragleave', function () { col.classList.remove('over'); });
+        col.addEventListener('drop', function (e) {
+            e.preventDefault(); col.classList.remove('over');
+            if (!dragged) return;
+            var from = dragged.closest('.kb-col');
+            if (from === col) return;
+
+            var card = dragged;
+            var id = card.dataset.id;
+            var status = col.dataset.status;
+            var list = col.querySelector('.kb-list');
+            var empty = list.querySelector('.kb-empty');
+            if (empty) empty.remove();
+            list.insertBefore(card, list.firstChild);
+            adjust(from, -1); adjust(col, +1);
+
+            var body = new URLSearchParams({ id: id, status: status, __RequestVerificationToken: token });
+            fetch('/Sinergia/Mover', {
+                method: 'POST', credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body
+            }).then(function (r) {
+                if (!r.ok) throw new Error('falhou');
+            }).catch(function () {
+                // reverte em caso de erro
+                from.querySelector('.kb-list').insertBefore(card, from.querySelector('.kb-list').firstChild);
+                adjust(col, -1); adjust(from, +1);
+                alert('Não foi possível mover o cartão. Recarregue a página e tente de novo.');
+            });
+        });
+    });
+})();
+</script>
+}

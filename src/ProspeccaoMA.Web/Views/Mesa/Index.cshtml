@@ -16,6 +16,10 @@
             <h1 class="px-h1">Pares alvo × comprador</h1>
             <div class="px-sub">Os melhores pares em aberto, ordenados por score. Atualize o status conforme o time trabalha.</div>
         </div>
+        <div class="view-toggle">
+            <a class="on" asp-controller="Mesa" asp-action="Index">Tabela</a>
+            <a asp-controller="Mesa" asp-action="Kanban">Quadro</a>
+        </div>
     </div>
 
     <div class="px-kpis" style="grid-template-columns:repeat(5,1fr)">
