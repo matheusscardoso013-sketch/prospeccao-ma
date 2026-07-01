@@ -3,80 +3,126 @@
 @model List<ProspeccaoMA.Web.Models.SinergiaComprador>
 @{
     var c = (ProspeccaoMA.Web.Models.Comprador)ViewData["Comprador"]!;
-    ViewData["Title"] = "Alvos compatíveis";
-    string ClasseScore(int s) => s >= 70 ? "hi" : s >= 50 ? "mid" : "lo";
+    ViewData["Title"] = "Ficha do comprador";
+
+    string Inv(double v) => v.ToString(System.Globalization.CultureInfo.InvariantCulture);
+    double Dash(int s) => System.Math.Round(106.8 * s / 100.0, 1);
+    string CorScore(int s) => s >= 80 ? "teal" : s >= 60 ? "bronze" : "muted";
+
+    string? FaixaAlvo()
+    {
+        var mn = c.FaturamentoMinAlvo; var mx = c.FaturamentoMaxAlvo;
+        if (mn.HasValue && mx.HasValue) return $"{mn.Value.ToString("C0")} – {mx.Value.ToString("C0")}";
+        if (mn.HasValue) return $"a partir de {mn.Value.ToString("C0")}";
+        if (mx.HasValue) return $"até {mx.Value.ToString("C0")}";
+        return c.FaixaFaturamento;
+    }
+
+    var facts = new List<(string k, string v)>();
+    void Add(string k, string? v) { if (!string.IsNullOrWhiteSpace(v)) facts.Add((k, v!)); }
+    Add("Faturamento alvo", FaixaAlvo());
+    if (c.MargemEbitdaMinima.HasValue) Add("Margem EBITDA mínima", $"{c.MargemEbitdaMinima.Value.ToString("0.#")}%");
+    Add("Tipo de operação", c.TipoOperacao);
+    Add("Modelo de negócio alvo", c.ModeloNegocioAlvo);
+    Add("Geografia", c.GeografiaAlvo);
+    Add("Exclusões (red flags)", c.Exclusoes);
+    Add("Cultura desejada", c.Cultura);
+    Add("Site", c.Site);
+    Add("Responsável Valore", c.Responsavel);
+    Add("Contato", c.Contato);
 }
 
-<div class="pagehead">
-    <div>
-        <h1>Alvos compatíveis — @c.Nome</h1>
-        <div class="sub">Leads prospectados com maior sinergia com a tese deste comprador.</div>
+<div class="fa">
+    <div class="fa-hd">
+        <div>
+            <div class="fa-ey">Comprador · buy-side</div>
+            <h1 class="fa-h1">@c.Nome</h1>
+            <div class="fa-meta">
+                @if (!string.IsNullOrWhiteSpace(c.TipoEmpresa)) { <span>Tipo <b>@c.TipoEmpresa</b></span> }
+                @if (!string.IsNullOrWhiteSpace(c.TipoOperacao)) { <span>Operação <b>@c.TipoOperacao</b></span> }
+                @{ var fx = FaixaAlvo(); }
+                @if (!string.IsNullOrWhiteSpace(fx)) { <span>Faixa <b>@fx</b></span> }
+                @if (!string.IsNullOrWhiteSpace(c.Responsavel)) { <span>Resp. <b>@c.Responsavel</b></span> }
+            </div>
+        </div>
+        <div class="fa-acts">
+            <a class="fa-btn s" asp-controller="Comprador" asp-action="Editar" asp-route-id="@c.Id">Editar tese</a>
+            @if (Model.Count > 0)
+            {
+                <form asp-controller="Comprador" asp-action="Recalcular" asp-route-id="@c.Id" method="post" class="inline-form">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="fa-btn p">Recalcular alvos</button>
+                </form>
+            }
+            <a class="fa-btn s" asp-controller="Comprador" asp-action="Index">Voltar</a>
+        </div>
     </div>
-    <div style="display:flex;gap:10px;align-self:center">
-        <a class="btn ghost" asp-controller="Comprador" asp-action="Editar" asp-route-id="@c.Id">✏️ Editar tese</a>
-        @if (Model.Count > 0)
-        {
-            <form asp-controller="Comprador" asp-action="Recalcular" asp-route-id="@c.Id" method="post" class="inline-form">
-                @Html.AntiForgeryToken()
-                <button type="submit" class="btn primary">↻ Recalcular sinergias</button>
-            </form>
-        }
-        <a class="btn ghost" asp-controller="Comprador" asp-action="Index">← Voltar</a>
-    </div>
-</div>
 
-<div class="racional" style="margin:0 0 18px">
-    <div class="h">Tese de investimento</div>
-    <p>@c.Tese</p>
-</div>
-
-@if (Model.Count == 0)
-{
-    <div class="vazio">Ainda não há alvos cruzados com este comprador. Eles aparecem conforme novos leads são prospectados (ou abra "Compradores compatíveis" em um lead).</div>
-}
-else
-{
-    <div class="cards">
-        @foreach (var s in Model)
+    <div class="fa-dados">
+        <div class="fa-blk">Tese de investimento</div>
+        <div class="fa-desc">@(string.IsNullOrWhiteSpace(c.Tese) ? "Tese ainda não preenchida." : c.Tese)</div>
+        @if (facts.Count > 0)
         {
-            var l = s.Lead!;
-            <div class="lead">
-                <div class="lead-top">
-                    <div class="scorebox @ClasseScore(s.Score)"><span class="n">@s.Score</span><span class="l">sinergia</span></div>
-                    <div class="lead-id">
-                        <div class="razao">@l.RazaoSocial</div>
-                        @{ var cnpjFmt = ProspeccaoMA.Web.Ingestao.CnpjUtil.Formatar(l.Cnpj); }
-                        @if (!string.IsNullOrWhiteSpace(cnpjFmt)) { <div class="cnpj">@cnpjFmt</div> }
-                        <div class="tags">
-                            @if (l.Origem == ProspeccaoMA.Web.Models.Lead.OrigemValore) { <span class="tag ativa">★ Curado Valore</span> }
-                            @if (!string.IsNullOrWhiteSpace(l.Cnae)) { <span class="tag">CNAE @l.Cnae</span> }
-                            @if (!string.IsNullOrWhiteSpace(l.Segmento)) { <span class="tag">@l.Segmento</span> }
-                            @if (!string.IsNullOrWhiteSpace(l.Uf)) { <span class="tag gray">📍 @l.Municipio/@l.Uf</span> }
-                            @if (l.CapitalSocial > 0) { <span class="tag gray">@l.CapitalSocial.ToString("C")</span> }
-                        </div>
-                    </div>
-                </div>
-                <div class="racional">
-                    <div class="h">Racional da sinergia (IA)</div>
-                    <p>@s.Racional</p>
-                </div>
-                <div class="lead-foot">
-                    <span class="st-badge @StatusUi.Css(s.Status)">@StatusUi.Rotulo(s.Status)</span>
-                    <form asp-controller="Sinergia" asp-action="Atualizar" asp-route-id="@s.Id" method="post" class="statusform" style="flex:1">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="voltar" value="@(Context.Request.Path + Context.Request.QueryString)" />
-                        <select name="status">
-                            @foreach (var st in StatusUi.Todos)
-                            {
-                                <option value="@((int)st)" selected="@(s.Status == st)">@StatusUi.Rotulo(st)</option>
-                            }
-                        </select>
-                        <input type="text" name="anotacoes" value="@s.Anotacoes" placeholder="anotações…" />
-                        <button type="submit" class="btn ghost sm">💾</button>
-                    </form>
-                    <span class="ger">@ProspeccaoMA.Web.Util.Fuso.Brasil(s.GeradoEm).ToString("dd/MM")</span>
-                </div>
+            <div class="fa-blk">Critérios estruturados</div>
+            <div class="fa-facts">
+                @foreach (var f in facts)
+                {
+                    <div class="fa-fr"><span class="k">@f.k</span><span class="v">@f.v</span></div>
+                }
             </div>
         }
     </div>
-}
+
+    <div class="fa-sect">Alvos que encaixam <span class="c">@Model.Count</span></div>
+
+    @if (Model.Count == 0)
+    {
+        <div class="fa-vazio">Ainda não há alvos cruzados com este comprador. Eles aparecem conforme novos leads são prospectados.</div>
+    }
+    else
+    {
+        foreach (var s in Model)
+        {
+            var l = s.Lead!;
+            var sub = string.Join(" · ", new[]
+            {
+                l.Origem == ProspeccaoMA.Web.Models.Lead.OrigemValore ? "★ Curado Valore" : null,
+                !string.IsNullOrWhiteSpace(l.Segmento) ? l.Segmento : (!string.IsNullOrWhiteSpace(l.Cnae) ? $"CNAE {l.Cnae}" : null),
+                !string.IsNullOrWhiteSpace(l.Uf) ? $"{l.Municipio}/{l.Uf}" : null
+            }.Where(x => !string.IsNullOrWhiteSpace(x)));
+            <div class="fa-buyer">
+                <div class="fa-g">
+                    <svg width="44" height="44" viewBox="0 0 44 44">
+                        <circle cx="22" cy="22" r="17" fill="none" stroke="var(--line)" stroke-width="2.5" />
+                        <circle cx="22" cy="22" r="17" fill="none" stroke="var(--@CorScore(s.Score))" stroke-width="2.5"
+                                stroke-linecap="round" stroke-dasharray="@Inv(Dash(s.Score)) 106.8" transform="rotate(-90 22 22)" />
+                    </svg>
+                    <div class="val">@s.Score</div>
+                </div>
+                <div class="fa-b-main">
+                    <div class="fa-b-top">
+                        <span class="fa-b-nome">@l.RazaoSocial</span>
+                        @if (!string.IsNullOrWhiteSpace(sub)) { <span class="fa-b-faixa">@sub</span> }
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(s.Racional)) { <div class="fa-b-rac">@s.Racional</div> }
+                    <div class="fa-b-ctrl">
+                        <span class="stpill @StatusUi.Css(s.Status)">@StatusUi.Rotulo(s.Status)</span>
+                        <form asp-controller="Sinergia" asp-action="Atualizar" asp-route-id="@s.Id" method="post" class="fa-b-ctrl" style="flex:1;margin:0">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="voltar" value="@(Context.Request.Path + Context.Request.QueryString)" />
+                            <select name="status">
+                                @foreach (var st in StatusUi.Todos)
+                                {
+                                    <option value="@((int)st)" selected="@(s.Status == st)">@StatusUi.Rotulo(st)</option>
+                                }
+                            </select>
+                            <input type="text" name="anotacoes" value="@s.Anotacoes" placeholder="anotações…" />
+                            <button type="submit" class="fa-btn s" style="padding:6px 12px">Salvar</button>
+                        </form>
+                        <a class="tese" asp-controller="Lead" asp-action="Compradores" asp-route-id="@l.Id">Ver alvo →</a>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>

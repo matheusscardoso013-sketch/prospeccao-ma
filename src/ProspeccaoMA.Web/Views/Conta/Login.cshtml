@@ -7,38 +7,38 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Entrar · Valore Brasil — Originação M&A</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,500;0,600;1,500&display=swap" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
-<body>
-<div class="login-page">
-  <div class="login-card">
-    <div class="login-side">
-      <div class="vb-logo clara">
-        <span class="v" style="font-size:30px">valore</span>
-        <span class="b"><span class="tri"></span><span class="brasil" style="font-size:15px">BRASIL</span></span>
-      </div>
-      <h2>Decisões inteligentes em<br>fusões &amp; aquisições.</h2>
-      <p>Prospecção diária de alvos reais e sinergias com nossa base de compradores,
-         qualificadas por inteligência artificial.</p>
-      <span class="pill">● Atualizado todo dia às 12h</span>
+<body class="lg-body">
+<div class="lg-wrap">
+  <div class="lg-card">
+    <div class="lg-brand">
+      <div class="lg-logo">valore <i>·</i> brasil</div>
+      <div class="lg-mark"></div>
+      <div class="lg-tag">Decisões inteligentes em <em>fusões &amp; aquisições</em>.</div>
+      <div class="lg-sub">Plataforma de originação de alvos e sinergias com compradores, para a mesa de M&amp;A da Valore.</div>
     </div>
-    <div class="login-form">
-      <h3>Entrar</h3>
-      <div class="sub">Acesse a plataforma de originação</div>
+    <div class="lg-form">
+      <div class="lg-ey">Acesso à mesa</div>
+      <h1 class="lg-h1">Entrar</h1>
       <form asp-controller="Conta" asp-action="Login" method="post">
         @Html.AntiForgeryToken()
         <input type="hidden" name="returnUrl" value="@ViewData["ReturnUrl"]" />
-        <div asp-validation-summary="All" class="alert err" style="@(ViewData.ModelState.IsValid ? "display:none" : "")"></div>
-        <div class="field">
+        <div asp-validation-summary="All" class="lg-err" style="@(ViewData.ModelState.IsValid ? "display:none" : "")"></div>
+        <div class="lg-fld">
           <label>E-mail</label>
-          <input type="text" name="email" autofocus />
+          <input type="text" name="email" placeholder="voce@valorebrasil.com.br" autofocus />
         </div>
-        <div class="field">
+        <div class="lg-fld">
           <label>Senha</label>
-          <input type="password" name="senha" />
+          <input type="password" name="senha" placeholder="••••••••••" />
         </div>
-        <button class="btn primary" type="submit">Entrar</button>
+        <button class="lg-btn" type="submit">Entrar na plataforma</button>
       </form>
+      <div class="lg-ft">Acesso restrito à equipe Valore Brasil. Em caso de dúvida, fale com a administração.</div>
     </div>
   </div>
 </div>
