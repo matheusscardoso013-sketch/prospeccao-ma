@@ -2,201 +2,212 @@
 @model LeadsViewModel
 @{
     ViewData["Title"] = "Leads";
-    string ClasseScore(int s) => s >= 70 ? "hi" : s >= 50 ? "mid" : "lo";
+    string Inv(double v) => v.ToString(System.Globalization.CultureInfo.InvariantCulture);
+    double Dash(int s) => System.Math.Round(113.1 * s / 100.0, 1);
+    string CorScore(int s) => s >= 80 ? "teal" : s >= 60 ? "bronze" : "muted";
 }
 
-<div class="pagehead">
-    <div>
-        <h1>Leads prospectados</h1>
-        <div class="sub">Empresas reais da base da Receita Federal, pontuadas por sinergia setorial.</div>
-    </div>
-    <div style="display:flex;gap:10px">
-        <a class="btn ghost" asp-controller="Lead" asp-action="Importar">+ Importar CNPJs</a>
-        <form asp-controller="Lead" asp-action="RodarAgora" method="post" class="inline-form">
-            @Html.AntiForgeryToken()
-            <button type="submit" class="btn primary">▶ Rodar prospecção agora</button>
-        </form>
-    </div>
-</div>
-
-<div class="kpis">
-    <div class="kpi"><div class="label">Leads no total</div><div class="value">@Model.TotalLeads</div></div>
-    <div class="kpi"><div class="label">Pontuados hoje</div><div class="value">@Model.GeradosHoje</div></div>
-    <div class="kpi ok">
-        <div class="label">Última execução</div>
-        <div class="value">
-            @if (Model.UltimaExecucao is null)
-            {
-                <span>— nenhuma ainda</span>
-            }
-            else
-            {
-                var ex = Model.UltimaExecucao;
-                var clsDot = ex.Status == ProspeccaoMA.Web.Models.StatusExecucao.Erro ? "dot err" : "dot";
-                <span class="@clsDot"></span>@ProspeccaoMA.Web.Util.Fuso.Brasil(ex.IniciadoEm).ToString("dd/MM HH:mm") <small>· @ex.Status</small>
-            }
+<div class="lead-wrap">
+    <div class="lead-head">
+        <div>
+            <div class="px-ey">Prospecção</div>
+            <h1 class="px-h1">Leads prospectados</h1>
+            <div class="px-sub">Empresas reais da base da Receita Federal, pontuadas por sinergia setorial.</div>
+        </div>
+        <div class="fa-acts">
+            <a class="fa-btn s" asp-controller="Lead" asp-action="Importar">+ Importar CNPJs</a>
+            <form asp-controller="Lead" asp-action="RodarAgora" method="post" class="inline-form">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="fa-btn p">Rodar prospecção agora</button>
+            </form>
         </div>
     </div>
-    <div class="kpi"><div class="label">Score médio (filtro)</div><div class="value">@Model.ScoreMedio<small>/100</small></div></div>
-</div>
 
-<form method="get" asp-controller="Lead" asp-action="Index" class="toolbar">
-    <div class="field">
-        <label>Setor (CNAE)</label>
-        <select name="cnae">
-            <option value="">Todos</option>
-            @foreach (var c in Model.Cnaes)
-            {
-                <option value="@c" selected="@(c == Model.Cnae)">@c</option>
-            }
-        </select>
-    </div>
-    <div class="field">
-        <label>UF</label>
-        <select name="uf">
-            <option value="">Todas</option>
-            @foreach (var u in Model.Ufs)
-            {
-                <option value="@u" selected="@(u == Model.Uf)">@u</option>
-            }
-        </select>
-    </div>
-    <div class="field">
-        <label>Score mínimo</label>
-        <select name="scoreMin">
-            <option value="">Qualquer</option>
-            <option value="70" selected="@(Model.ScoreMin == 70)">70+</option>
-            <option value="50" selected="@(Model.ScoreMin == 50)">50+</option>
-        </select>
-    </div>
-    <div class="field">
-        <label>Ordenar por</label>
-        <select name="ordenar">
-            <option value="Score" selected="@(Model.Ordenar == OrdenacaoLeads.Score)">Maior score</option>
-            <option value="Capital" selected="@(Model.Ordenar == OrdenacaoLeads.Capital)">Maior capital</option>
-            <option value="Recente" selected="@(Model.Ordenar == OrdenacaoLeads.Recente)">Mais recente</option>
-        </select>
-    </div>
-    <button type="submit" class="btn ghost">Filtrar</button>
-    <div class="spacer"></div>
-    <a class="btn green" asp-controller="Lead" asp-action="Exportar"
-       asp-route-cnae="@Model.Cnae" asp-route-uf="@Model.Uf" asp-route-scoreMin="@Model.ScoreMin" asp-route-ordenar="@Model.Ordenar">
-        ⬇ Exportar Excel
-    </a>
-</form>
-
-@if (Model.Leads.Count == 0)
-{
-    <div class="vazio">
-        Nenhum lead pontuado ainda. Importe CNPJs reais e rode a prospecção —
-        ou aguarde o job das 12h. A IA só pontua empresas reais já trazidas pela base.
-    </div>
-}
-else
-{
-    <div class="cards">
-        @foreach (var x in Model.Leads)
-        {
-            var l = x.Lead;
-            var pendente = x.Score == 0 && x.Racional.StartsWith("Ainda não cruzado");
-            <div class="lead">
-                <div class="lead-top">
-                    @if (pendente)
-                    {
-                        <div class="scorebox pend"><span class="n">—</span><span class="l">pendente</span></div>
-                    }
-                    else
-                    {
-                        <div class="scorebox @ClasseScore(x.Score)">
-                            <span class="n">@x.Score</span><span class="l">@x.RotuloScore</span>
-                        </div>
-                    }
-                    <div class="lead-id">
-                        <div class="razao">@l.RazaoSocial</div>
-                        @{ var cnpjFmt = ProspeccaoMA.Web.Ingestao.CnpjUtil.Formatar(l.Cnpj); }
-                        @if (!string.IsNullOrWhiteSpace(cnpjFmt)) { <div class="cnpj">@cnpjFmt</div> }
-                        <div class="tags">
-                            @if (l.Origem == ProspeccaoMA.Web.Models.Lead.OrigemValore) { <span class="tag ativa">★ Curado Valore</span> }
-                            @if (l.EditadoManualmente) { <span class="tag gray">✎ editado</span> }
-                            @if (!string.IsNullOrWhiteSpace(l.Cnae)) { <span class="tag">CNAE @l.Cnae</span> }
-                            @if (!string.IsNullOrWhiteSpace(l.Segmento)) { <span class="tag">@l.Segmento</span> }
-                            @if (!string.IsNullOrWhiteSpace(l.Uf)) { <span class="tag gray">📍 @l.Municipio/@l.Uf</span> }
-                            @if (!string.IsNullOrWhiteSpace(l.Situacao)) { <span class="tag ativa">● @l.Situacao</span> }
-                            @if (x.MelhorComprador is not null)
-                            {
-                                <a class="tag" style="background:var(--vb-azul);color:#fff"
-                                   asp-controller="Lead" asp-action="Compradores" asp-route-id="@l.Id">
-                                    🎯 @x.MelhorComprador · sinergia @x.MelhorSinergiaScore
-                                </a>
-                            }
-                        </div>
-                    </div>
-                </div>
-
-                <div class="lead-grid">
-                    @if (l.CapitalSocial > 0)
-                    {
-                        <div class="cell"><div class="k">Capital social</div><div class="v">@l.CapitalSocial.ToString("C")</div></div>
-                    }
-                    <div class="cell"><div class="k">@(l.Origem == ProspeccaoMA.Web.Models.Lead.OrigemValore ? "Faturamento (est.)" : "Porte estimado")</div><div class="v est">@l.PorteEstimado</div></div>
-                    @if (!string.IsNullOrWhiteSpace(l.ValuationEstimado))
-                    {
-                        <div class="cell"><div class="k">Valuation (est.)</div><div class="v est">@l.ValuationEstimado</div></div>
-                    }
-                    @if (!string.IsNullOrWhiteSpace(l.MargemEbitda))
-                    {
-                        <div class="cell"><div class="k">Margem EBITDA (est.)</div><div class="v est">@l.MargemEbitda</div></div>
-                    }
-                </div>
-
-                <div class="contatos">
-                    <div class="h">Contatos (cadastro / enriquecimento)</div>
-                    @if (string.IsNullOrWhiteSpace(l.Contato))
-                    {
-                        <div class="ct missing"><span class="ico">✉️</span> Contato não consta no cadastro</div>
-                    }
-                    else
-                    {
-                        foreach (var parte in l.Contato.Split(" | ", StringSplitOptions.RemoveEmptyEntries))
-                        {
-                            <div class="ct"><span class="ico">•</span> @parte</div>
-                        }
-                    }
-                </div>
-
-                @if (pendente && !string.IsNullOrWhiteSpace(l.Descricao))
+    <div class="px-kpis">
+        <div class="px-kpi"><div class="l">Leads no total</div><div class="n">@Model.TotalLeads.ToString("N0")</div><div class="d">na base</div></div>
+        <div class="px-kpi"><div class="l">Pontuados hoje</div><div class="n">@Model.GeradosHoje</div><div class="d">novos scores</div></div>
+        <div class="px-kpi">
+            <div class="l">Última execução</div>
+            <div class="n mini">
+                @if (Model.UltimaExecucao is null)
                 {
-                    <div class="racional">
-                        <div class="h">Resumo da empresa (base Valore)</div>
-                        <p>@(l.Descricao.Length > 320 ? l.Descricao.Substring(0, 320) + "…" : l.Descricao)</p>
-                    </div>
+                    <span class="st">— nenhuma ainda</span>
                 }
                 else
                 {
-                    <div class="racional">
-                        <div class="h">Racional da IA</div>
-                        <p>@x.Racional</p>
-                    </div>
+                    var ex = Model.UltimaExecucao;
+                    var clsDot = ex.Status == ProspeccaoMA.Web.Models.StatusExecucao.Erro ? "dt err" : "dt";
+                    <span class="@clsDot"></span>@ProspeccaoMA.Web.Util.Fuso.Brasil(ex.IniciadoEm).ToString("dd/MM HH:mm")
                 }
-
-                <div class="lead-foot">
-                    <span class="src">Fonte: @x.Fonte</span>
-                    @if (!string.IsNullOrWhiteSpace(l.Site))
-                    {
-                        <a class="src" href="@(l.Site.StartsWith("http") ? l.Site : "https://" + l.Site)" target="_blank">🌐 site</a>
-                    }
-                    @if (!string.IsNullOrWhiteSpace(l.Responsavel)) { <span class="ger">resp.: @l.Responsavel</span> }
-                    <div class="spacer"></div>
-                    <span class="ger">@ProspeccaoMA.Web.Util.Fuso.Brasil(x.GeradoEm).ToString("dd/MM HH:mm")</span>
-                    <a class="btn ghost sm" asp-controller="Lead" asp-action="Editar" asp-route-id="@l.Id">✏️ Editar</a>
-                    <a class="btn ghost sm" asp-controller="Lead" asp-action="Compradores" asp-route-id="@l.Id">🎯 Compradores</a>
-                    <form asp-controller="Lead" asp-action="Excluir" asp-route-id="@l.Id" method="post" class="inline-form"
-                          onsubmit="return confirm('Excluir esta empresa e seus cruzamentos? Esta ação não pode ser desfeita.');">
-                        @Html.AntiForgeryToken()
-                        <button type="submit" class="btn danger sm" title="Excluir empresa">🗑</button>
-                    </form>
-                </div>
             </div>
-        }
+            <div class="d">@(Model.UltimaExecucao?.Status.ToString() ?? "")</div>
+        </div>
+        <div class="px-kpi"><div class="l">Score médio (filtro)</div><div class="n">@Model.ScoreMedio<span style="font-size:14px;color:var(--muted)">/100</span></div><div class="d">pontuados</div></div>
     </div>
-}
+
+    <form method="get" asp-controller="Lead" asp-action="Index" class="lf">
+        <div class="field">
+            <label>Setor (CNAE)</label>
+            <select name="cnae">
+                <option value="">Todos</option>
+                @foreach (var c in Model.Cnaes)
+                {
+                    <option value="@c" selected="@(c == Model.Cnae)">@c</option>
+                }
+            </select>
+        </div>
+        <div class="field">
+            <label>UF</label>
+            <select name="uf">
+                <option value="">Todas</option>
+                @foreach (var u in Model.Ufs)
+                {
+                    <option value="@u" selected="@(u == Model.Uf)">@u</option>
+                }
+            </select>
+        </div>
+        <div class="field">
+            <label>Score mínimo</label>
+            <select name="scoreMin">
+                <option value="">Qualquer</option>
+                <option value="70" selected="@(Model.ScoreMin == 70)">70+</option>
+                <option value="50" selected="@(Model.ScoreMin == 50)">50+</option>
+            </select>
+        </div>
+        <div class="field">
+            <label>Ordenar por</label>
+            <select name="ordenar">
+                <option value="Score" selected="@(Model.Ordenar == OrdenacaoLeads.Score)">Maior score</option>
+                <option value="Capital" selected="@(Model.Ordenar == OrdenacaoLeads.Capital)">Maior capital</option>
+                <option value="Recente" selected="@(Model.Ordenar == OrdenacaoLeads.Recente)">Mais recente</option>
+            </select>
+        </div>
+        <button type="submit" class="fa-btn s">Filtrar</button>
+        <div class="spacer"></div>
+        <a class="fa-btn s" asp-controller="Lead" asp-action="Exportar"
+           asp-route-cnae="@Model.Cnae" asp-route-uf="@Model.Uf" asp-route-scoreMin="@Model.ScoreMin" asp-route-ordenar="@Model.Ordenar">
+            ⬇ Exportar Excel
+        </a>
+    </form>
+
+    @if (Model.Leads.Count == 0)
+    {
+        <div class="lead-vazio">
+            Nenhum lead pontuado ainda. Importe CNPJs reais e rode a prospecção —
+            ou aguarde o job das 12h. A IA só pontua empresas reais já trazidas pela base.
+        </div>
+    }
+    else
+    {
+        <div class="lc-grid">
+            @foreach (var x in Model.Leads)
+            {
+                var l = x.Lead;
+                var pendente = x.Score == 0 && x.Racional.StartsWith("Ainda não cruzado");
+                <div class="lc">
+                    <div class="lc-top">
+                        @if (pendente)
+                        {
+                            <div class="lc-g pend">
+                                <svg width="46" height="46" viewBox="0 0 46 46"><circle cx="23" cy="23" r="18" fill="none" stroke="var(--line)" stroke-width="2.5" stroke-dasharray="3 4" /></svg>
+                                <div class="val"><span class="s">—</span><span class="lb">pendente</span></div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="lc-g">
+                                <svg width="46" height="46" viewBox="0 0 46 46">
+                                    <circle cx="23" cy="23" r="18" fill="none" stroke="var(--line)" stroke-width="2.5" />
+                                    <circle cx="23" cy="23" r="18" fill="none" stroke="var(--@CorScore(x.Score))" stroke-width="2.5"
+                                            stroke-linecap="round" stroke-dasharray="@Inv(Dash(x.Score)) 113.1" transform="rotate(-90 23 23)" />
+                                </svg>
+                                <div class="val"><span class="s">@x.Score</span><span class="lb">@x.RotuloScore</span></div>
+                            </div>
+                        }
+                        <div class="lc-id">
+                            <div class="lc-razao">@l.RazaoSocial</div>
+                            @{ var cnpjFmt = ProspeccaoMA.Web.Ingestao.CnpjUtil.Formatar(l.Cnpj); }
+                            @if (!string.IsNullOrWhiteSpace(cnpjFmt)) { <div class="lc-cnpj">@cnpjFmt</div> }
+                            <div class="lc-tags">
+                                @if (l.Origem == ProspeccaoMA.Web.Models.Lead.OrigemValore) { <span class="lc-tag cur">★ Curado Valore</span> }
+                                @if (l.EditadoManualmente) { <span class="lc-tag">✎ editado</span> }
+                                @if (!string.IsNullOrWhiteSpace(l.Cnae)) { <span class="lc-tag">CNAE @l.Cnae</span> }
+                                @if (!string.IsNullOrWhiteSpace(l.Segmento)) { <span class="lc-tag">@l.Segmento</span> }
+                                @if (!string.IsNullOrWhiteSpace(l.Uf)) { <span class="lc-tag">@l.Municipio/@l.Uf</span> }
+                                @if (!string.IsNullOrWhiteSpace(l.Situacao)) { <span class="lc-tag on">● @l.Situacao</span> }
+                                @if (x.MelhorComprador is not null)
+                                {
+                                    <a class="lc-tag buyer" asp-controller="Lead" asp-action="Compradores" asp-route-id="@l.Id">
+                                        🎯 @x.MelhorComprador · @x.MelhorSinergiaScore
+                                    </a>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="lc-facts">
+                        @if (l.CapitalSocial > 0)
+                        {
+                            <div class="lc-fr"><span class="k">Capital social</span><span class="v">@l.CapitalSocial.ToString("C0")</span></div>
+                        }
+                        <div class="lc-fr"><span class="k">@(l.Origem == ProspeccaoMA.Web.Models.Lead.OrigemValore ? "Faturamento (est.)" : "Porte (est.)")</span><span class="v est">@l.PorteEstimado</span></div>
+                        @if (!string.IsNullOrWhiteSpace(l.ValuationEstimado))
+                        {
+                            <div class="lc-fr"><span class="k">Valuation (est.)</span><span class="v est">@l.ValuationEstimado</span></div>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(l.MargemEbitda))
+                        {
+                            <div class="lc-fr"><span class="k">Margem EBITDA</span><span class="v est">@l.MargemEbitda</span></div>
+                        }
+                    </div>
+
+                    <div class="lc-ct">
+                        <div class="h">Contatos</div>
+                        @if (string.IsNullOrWhiteSpace(l.Contato))
+                        {
+                            <div class="row miss">Contato não consta no cadastro</div>
+                        }
+                        else
+                        {
+                            foreach (var parte in l.Contato.Split(" | ", StringSplitOptions.RemoveEmptyEntries))
+                            {
+                                <div class="row">@parte</div>
+                            }
+                        }
+                    </div>
+
+                    @if (pendente && !string.IsNullOrWhiteSpace(l.Descricao))
+                    {
+                        <div class="lc-rac">
+                            <div class="h">Resumo da empresa (base Valore)</div>
+                            <p>@(l.Descricao.Length > 320 ? l.Descricao.Substring(0, 320) + "…" : l.Descricao)</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="lc-rac">
+                            <div class="h">Racional da IA</div>
+                            <p>@x.Racional</p>
+                        </div>
+                    }
+
+                    <div class="lc-foot">
+                        <span class="src">Fonte: @x.Fonte · @ProspeccaoMA.Web.Util.Fuso.Brasil(x.GeradoEm).ToString("dd/MM")</span>
+                        @if (!string.IsNullOrWhiteSpace(l.Site))
+                        {
+                            <a class="src" href="@(l.Site.StartsWith("http") ? l.Site : "https://" + l.Site)" target="_blank">🌐 site</a>
+                        }
+                        <div class="spacer"></div>
+                        <a class="act" asp-controller="Lead" asp-action="Editar" asp-route-id="@l.Id">Editar</a>
+                        <a class="act" asp-controller="Lead" asp-action="Compradores" asp-route-id="@l.Id">Compradores</a>
+                        <form asp-controller="Lead" asp-action="Excluir" asp-route-id="@l.Id" method="post" class="inline-form"
+                              onsubmit="return confirm('Excluir esta empresa e seus cruzamentos? Esta ação não pode ser desfeita.');">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="act del" title="Excluir empresa" style="background:none;border:none;cursor:pointer;padding:0">Excluir</button>
+                        </form>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>

@@ -278,3 +278,51 @@ tbody tr:last-child td{border-bottom:none}
 .lg-ft{font-size:10.5px;color:var(--muted);margin-top:18px;letter-spacing:.02em;line-height:1.5}
 .lg-err{background:#fbe7e7;color:#9d3535;border:1px solid #f0c4c4;padding:10px 13px;border-radius:8px;font-size:12.5px;margin-bottom:16px}
 @media(max-width:560px){.lg-card{grid-template-columns:1fr}.lg-brand{display:none}}
+
+/* ============ LISTAGEM DE LEADS (redesenho refinado) ============ */
+.lead-wrap{max-width:1120px;margin:2px auto 0}
+.lead-head{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;margin-bottom:22px}
+.lead-head .fa-acts{align-self:flex-start}
+.px-kpi .n.mini{font-size:15.5px;font-weight:600;font-family:inherit;color:var(--vb-navy)}
+.px-kpi .n.mini .st{font-size:11px;color:var(--muted);font-weight:500}
+.px-kpi .n .dt{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--teal);margin-right:6px;vertical-align:middle}
+.px-kpi .n .dt.err{background:var(--score-lo)}
+.lf{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin:24px 0 20px;padding-bottom:20px;border-bottom:1px solid var(--line)}
+.lf .field label{font-size:9.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted)}
+.lf select{padding:8px 10px;font-size:13px;border-radius:8px}
+.lf .spacer{flex:1}
+.lc-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}
+.lc{background:#fff;border:1px solid var(--line);border-radius:13px;padding:18px 18px 14px;display:flex;flex-direction:column;transition:border-color .12s,box-shadow .12s}
+.lc:hover{border-color:#cbd8e2;box-shadow:0 6px 20px rgba(14,58,86,.06)}
+.lc-top{display:flex;gap:14px;align-items:flex-start}
+.lc-g{flex:0 0 auto;position:relative;width:46px;height:46px}
+.lc-g .val{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1}
+.lc-g .val .s{font-family:var(--serif);font-size:15px;color:var(--vb-navy);font-variant-numeric:tabular-nums}
+.lc-g .val .lb{font-size:6.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-top:1px}
+.lc-g.pend .val .s{color:var(--muted)}
+.lc-id{flex:1;min-width:0}
+.lc-razao{font-size:14.5px;font-weight:600;color:var(--txt);line-height:1.3}
+.lc-cnpj{color:var(--muted);font-size:11.5px;font-family:'Consolas',monospace;margin-top:3px}
+.lc-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+.lc-tag{font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid var(--line);color:var(--muted);white-space:nowrap;text-decoration:none}
+.lc-tag.on{border-color:#cfe6d8;background:#f0f8f4;color:#1b7c69}
+.lc-tag.cur{border-color:#cfe6d8;background:#f0f8f4;color:#1b7c69}
+.lc-tag.buyer{background:var(--vb-navy);border-color:var(--vb-navy);color:#fff;font-weight:600}
+.lc-facts{display:grid;grid-template-columns:1fr 1fr;gap:0 24px;margin:15px 0 4px}
+.lc-fr{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:12px}
+.lc-fr .k{color:var(--muted)}
+.lc-fr .v{color:var(--txt);font-weight:500;text-align:right}
+.lc-fr .v.est{color:var(--bronze)}
+.lc-ct{margin-top:12px}
+.lc-ct .h,.lc-rac .h{font-size:9.5px;text-transform:uppercase;letter-spacing:.13em;color:var(--muted);margin-bottom:7px}
+.lc-ct .row{font-size:11.5px;color:var(--txt);margin-bottom:4px;line-height:1.45}
+.lc-ct .row.miss{color:var(--muted);font-style:italic}
+.lc-rac{margin-top:14px;padding-top:13px;border-top:1px solid var(--line)}
+.lc-rac p{margin:0;font-size:12px;line-height:1.6;color:var(--muted)}
+.lc-foot{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+.lc-foot .src{font-size:10.5px;color:var(--muted)}
+.lc-foot .spacer{flex:1}
+.lc-foot .act{font-size:11.5px;color:var(--vb-azul);font-weight:600;text-decoration:none;white-space:nowrap}
+.lc-foot .act.del{color:var(--score-lo)}
+.lead-vazio{background:#fff;border:1px solid var(--line);border-radius:12px;padding:30px;text-align:center;color:var(--muted);font-size:13.5px;line-height:1.6}
+@media(max-width:820px){.lc-grid{grid-template-columns:1fr}}
