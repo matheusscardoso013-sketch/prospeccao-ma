@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EconomiaSim — cidade viva com empresas (Fase 2)</title>
+<style>
+  :root{
+    --color-text-primary:#1f1e1c; --color-text-secondary:#6b6a64;
+    --color-background-page:#f4f2ec; --color-background-secondary:#eceae2;
+    --color-border-tertiary:rgba(0,0,0,0.14);
+    --border-radius-md:8px; --border-radius-lg:12px;
+    --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --color-text-primary:#ececea; --color-text-secondary:#a0a09a;
+      --color-background-page:#1a1a18; --color-background-secondary:#2c2c2a; --color-border-tertiary:rgba(255,255,255,0.16); }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--color-background-page);color:var(--color-text-primary);font-family:var(--font-sans);line-height:1.6;padding:24px}
+  .wrap{max-width:680px;margin:0 auto}
+  h1{font-size:22px;font-weight:500;margin:0 0 4px}
+  .sub{font-size:13px;color:var(--color-text-secondary);margin:0 0 20px}
+  label{color:var(--color-text-secondary)}
+  button{font-family:inherit;font-size:14px;color:var(--color-text-primary);background:transparent;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:7px 12px;cursor:pointer}
+  button:hover{background:var(--color-background-secondary)}
+  button i{font-style:normal}
+  input[type=range]{-webkit-appearance:none;appearance:none;height:4px;background:var(--color-border-tertiary);border-radius:4px;outline:none}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--color-text-primary);cursor:pointer;border:none}
+  input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--color-text-primary);cursor:pointer;border:none}
+  .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>EconomiaSim — cidade viva com empresas</h1>
+<p class="sub">Casas (famílias por classe A–E) e prédios comerciais (empresas, azul-aço) disputam os terrenos. Famílias nascem/morrem por prosperidade; empresas abrem com lucro e fecham na crise. Ajuste as alavancas e veja a economia produtiva e a população reagirem. (Tempo acelerado ~8×.)</p>
+
+<div style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px 16px; margin:0 0 12px;">
+  <div style="display:flex;align-items:center;gap:6px;"><label style="font-size:11px;min-width:64px;">Selic</label><input type="range" id="selic" min="0" max="50" step="0.5" value="10.5" style="flex:1;"><span id="selic-o" style="font-size:11px;font-weight:500;min-width:38px;text-align:right;">10,5%</span></div>
+  <div style="display:flex;align-items:center;gap:6px;"><label style="font-size:11px;min-width:64px;">Renda básica</label><input type="range" id="transf" min="0" max="1500" step="50" value="0" style="flex:1;"><span id="transf-o" style="font-size:11px;font-weight:500;min-width:38px;text-align:right;">R$0</span></div>
+  <div style="display:flex;align-items:center;gap:6px;"><label style="font-size:11px;min-width:64px;">Imp. consumo</label><input type="range" id="ic" min="0" max="30" step="1" value="0" style="flex:1;"><span id="ic-o" style="font-size:11px;font-weight:500;min-width:38px;text-align:right;">0%</span></div>
+  <div style="display:flex;align-items:center;gap:6px;"><label style="font-size:11px;min-width:64px;">Salário mín.</label><input type="range" id="sm" min="0" max="2000" step="50" value="0" style="flex:1;"><span id="sm-o" style="font-size:11px;font-weight:500;min-width:38px;text-align:right;">R$0</span></div>
+  <div style="display:flex;align-items:center;gap:6px;"><label style="font-size:11px;min-width:64px;">Imp. corp.</label><input type="range" id="ct" min="0" max="40" step="1" value="0" style="flex:1;"><span id="ct-o" style="font-size:11px;font-weight:500;min-width:38px;text-align:right;">0%</span></div>
+  <div style="display:flex;align-items:center;gap:6px;"><label style="font-size:11px;min-width:64px;">Subsídio inv.</label><input type="range" id="sub" min="0" max="20" step="1" value="0" style="flex:1;"><span id="sub-o" style="font-size:11px;font-weight:500;min-width:38px;text-align:right;">0%</span></div>
+</div>
+
+<div style="display:flex; gap:8px; flex-wrap:wrap; margin:0 0 12px; align-items:center;">
+  <button id="play" style="display:flex;align-items:center;gap:6px;"><i>⏸</i><span>Pausar</span></button>
+  <button id="reset" style="display:flex;align-items:center;gap:6px;"><i>↻</i>Reiniciar</button>
+  <span id="month" style="margin-left:auto;font-size:13px;color:var(--color-text-secondary);">Mês 0</span>
+</div>
+
+<div style="display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin:0 0 12px;">
+  <div style="background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:.6rem .7rem;"><div style="font-size:12px;color:var(--color-text-secondary);">Domicílios</div><div id="m-pop" style="font-size:22px;font-weight:500;">0</div></div>
+  <div style="background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:.6rem .7rem;"><div style="font-size:12px;color:var(--color-text-secondary);">Empresas</div><div id="m-firm" style="font-size:22px;font-weight:500;">0</div></div>
+  <div style="background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:.6rem .7rem;"><div style="font-size:12px;color:var(--color-text-secondary);">Desemprego</div><div id="m-u" style="font-size:22px;font-weight:500;">8%</div></div>
+  <div style="background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:.6rem .7rem;"><div style="font-size:12px;color:var(--color-text-secondary);">IPCA (a.a.)</div><div id="m-ipca" style="font-size:22px;font-weight:500;">4,5%</div></div>
+</div>
+
+<canvas id="cv" style="width:100%; aspect-ratio:660/360; border-radius:var(--border-radius-lg); border:0.5px solid var(--color-border-tertiary);"></canvas>
+
+<div style="display:flex; flex-wrap:wrap; gap:14px; margin:10px 0 0; font-size:12px; color:var(--color-text-secondary);">
+  <span style="display:flex;align-items:center;gap:6px;"><span style="width:11px;height:11px;border-radius:3px;background:#2E7D32;display:inline-block;"></span><span style="width:11px;height:11px;border-radius:3px;background:#E53935;display:inline-block;"></span>casas A–E</span>
+  <span style="display:flex;align-items:center;gap:6px;"><span style="width:11px;height:11px;border-radius:3px;background:#5C7A99;display:inline-block;"></span>empresas</span>
+  <span style="margin-left:auto;">altura casa = famílias · <span style="color:#2E7D32;">+</span>/<span style="color:#E53935;">−</span> nasc./óbito · <span style="color:#5C7A99;">▲</span>/<span style="color:#5C7A99;">▼</span> empresa abre/fecha</span>
+</div>
+</div>
+
+<script>
+(function(){
+  const cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+  const dpr=Math.min(2,window.devicePixelRatio||1), W=660,H=360;
+  cv.width=W*dpr; cv.height=H*dpr; ctx.scale(dpr,dpr);
+
+  const COLS=13, ROWS=8, OX=330, OY=44, THX=23, THY=11;
+  const WAGE=[20000,8000,3500,1800,900], MPC=[0.55,0.70,0.82,0.92,0.98];
+  const WMON=[60,18,3,-2,-4], COL=['#2E7D32','#7CB342','#FBC02D','#FB8C00','#E53935'];
+  const BIRTH=[0.0010,0.0012,0.0014,0.0018,0.0022], CUM=[0.03,0.15,0.45,0.80,1.0];
+  const FCOL='#5C7A99', MAXU=4, ACCEL=8;
+
+  let plots=[], roads=[], particles=[], baseRatio=0.16;
+  let inflation, unemployment, priceLevel, month, playing=true;
+
+  const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+  function newHH(cls){return {cls,employed:true,wealth:WMON[cls]*WAGE[cls],wage:WAGE[cls]*(0.8+Math.random()*0.4),r:Math.random()};}
+  function classByRank(x){for(let i=0;i<5;i++) if(x<CUM[i]) return i; return 4;}
+
+  function build(){
+    plots=[]; roads=[]; particles=[];
+    for(let j=0;j<ROWS;j++) for(let i=0;i<COLS;i++){
+      const sx=OX+(i-j)*THX, sy=OY+(i+j)*THY;
+      if(i===6||j===3) roads.push({sx,sy});
+      else plots.push({i,j,sx,sy,score:i+j,type:null,cls:null,hh:[],firm:null,dh:6,cleared:false});
+    }
+    plots.sort((a,b)=>a.score-b.score);
+    const nRes=Math.round(plots.length*0.50);
+    for(let r=0;r<nRes;r++){
+      const cls=classByRank(r/nRes), p=plots[r];
+      p.type='res'; p.cls=cls; const u=1+(Math.random()<0.4?1:0);
+      for(let k=0;k<u;k++) p.hh.push(newHH(cls));
+    }
+    const vac=plots.filter(p=>p.type===null);
+    for(let k=0;k<12 && vac.length;k++){ const idx=Math.floor(Math.random()*vac.length); const p=vac.splice(idx,1)[0]; p.type='com'; p.firm={dh:6,size:1+(Math.random()<0.5?1:0),age:0}; }
+    plots.sort((a,b)=>(a.i+a.j)-(b.i+b.j)||(a.i-a.j)-(b.i-b.j));
+    inflation=0.045; unemployment=0.08; priceLevel=1; month=0;
+    const nHH=plots.reduce((s,p)=>s+(p.type==='res'?p.hh.length:0),0);
+    const nF=plots.filter(p=>p.type==='com').length;
+    baseRatio=nF/Math.max(1,nHH);
+  }
+
+  function allHH(){const a=[];for(const p of plots) if(p.type==='res') for(const h of p.hh) a.push({h,p});return a;}
+  function vacant(){return plots.filter(p=>p.type===null);}
+
+  function addBirth(cls){
+    let t=plots.find(p=>p.type==='res'&&p.cls===cls&&p.hh.length<MAXU);
+    if(!t){ const v=vacant(); if(v.length){t=v[Math.floor(Math.random()*v.length)]; t.type='res'; t.cls=cls; t.cleared=false;} }
+    if(!t) return; t.hh.push(newHH(cls));
+    particles.push({x:t.sx,y:t.sy-t.dh-12,life:1,txt:'+',col:'#2E7D32'});
+  }
+  function removeHH(o){
+    const i=o.p.hh.indexOf(o.h); if(i>=0) o.p.hh.splice(i,1);
+    particles.push({x:o.p.sx,y:o.p.sy-o.p.dh-12,life:1,txt:'−',col:'#E53935'});
+    if(o.p.hh.length===0){o.p.type=null;o.p.cls=null;o.p.cleared=true;}
+  }
+  function addFirm(){ const v=vacant(); if(!v.length) return; const p=v[Math.floor(Math.random()*v.length)];
+    p.type='com'; p.cls=null; p.cleared=false; p.firm={dh:6,size:1+(Math.random()<0.5?1:0),age:0};
+    particles.push({x:p.sx,y:p.sy-16,life:1,txt:'▲',col:FCOL});
+  }
+  function removeFirm(p){ particles.push({x:p.sx,y:p.sy-(p.firm?p.firm.dh:18)-10,life:1,txt:'▼',col:FCOL});
+    p.type=null; p.firm=null; p.cleared=true;
+  }
+
+  function tick(){
+    month++;
+    const selic=+selEl.value/100, transf=+trEl.value, ic=+icEl.value/100, sm=+smEl.value, ct=+ctEl.value/100, sub=+subEl.value/100;
+    const meta=0.03, nr=0.045, gap=(selic-inflation)-nr;
+    const hhs=allHH(); const nHH=hhs.length; if(!nHH){return;}
+    const nF=plots.filter(p=>p.type==='com').length;
+    const binding=hhs.filter(o=>Math.max(o.h.wage,sm)>o.h.wage).length/nHH;
+    const stim=0.5*(transf/1000)-0.4*ic;
+    inflation += 0.14*(meta-inflation)-0.10*gap+0.06*stim; inflation=clamp(inflation,-0.08,0.5);
+    const firmRatio = nHH>0 ? (nF/nHH)/baseRatio : 1;
+    let tU=0.07+0.9*gap-0.8*stim+0.3*binding-0.25*clamp(firmRatio-1,-0.5,0.5);
+    tU=clamp(tU,0.02,0.45); unemployment+=0.3*(tU-unemployment);
+    priceLevel*=(1+inflation/12);
+    const nU=Math.round(unemployment*nHH);
+    hhs.sort((a,b)=> b.h.cls-a.h.cls || a.h.r-b.h.r);
+    hhs.forEach(o=>o.h.employed=true);
+    for(let k=0;k<nU;k++) hhs[k].h.employed=false;
+    const births=[], deaths=[];
+    for(const o of hhs){
+      const h=o.h, wage=Math.max(h.wage,sm);
+      let income=h.employed?wage:wage*0.3; if(h.cls>=3) income+=transf;
+      const realInc=income/priceLevel, prosper=(realInc/(1+ic))/WAGE[h.cls];
+      h.wealth += income - income*MPC[h.cls];
+      const patReal=h.wealth/priceLevel;
+      const fEmp=h.employed?1:0.4, fInf=clamp(1.2-2*Math.max(0,inflation-0.06),0.3,1.2), fPro=clamp(prosper,0.4,1.8);
+      const pB=BIRTH[h.cls]*fEmp*fInf*fPro*ACCEL;
+      let dF=1+(h.employed?0:0.8)+(patReal<0?0.5:0)+(prosper<0.7?(0.7-prosper)*1.5:0);
+      if(Math.random()<0.0006*clamp(dF,0.5,6)*ACCEL) deaths.push(o);
+      else if(Math.random()<pB) births.push(o);
+    }
+    for(const o of deaths) removeHH(o);
+    for(const o of births) addBirth(o.h.cls);
+    const realCredit=selic+0.25-inflation;
+    let lucro=0.05 -0.5*(realCredit-0.295) -0.6*ct +sub +0.3*(transf/1000) -0.4*ic -0.8*(unemployment-0.07);
+    const firmsNow=plots.filter(p=>p.type==='com');
+    if(lucro>0){ let n=Math.round(clamp(lucro,0,0.4)*0.15*Math.max(firmsNow.length,4)); for(let k=0;k<n;k++) addFirm(); }
+    const pExit=0.01+Math.max(0,-lucro)*0.4;
+    for(const p of firmsNow){ if(Math.random()<pExit) removeFirm(p); else { p.firm.age++; } }
+  }
+
+  function fmtP(x){return (x*100).toFixed(1).replace('.',',')+'%';}
+  function hud(){
+    let pop=0,nf=0; for(const p of plots){ if(p.type==='res') pop+=p.hh.length; else if(p.type==='com') nf++; }
+    document.getElementById('m-pop').textContent=pop;
+    document.getElementById('m-firm').textContent=nf;
+    document.getElementById('m-u').textContent=fmtP(unemployment);
+    document.getElementById('m-ipca').textContent=fmtP(inflation);
+    document.getElementById('month').textContent='Mês '+month;
+  }
+
+  function shade(hex,f){const n=parseInt(hex.slice(1),16);return 'rgb('+Math.round((n>>16&255)*f)+','+Math.round((n>>8&255)*f)+','+Math.round((n&255)*f)+')';}
+  function dia(cx,cy,hx,hy){ctx.beginPath();ctx.moveTo(cx,cy-hy);ctx.lineTo(cx+hx,cy);ctx.lineTo(cx,cy+hy);ctx.lineTo(cx-hx,cy);ctx.closePath();}
+  function poly(p){ctx.beginPath();ctx.moveTo(p[0][0],p[0][1]);for(let i=1;i<p.length;i++)ctx.lineTo(p[i][0],p[i][1]);ctx.closePath();}
+
+  function box(cx,cy,h,col,BX,BY){
+    ctx.fillStyle='rgba(0,0,0,0.13)';ctx.beginPath();ctx.ellipse(cx+2,cy+BY,BX+4,BY+2,0,0,7);ctx.fill();
+    poly([[cx-BX,cy-h],[cx,cy+BY-h],[cx,cy+BY],[cx-BX,cy]]);ctx.fillStyle=shade(col,0.62);ctx.fill();
+    poly([[cx+BX,cy-h],[cx,cy+BY-h],[cx,cy+BY],[cx+BX,cy]]);ctx.fillStyle=shade(col,0.82);ctx.fill();
+    dia(cx,cy-h,BX,BY);ctx.fillStyle=col;ctx.fill();
+  }
+
+  function drawPlot(p){
+    const cx=p.sx, cy=p.sy;
+    if(p.type===null){ dia(cx,cy,THX,THY); ctx.fillStyle=p.cleared?'#B8A57E':'#9CC880'; ctx.fill(); ctx.strokeStyle='#8FBE69'; ctx.lineWidth=0.5; ctx.stroke(); return; }
+    dia(cx,cy,THX,THY); ctx.fillStyle='#9CC880'; ctx.fill();
+    if(p.type==='res'){
+      const units=p.hh.length; let empN=0,wsum=0; for(const h of p.hh){if(!h.employed)empN++;wsum+=h.wealth;}
+      const wReal=(wsum/units)/priceLevel;
+      p.tgt=8+units*7+clamp(wReal/30000,0,14); p.dh+=(p.tgt-p.dh)*0.18;
+      box(cx,cy,p.dh,COL[p.cls],13,7);
+      const litFrac=1-empN/units;
+      for(let u=0;u<Math.min(units,4);u++){ const yy=cy-8-u*7; const on=(u/Math.max(1,units))<litFrac;
+        ctx.fillStyle=on?'#FFE08A':'#3A3D45'; ctx.fillRect(cx-7,yy-2,3,3); ctx.fillRect(cx+4,yy-2,3,3); }
+    } else {
+      const f=p.firm; f.tgt=18+f.size*8; f.dh+=(f.tgt-f.dh)*0.16;
+      box(cx,cy,f.dh,FCOL,10,5);
+      dia(cx,cy-f.dh,10,5); ctx.fillStyle='#7693AE'; ctx.fill();
+      const lit=1-unemployment, rows=Math.min(4,1+Math.round(f.dh/9));
+      for(let r=0;r<rows;r++){ const yy=cy-8-r*7;
+        for(const dx of [-6,-1,4]){ const on=Math.random()<lit;
+          ctx.fillStyle=on?'#CFE3F2':'#2C3946'; ctx.fillRect(cx+dx,yy-2,2.4,3); } }
+    }
+  }
+
+  function render(){
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle='#A7D08C'; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#5FB6D9'; poly([[0,0],[260,0],[0,120]]); ctx.fill();
+    ctx.fillStyle='#E8D7A6'; poly([[260,0],[286,0],[26,134],[0,120]]); ctx.fill();
+    for(const r of roads){ dia(r.sx,r.sy,THX,THY); ctx.fillStyle='#6F7378'; ctx.fill(); ctx.strokeStyle='#5C6064'; ctx.lineWidth=0.5; ctx.stroke(); }
+    for(const p of plots) drawPlot(p);
+    for(let i=particles.length-1;i>=0;i--){ const pa=particles[i]; pa.y-=0.6; pa.life-=0.02;
+      if(pa.life<=0){particles.splice(i,1);continue;}
+      ctx.globalAlpha=clamp(pa.life,0,1); ctx.fillStyle=pa.col; ctx.font='bold 15px sans-serif'; ctx.textAlign='center';
+      ctx.fillText(pa.txt,pa.x,pa.y); ctx.globalAlpha=1;
+    }
+  }
+
+  const selEl=document.getElementById('selic'), trEl=document.getElementById('transf'), icEl=document.getElementById('ic'), smEl=document.getElementById('sm'), ctEl=document.getElementById('ct'), subEl=document.getElementById('sub');
+  selEl.oninput=()=>document.getElementById('selic-o').textContent=(+selEl.value).toFixed(1).replace('.',',')+'%';
+  trEl.oninput=()=>document.getElementById('transf-o').textContent='R$'+trEl.value;
+  icEl.oninput=()=>document.getElementById('ic-o').textContent=icEl.value+'%';
+  smEl.oninput=()=>document.getElementById('sm-o').textContent='R$'+smEl.value;
+  ctEl.oninput=()=>document.getElementById('ct-o').textContent=ctEl.value+'%';
+  subEl.oninput=()=>document.getElementById('sub-o').textContent=subEl.value+'%';
+  document.getElementById('play').onclick=function(){playing=!playing;this.querySelector('span').textContent=playing?'Pausar':'Rodar';this.querySelector('i').textContent=playing?'⏸':'▶';};
+  document.getElementById('reset').onclick=()=>{build();hud();};
+
+  build(); hud();
+  let last=0, acc=0;
+  function loop(t){ if(!last)last=t; const dt=t-last; last=t;
+    if(playing){ acc+=dt; if(acc>=450){acc=0; tick(); hud();} }
+    render(); requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

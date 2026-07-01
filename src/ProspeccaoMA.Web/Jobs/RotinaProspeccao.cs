@@ -108,11 +108,12 @@ public class RotinaProspeccao
                 restante -= n;
             }
 
-            // Esteira dos alvos curados da Valore: cruza alguns por dia com os compradores
-            // (espalha a cota gratuita do Gemini em vez de processar os 117 de uma vez).
-            await CruzarCuradosInternoAsync(_curadosPorDia, ct);
+            // NOTA: o backfill dos alvos curados NÃO roda mais aqui — ele é dirigido pelo
+            // cron externo (/Jobs/Disparar?modo=curados), em fatias pequenas ao longo do dia.
+            // Assim a rodada diária fica curta (só os leads do dia) e sobrevive à hibernação
+            // do free tier, em vez de tentar processar tudo num bloco longo que morria no meio.
 
-            // Auto-cura: reavalia pontuações que falharam (rate limit/erros transitórios).
+            // Auto-cura: reavalia um punhado de pontuações que falharam (rate limit transitório).
             await ReprocessarFalhasInternoAsync(_reprocessarPorDia, ct);
 
             // Resumo diário por e-mail (leads do dia + melhores matches). Nunca derruba a rotina.
