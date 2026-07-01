@@ -2,44 +2,47 @@
 @using ProspeccaoMA.Web.Models
 @{
     ViewData["Title"] = "Execuções";
-    string Badge(StatusExecucao s) => s switch
+    string Cor(StatusExecucao s) => s switch
     {
-        StatusExecucao.Sucesso => "suc",
+        StatusExecucao.Sucesso => "teal",
         StatusExecucao.Erro => "err",
         _ => "run"
     };
 }
 
-<div class="pagehead">
-    <div>
-        <h1>Histórico de execuções</h1>
-        <div class="sub">Auditoria da rotina diária de prospecção (últimas 50).</div>
+<div class="lead-wrap">
+    <div class="lead-head">
+        <div>
+            <div class="px-ey">Auditoria</div>
+            <h1 class="px-h1">Histórico de execuções</h1>
+            <div class="px-sub">Rotina diária de prospecção — as últimas 50 execuções.</div>
+        </div>
     </div>
-</div>
 
-@if (Model.Count == 0)
-{
-    <div class="vazio">Nenhuma execução registrada ainda.</div>
-}
-else
-{
-    <div class="panel">
-        <table>
-            <thead>
-                <tr><th>Início</th><th>Fim</th><th>Leads pontuados</th><th>Status</th><th>Erro</th></tr>
-            </thead>
-            <tbody>
-            @foreach (var e in Model)
-            {
-                <tr>
-                    <td>@ProspeccaoMA.Web.Util.Fuso.Brasil(e.IniciadoEm).ToString("dd/MM/yyyy HH:mm:ss")</td>
-                    <td>@(e.FinalizadoEm is null ? "—" : ProspeccaoMA.Web.Util.Fuso.Brasil(e.FinalizadoEm.Value).ToString("dd/MM/yyyy HH:mm:ss"))</td>
-                    <td>@e.LeadsGerados</td>
-                    <td><span class="badge @Badge(e.Status)">@e.Status</span></td>
-                    <td style="color:#9d3535">@e.Erro</td>
-                </tr>
-            }
-            </tbody>
-        </table>
-    </div>
-}
+    @if (Model.Count == 0)
+    {
+        <div class="lead-vazio">Nenhuma execução registrada ainda.</div>
+    }
+    else
+    {
+        <div class="mesa-panel">
+            <table class="mtable">
+                <thead>
+                    <tr><th>Início</th><th>Fim</th><th>Leads pontuados</th><th>Status</th><th>Observação</th></tr>
+                </thead>
+                <tbody>
+                @foreach (var e in Model)
+                {
+                    <tr>
+                        <td class="m-resp">@ProspeccaoMA.Web.Util.Fuso.Brasil(e.IniciadoEm).ToString("dd/MM/yyyy HH:mm:ss")</td>
+                        <td class="m-upd">@(e.FinalizadoEm is null ? "—" : ProspeccaoMA.Web.Util.Fuso.Brasil(e.FinalizadoEm.Value).ToString("dd/MM/yyyy HH:mm:ss"))</td>
+                        <td><span class="m-score @(e.LeadsGerados > 0 ? "teal" : "muted")">@e.LeadsGerados</span></td>
+                        <td><span class="ex-st @Cor(e.Status)">@e.Status</span></td>
+                        <td class="m-sub" style="max-width:340px">@e.Erro</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

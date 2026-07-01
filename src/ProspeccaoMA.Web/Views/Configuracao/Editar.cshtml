@@ -3,12 +3,14 @@
     ViewData["Title"] = Model.Id == 0 ? "Nova configuração" : "Editar configuração";
 }
 
-<div class="pagehead">
+<div class="lead-wrap">
+<div class="lead-head">
     <div>
-        <h1>@ViewData["Title"]</h1>
-        <div class="sub">A descoberta de empresas vem SÓ destes CNAEs/UFs na base da Receita. A IA não cria empresas.</div>
+        <div class="px-ey">Prospecção</div>
+        <h1 class="px-h1">@ViewData["Title"]</h1>
+        <div class="px-sub">A descoberta de empresas vem SÓ destes CNAEs/UFs na base da Receita. A IA não cria empresas.</div>
     </div>
-    <a class="btn ghost" asp-controller="Configuracao" asp-action="Index">← Voltar</a>
+    <a class="fa-btn s" style="align-self:flex-start" asp-controller="Configuracao" asp-action="Index">← Voltar</a>
 </div>
 
 <form asp-controller="Configuracao" asp-action="Salvar" method="post">
@@ -42,7 +44,8 @@
             <input type="number" step="0.01" asp-for="CapitalMax" placeholder="100000000" />
         </div>
         <div class="full">
-            <button type="submit" class="btn primary">Salvar configuração</button>
+            <button type="submit" class="fa-btn p">Salvar configuração</button>
         </div>
     </div>
 </form>
+</div>

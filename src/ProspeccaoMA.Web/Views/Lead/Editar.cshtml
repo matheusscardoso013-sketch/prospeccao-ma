@@ -6,24 +6,26 @@
 @{
     var ehReceita = Model.Origem == ProspeccaoMA.Web.Models.Lead.OrigemReceita;
 }
-<div class="pagehead">
+<div class="lead-wrap">
+<div class="lead-head">
     <div>
-        <h1>Editar empresa</h1>
-        <div class="sub">O resumo e o segmento alimentam o cruzamento com os compradores. Valores estimados continuam exibidos com "~".</div>
+        <div class="px-ey">Editar alvo</div>
+        <h1 class="px-h1">Editar empresa</h1>
+        <div class="px-sub">O resumo e o segmento alimentam o cruzamento com os compradores. Valores estimados continuam exibidos com "~".</div>
     </div>
-    <a class="btn ghost" asp-controller="Lead" asp-action="Index">← Voltar aos leads</a>
+    <a class="fa-btn s" style="align-self:flex-start" asp-controller="Lead" asp-action="Index">← Voltar aos leads</a>
 </div>
 
 @if (ehReceita)
 {
-    <div class="panel" style="padding:14px 18px;margin-bottom:16px">
-        <div class="hint" style="margin-bottom:8px">Dados oficiais da Receita Federal (não editáveis — preservam a rastreabilidade da fonte):</div>
-        <div class="tags">
-            <span class="tag">CNPJ @ProspeccaoMA.Web.Ingestao.CnpjUtil.Formatar(Model.Cnpj)</span>
-            @if (!string.IsNullOrWhiteSpace(Model.Cnae)) { <span class="tag">CNAE @Model.Cnae</span> }
-            @if (!string.IsNullOrWhiteSpace(Model.Uf)) { <span class="tag gray">📍 @Model.Municipio/@Model.Uf</span> }
-            @if (Model.CapitalSocial > 0) { <span class="tag gray">Capital @Model.CapitalSocial.ToString("C")</span> }
-            @if (!string.IsNullOrWhiteSpace(Model.Situacao)) { <span class="tag ativa">● @Model.Situacao</span> }
+    <div class="ro-box">
+        <div class="ro-h">Dados oficiais da Receita Federal — não editáveis (preservam a rastreabilidade da fonte)</div>
+        <div class="lc-tags">
+            <span class="lc-tag">CNPJ @ProspeccaoMA.Web.Ingestao.CnpjUtil.Formatar(Model.Cnpj)</span>
+            @if (!string.IsNullOrWhiteSpace(Model.Cnae)) { <span class="lc-tag">CNAE @Model.Cnae</span> }
+            @if (!string.IsNullOrWhiteSpace(Model.Uf)) { <span class="lc-tag">@Model.Municipio/@Model.Uf</span> }
+            @if (Model.CapitalSocial > 0) { <span class="lc-tag">Capital @Model.CapitalSocial.ToString("C0")</span> }
+            @if (!string.IsNullOrWhiteSpace(Model.Situacao)) { <span class="lc-tag on">● @Model.Situacao</span> }
         </div>
     </div>
 }
@@ -89,7 +91,8 @@
             <textarea asp-for="Descricao" style="min-height:180px" placeholder="O que a empresa faz, produtos, clientes, diferenciais, motivação de venda…"></textarea>
         </div>
         <div class="full">
-            <button type="submit" class="btn primary">Salvar alvo</button>
+            <button type="submit" class="fa-btn p">Salvar alvo</button>
         </div>
     </div>
 </form>
+</div>

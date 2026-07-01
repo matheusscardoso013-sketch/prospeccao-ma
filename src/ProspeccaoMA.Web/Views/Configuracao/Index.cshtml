@@ -3,52 +3,53 @@
     ViewData["Title"] = "Configurações";
 }
 
-<div class="pagehead">
-    <div>
-        <h1>Configurações de prospecção</h1>
-        <div class="sub">Setores, regiões e faixa de capital. O job das 12h usa as configs ativas para buscar empresas reais.</div>
+<div class="lead-wrap">
+    <div class="lead-head">
+        <div>
+            <div class="px-ey">Prospecção</div>
+            <h1 class="px-h1">Configurações</h1>
+            <div class="px-sub">Setores, regiões e faixa de capital. O job das 12h usa as configs ativas para buscar empresas reais.</div>
+        </div>
+        <a class="fa-btn p" style="align-self:flex-start" asp-controller="Configuracao" asp-action="Editar">+ Nova configuração</a>
     </div>
-    <a class="btn primary" asp-controller="Configuracao" asp-action="Editar">+ Nova configuração</a>
-</div>
 
-@if (Model.Count == 0)
-{
-    <div class="vazio">Nenhuma configuração ainda. Crie uma para definir os CNAEs, UFs e faixa de capital.</div>
-}
-else
-{
-    <div class="panel">
-        <table>
-            <thead>
-                <tr><th>CNAEs</th><th>UFs</th><th>Capital</th><th>Status</th><th></th></tr>
-            </thead>
-            <tbody>
-            @foreach (var c in Model)
-            {
-                <tr>
-                    <td>@c.Cnaes</td>
-                    <td>@c.Ufs</td>
-                    <td>
-                        @(c.CapitalMin?.ToString("C") ?? "—") &nbsp;a&nbsp; @(c.CapitalMax?.ToString("C") ?? "—")
-                    </td>
-                    <td>
-                        @if (c.Ativo) { <span class="badge on">Ativa</span> } else { <span class="badge off">Inativa</span> }
-                    </td>
-                    <td style="text-align:right;white-space:nowrap">
-                        <a class="btn ghost sm" asp-action="Editar" asp-route-id="@c.Id">Editar</a>
-                        <form asp-action="AlternarAtivo" asp-route-id="@c.Id" method="post" class="inline-form">
-                            @Html.AntiForgeryToken()
-                            <button type="submit" class="btn ghost sm">@(c.Ativo ? "Desativar" : "Ativar")</button>
-                        </form>
-                        <form asp-action="Excluir" asp-route-id="@c.Id" method="post" class="inline-form"
-                              onsubmit="return confirm('Remover esta configuração?');">
-                            @Html.AntiForgeryToken()
-                            <button type="submit" class="btn danger sm">Excluir</button>
-                        </form>
-                    </td>
-                </tr>
-            }
-            </tbody>
-        </table>
-    </div>
-}
+    @if (Model.Count == 0)
+    {
+        <div class="lead-vazio">Nenhuma configuração ainda. Crie uma para definir os CNAEs, UFs e faixa de capital.</div>
+    }
+    else
+    {
+        <div class="mesa-panel">
+            <table class="mtable">
+                <thead>
+                    <tr><th>CNAEs</th><th>UFs</th><th>Capital</th><th>Status</th><th style="text-align:right">Ações</th></tr>
+                </thead>
+                <tbody>
+                @foreach (var c in Model)
+                {
+                    <tr>
+                        <td class="m-resp" style="max-width:360px">@c.Cnaes</td>
+                        <td class="m-resp">@c.Ufs</td>
+                        <td class="m-resp">@(c.CapitalMin?.ToString("C0") ?? "—") a @(c.CapitalMax?.ToString("C0") ?? "—")</td>
+                        <td>
+                            @if (c.Ativo) { <span class="ex-st teal">Ativa</span> } else { <span class="ex-st run">Inativa</span> }
+                        </td>
+                        <td style="text-align:right;white-space:nowrap">
+                            <a class="act" asp-action="Editar" asp-route-id="@c.Id">Editar</a>
+                            <form asp-action="AlternarAtivo" asp-route-id="@c.Id" method="post" class="inline-form" style="margin-left:10px">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="act" style="background:none;border:none;cursor:pointer;padding:0">@(c.Ativo ? "Desativar" : "Ativar")</button>
+                            </form>
+                            <form asp-action="Excluir" asp-route-id="@c.Id" method="post" class="inline-form" style="margin-left:10px"
+                                  onsubmit="return confirm('Remover esta configuração?');">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="act del" style="background:none;border:none;cursor:pointer;padding:0">Excluir</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

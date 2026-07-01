@@ -3,12 +3,14 @@
     ViewData["Title"] = "Editar comprador";
 }
 
-<div class="pagehead">
+<div class="lead-wrap">
+<div class="lead-head">
     <div>
-        <h1>Editar comprador</h1>
-        <div class="sub">Atualize a tese de investimento e os contatos. A tese é o que a IA usa para cruzar com os alvos.</div>
+        <div class="px-ey">Editar comprador</div>
+        <h1 class="px-h1">Editar comprador</h1>
+        <div class="px-sub">Atualize a tese de investimento e os contatos. A tese é o que a IA usa para cruzar com os alvos.</div>
     </div>
-    <a class="btn ghost" asp-controller="Comprador" asp-action="Index">← Voltar</a>
+    <a class="fa-btn s" style="align-self:flex-start" asp-controller="Comprador" asp-action="Index">← Voltar</a>
 </div>
 
 <form asp-controller="Comprador" asp-action="Salvar" method="post">
@@ -105,7 +107,8 @@
             </select>
         </div>
         <div class="full">
-            <button type="submit" class="btn primary">Salvar comprador</button>
+            <button type="submit" class="fa-btn p">Salvar comprador</button>
         </div>
     </div>
 </form>
+</div>
