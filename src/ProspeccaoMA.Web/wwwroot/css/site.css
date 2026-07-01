@@ -329,3 +329,23 @@ tbody tr:last-child td{border-bottom:none}
        display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:19px;font-weight:500}
 .lc-tag.hash{color:var(--vb-azul);border-color:#d5e6f2;background:#f2f8fc}
 @media(max-width:820px){.lc-grid{grid-template-columns:1fr}}
+
+/* ============ MESA (tabela refinada) ============ */
+.mesa-panel{background:#fff;border:1px solid var(--line);border-radius:13px;overflow:hidden}
+.mtable{width:100%;border-collapse:collapse}
+.mtable thead th{text-align:left;font-size:9.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);
+                 font-weight:600;padding:13px 15px;border-bottom:1px solid var(--line);background:#fafcfd}
+.mtable tbody td{padding:13px 15px;border-bottom:1px solid var(--line);vertical-align:middle}
+.mtable tbody tr:last-child td{border-bottom:none}
+.mtable tbody tr:hover{background:#f7fafc}
+.m-score{font-family:var(--serif);font-size:17px;color:var(--vb-navy);font-variant-numeric:tabular-nums;display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+.m-score::before{content:"";width:7px;height:7px;border-radius:50%;flex:0 0 auto}
+.m-score.teal::before{background:var(--teal)} .m-score.bronze::before{background:var(--bronze)} .m-score.muted::before{background:#9aa7b2}
+.m-name{color:var(--vb-navy);font-weight:600;text-decoration:none;font-size:13px}
+.m-name:hover{color:var(--vb-azul);text-decoration:underline}
+.m-sub{font-size:10.5px;color:var(--muted);margin-top:2px}
+.m-resp{font-size:12px;color:var(--txt)}
+.m-form{display:flex;gap:7px;align-items:center}
+.m-form select{padding:6px 9px;font-size:11.5px;min-width:118px;border-radius:7px}
+.m-form input[type=text]{padding:6px 9px;font-size:11.5px;min-width:100px;flex:1;border-radius:7px}
+.m-upd{font-size:10.5px;color:var(--muted);white-space:nowrap}
