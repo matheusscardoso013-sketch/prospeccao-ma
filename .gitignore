@@ -21,3 +21,6 @@ amostra-receita/
 Thumbs.db
 .DS_Store
 dados-locais/
+
+# Projeto separado (nao faz parte do ProspeccaoMA)
+EconomiaSim/
