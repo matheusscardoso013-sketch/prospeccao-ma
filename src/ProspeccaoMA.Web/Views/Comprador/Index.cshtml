@@ -2,99 +2,93 @@
 @{
     ViewData["Title"] = "Compradores";
     string Curto(string? s, int n) => string.IsNullOrWhiteSpace(s) ? "" : (s.Length > n ? s.Substring(0, n) + "…" : s);
-}
-
-<div class="pagehead">
-    <div>
-        <h1>Compradores (buy-side)</h1>
-        <div class="sub">Base de compradores da Valore. A IA cruza os leads prospectados com a tese de cada um (sinergia).</div>
-    </div>
-    <div style="color:var(--muted);font-size:13px;align-self:center">@ViewData["Total"] compradores ativos</div>
-</div>
-
-@{
     var semTese = (bool)(ViewData["SemTese"] ?? false);
 }
-<form method="get" asp-controller="Comprador" asp-action="Index" class="toolbar">
-    <div class="field" style="flex:1">
-        <label>Buscar</label>
-        <input type="text" name="busca" value="@ViewData["Busca"]" placeholder="nome, tese, setor ou tag (ex.: saúde, fintech, agro)" style="width:100%" />
+
+<div class="lead-wrap">
+    <div class="lead-head">
+        <div>
+            <div class="px-ey">Buy-side</div>
+            <h1 class="px-h1">Compradores</h1>
+            <div class="px-sub">Base de compradores da Valore. A IA cruza os leads prospectados com a tese de cada um.</div>
+        </div>
+        <div style="color:var(--muted);font-size:12px;letter-spacing:.03em;align-self:center;white-space:nowrap">@ViewData["Total"] compradores ativos</div>
     </div>
-    <button type="submit" class="btn ghost">Filtrar</button>
+
+    <form method="get" asp-controller="Comprador" asp-action="Index" class="lf">
+        <div class="field" style="flex:1">
+            <label>Buscar</label>
+            <input type="text" name="busca" value="@ViewData["Busca"]" placeholder="nome, tese, setor ou tag (ex.: saúde, fintech, agro)" style="width:100%" />
+        </div>
+        <button type="submit" class="fa-btn s">Filtrar</button>
+        @if (semTese)
+        {
+            <a class="fa-btn p" asp-controller="Comprador" asp-action="Index">Mostrar todos</a>
+        }
+        else
+        {
+            <a class="fa-btn s" style="color:var(--score-lo);border-color:#f0d0d0" asp-controller="Comprador" asp-action="Index" asp-route-semTese="true">⚠ Sem tese (@ViewData["TotalSemTese"])</a>
+        }
+    </form>
+
     @if (semTese)
     {
-        <a class="btn primary" asp-controller="Comprador" asp-action="Index">Mostrar todos</a>
+        <div class="alert err">Compradores <strong>sem tese de investimento</strong> registrada — eles ficam <strong>fora do cruzamento com alvos</strong> até a tese ser preenchida (Editar).</div>
+    }
+
+    @if (Model.Count == 0)
+    {
+        <div class="lead-vazio">Nenhum comprador encontrado. Importe a base buy-side para popular esta lista.</div>
     }
     else
     {
-        <a class="btn danger" asp-controller="Comprador" asp-action="Index" asp-route-semTese="true">⚠ Sem tese (@ViewData["TotalSemTese"])</a>
+        <div class="lc-grid">
+            @foreach (var c in Model)
+            {
+                var matches = c.Sinergias.Count;
+                <div class="lc">
+                    <div class="lc-top">
+                        <div class="bc-av">@(string.IsNullOrEmpty(c.Nome) ? "?" : c.Nome.Substring(0, 1).ToUpper())</div>
+                        <div class="lc-id">
+                            <div class="lc-razao">@c.Nome</div>
+                            @if (!string.IsNullOrWhiteSpace(c.RazaoSocial)) { <div class="lc-cnpj" style="font-family:inherit">@c.RazaoSocial</div> }
+                            <div class="lc-tags">
+                                @if (!string.IsNullOrWhiteSpace(c.TipoEmpresa)) { <span class="lc-tag">@c.TipoEmpresa</span> }
+                                @if (!string.IsNullOrWhiteSpace(c.Segmento)) { <span class="lc-tag">@Curto(c.Segmento, 40)</span> }
+                                @if (!string.IsNullOrWhiteSpace(c.FaixaFaturamento)) { <span class="lc-tag">💰 @Curto(c.FaixaFaturamento, 30)</span> }
+                                @if (!string.IsNullOrWhiteSpace(c.Tags))
+                                {
+                                    foreach (var t in c.Tags.Split(new[] { ' ', ',', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Where(x => x.StartsWith("#")).Take(6))
+                                    {
+                                        <span class="lc-tag hash">@t</span>
+                                    }
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="lc-rac" style="margin-top:15px">
+                        <div class="h">Tese de investimento</div>
+                        <p>@(string.IsNullOrWhiteSpace(c.Tese) ? "Tese ainda não preenchida — comprador fora do cruzamento." : Curto(c.Tese, 300))</p>
+                    </div>
+
+                    <div class="lc-foot">
+                        @if (!string.IsNullOrWhiteSpace(c.Site))
+                        {
+                            <a class="src" href="@(c.Site.StartsWith("http") ? c.Site : "https://" + c.Site)" target="_blank">🌐 site</a>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(c.Responsavel)) { <span class="src">resp.: @c.Responsavel</span> }
+                        <div class="spacer"></div>
+                        <a class="act" asp-controller="Comprador" asp-action="Editar" asp-route-id="@c.Id">Editar</a>
+                        <a class="act" asp-controller="Comprador" asp-action="Alvos" asp-route-id="@c.Id">@matches alvo(s)</a>
+                        <form asp-controller="Comprador" asp-action="Excluir" asp-route-id="@c.Id" method="post" class="inline-form"
+                              onsubmit="return confirm('Excluir este comprador e seus cruzamentos? Esta ação não pode ser desfeita.');">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="act del" title="Excluir comprador" style="background:none;border:none;cursor:pointer;padding:0">Excluir</button>
+                        </form>
+                    </div>
+                </div>
+            }
+        </div>
     }
-</form>
-@if (semTese)
-{
-    <div class="alert err">Compradores <strong>sem tese de investimento</strong> registrada — eles ficam <strong>fora do cruzamento com alvos</strong> até a tese ser preenchida (✏️ Editar).</div>
-}
-
-@if (Model.Count == 0)
-{
-    <div class="vazio">Nenhum comprador encontrado. Importe a base buy-side para popular esta lista.</div>
-}
-else
-{
-    <div class="cards">
-        @foreach (var c in Model)
-        {
-            var matches = c.Sinergias.Count;
-            <div class="lead">
-                <div class="lead-top">
-                    <div class="scorebox" style="background:#33508c">
-                        <span class="n" style="font-size:18px">@(string.IsNullOrEmpty(c.Nome) ? "?" : c.Nome.Substring(0, 1).ToUpper())</span>
-                        <span class="l">buyer</span>
-                    </div>
-                    <div class="lead-id">
-                        <div class="razao">@c.Nome</div>
-                        @if (!string.IsNullOrWhiteSpace(c.RazaoSocial)) { <div class="cnpj">@c.RazaoSocial</div> }
-                        <div class="tags">
-                            @if (!string.IsNullOrWhiteSpace(c.TipoEmpresa)) { <span class="tag">@c.TipoEmpresa</span> }
-                            @if (!string.IsNullOrWhiteSpace(c.Segmento)) { <span class="tag gray">@Curto(c.Segmento, 40)</span> }
-                            @if (!string.IsNullOrWhiteSpace(c.FaixaFaturamento)) { <span class="tag gray">💰 @Curto(c.FaixaFaturamento, 30)</span> }
-                        </div>
-                    </div>
-                </div>
-
-                @if (!string.IsNullOrWhiteSpace(c.Tags))
-                {
-                    <div class="contatos" style="padding-bottom:0">
-                        <div class="tags">
-                            @foreach (var t in c.Tags.Split(new[] { ' ', ',', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Where(x => x.StartsWith("#")).Take(8))
-                            {
-                                <span class="tag">@t</span>
-                            }
-                        </div>
-                    </div>
-                }
-
-                <div class="racional">
-                    <div class="h">Tese de investimento</div>
-                    <p>@Curto(c.Tese, 320)</p>
-                </div>
-
-                <div class="lead-foot">
-                    @if (!string.IsNullOrWhiteSpace(c.Site))
-                    {
-                        <a class="src" href="@(c.Site.StartsWith("http") ? c.Site : "https://" + c.Site)" target="_blank">🌐 site</a>
-                    }
-                    @if (!string.IsNullOrWhiteSpace(c.Responsavel)) { <span class="ger">resp.: @c.Responsavel</span> }
-                    <div class="spacer"></div>
-                    <a class="btn ghost sm" asp-controller="Comprador" asp-action="Editar" asp-route-id="@c.Id">✏️ Editar</a>
-                    <a class="btn ghost sm" asp-controller="Comprador" asp-action="Alvos" asp-route-id="@c.Id">🎯 @matches alvo(s)</a>
-                    <form asp-controller="Comprador" asp-action="Excluir" asp-route-id="@c.Id" method="post" class="inline-form"
-                          onsubmit="return confirm('Excluir este comprador e seus cruzamentos? Esta ação não pode ser desfeita.');">
-                        @Html.AntiForgeryToken()
-                        <button type="submit" class="btn danger sm" title="Excluir comprador">🗑</button>
-                    </form>
-                </div>
-            </div>
-        }
-    </div>
-}
+</div>
