@@ -89,21 +89,87 @@ public class MotorSinergia : IMotorSinergia
             if (jaFeitos.Contains(comprador.Id)) continue;
             ct.ThrowIfCancellationRequested();
 
-            var r = await _ia.ClassificarSinergiaAsync(lead, comprador, ct);
-            _db.SinergiasComprador.Add(new SinergiaComprador
+            var sinergia = new SinergiaComprador { LeadId = lead.Id, CompradorId = comprador.Id };
+
+            // Filtro duro: incompatibilidade aritmética com os critérios estruturados
+            // elimina sem gastar chamada de IA (o par fica registrado como descartado).
+            var eliminacao = FiltroDuro(lead, comprador);
+            if (eliminacao is not null)
             {
-                LeadId = lead.Id,
-                CompradorId = comprador.Id,
-                Score = r.Score,
-                Racional = r.Racional,
-                GeradoEm = DateTime.UtcNow
-            });
+                AplicarResultado(sinergia, new ResultadoClassificacao(10, eliminacao, Porte: 0));
+            }
+            else
+            {
+                var r = await _ia.ClassificarSinergiaAsync(lead, comprador, ct);
+                AplicarResultado(sinergia, r);
+            }
+
+            _db.SinergiasComprador.Add(sinergia);
             novos++;
         }
 
         await _db.SaveChangesAsync(ct);
         _log.LogInformation("Lead {Cnpj}: {N} sinergia(s) de comprador gerada(s)", lead.Cnpj, novos);
         return novos;
+    }
+
+    private const string MarcaDescarteAuto = "descartado automaticamente (score baixo)";
+
+    /// <summary>Grava o resultado da IA na sinergia e aplica o descarte automático:
+    /// pares fracos (1-39) não poluem a Mesa; se um recálculo melhorar o score de um par
+    /// auto-descartado, ele volta para Novo. Score 0 = falha da IA (auto-cura reprocessa).</summary>
+    internal static void AplicarResultado(SinergiaComprador s, ResultadoClassificacao r)
+    {
+        s.Score = r.Score;
+        s.ScoreSetor = r.Setor;
+        s.ScorePorte = r.Porte;
+        s.ScoreModelo = r.Modelo;
+        s.ScoreGeo = r.Geo;
+        s.Racional = r.Racional;
+        s.GeradoEm = DateTime.UtcNow;
+
+        if (r.Score is > 0 and < 40 && s.Status == StatusSinergia.Novo)
+        {
+            s.Status = StatusSinergia.Descartado;
+            s.Anotacoes ??= MarcaDescarteAuto;
+        }
+        else if (r.Score >= 40 && s.Status == StatusSinergia.Descartado && s.Anotacoes == MarcaDescarteAuto)
+        {
+            s.Status = StatusSinergia.Novo;
+            s.Anotacoes = null;
+        }
+    }
+
+    /// <summary>Eliminação aritmética pelos critérios estruturados do comprador — só quando a
+    /// incompatibilidade é gritante (margem de 3x), para nunca descartar um caso discutível.
+    /// Devolve o motivo, ou null se o par merece ir à IA.</summary>
+    private static string? FiltroDuro(Lead lead, Comprador comprador)
+    {
+        var fat = FaturamentoEstimado(lead);
+        if (fat is null) return null; // sem número confiável, não elimina
+
+        if (comprador.FaturamentoMinAlvo is decimal min && min > 0 && fat < min / 3)
+            return $"Eliminado por critério estruturado (sem consulta à IA): faturamento estimado ({fat.Value:C0}) " +
+                   $"muito abaixo do mínimo buscado pelo comprador ({min:C0}).";
+
+        if (comprador.FaturamentoMaxAlvo is decimal max && max > 0 && fat > max * 3)
+            return $"Eliminado por critério estruturado (sem consulta à IA): faturamento estimado ({fat.Value:C0}) " +
+                   $"muito acima do teto buscado pelo comprador ({max:C0}).";
+
+        return null;
+    }
+
+    /// <summary>Extrai um faturamento numérico do PorteEstimado quando ele traz valor em R$
+    /// (ex.: "~ R$ 8.000.000"). Textos sem valor ("~ Grande porte") devolvem null.
+    /// Ignora centavos (parte após a vírgula) para não inflar o número em 100x.</summary>
+    private static decimal? FaturamentoEstimado(Lead lead)
+    {
+        var texto = lead.PorteEstimado ?? "";
+        if (!texto.Contains("R$")) return null;
+        var semCentavos = texto.Split(',')[0];
+        var digitos = new string(semCentavos.Where(char.IsDigit).ToArray());
+        if (digitos.Length < 5 || digitos.Length > 15) return null; // fora disso não é faturamento plausível
+        return decimal.TryParse(digitos, out var v) ? v : null;
     }
 
     public async Task<int> RecalcularCompradorAsync(int compradorId, CancellationToken ct = default)
@@ -121,10 +187,11 @@ public class MotorSinergia : IMotorSinergia
         {
             if (s.Lead is null) continue;
             ct.ThrowIfCancellationRequested();
-            var r = await _ia.ClassificarSinergiaAsync(s.Lead, comprador, ct);
-            s.Score = r.Score;
-            s.Racional = r.Racional;
-            s.GeradoEm = DateTime.UtcNow;
+            var elim = FiltroDuro(s.Lead, comprador);
+            var r = elim is not null
+                ? new ResultadoClassificacao(10, elim, Porte: 0)
+                : await _ia.ClassificarSinergiaAsync(s.Lead, comprador, ct);
+            AplicarResultado(s, r);
             n++;
         }
 
@@ -148,10 +215,11 @@ public class MotorSinergia : IMotorSinergia
         {
             if (s.Comprador is null) continue;
             ct.ThrowIfCancellationRequested();
-            var r = await _ia.ClassificarSinergiaAsync(lead, s.Comprador, ct);
-            s.Score = r.Score;
-            s.Racional = r.Racional;
-            s.GeradoEm = DateTime.UtcNow;
+            var elim = FiltroDuro(lead, s.Comprador);
+            var r = elim is not null
+                ? new ResultadoClassificacao(10, elim, Porte: 0)
+                : await _ia.ClassificarSinergiaAsync(lead, s.Comprador, ct);
+            AplicarResultado(s, r);
             n++;
         }
 

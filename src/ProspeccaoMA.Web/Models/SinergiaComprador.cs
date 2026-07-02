@@ -30,6 +30,21 @@ public class SinergiaComprador
     [Range(0, 100)]
     public int Score { get; set; }
 
+    // ----- Subscores da rubrica (score = soma). Nulos em pares antigos, pré-rubrica
+    // estruturada — nesses, o detalhamento vive só no texto do racional. -----
+
+    /// <summary>Aderência setorial (0-40).</summary>
+    public int? ScoreSetor { get; set; }
+
+    /// <summary>Compatibilidade de porte/ticket (0-25).</summary>
+    public int? ScorePorte { get; set; }
+
+    /// <summary>Fit do modelo de negócio (0-20).</summary>
+    public int? ScoreModelo { get; set; }
+
+    /// <summary>Fit geográfico (0-15).</summary>
+    public int? ScoreGeo { get; set; }
+
     public string Racional { get; set; } = string.Empty;
 
     public DateTime GeradoEm { get; set; } = DateTime.UtcNow;

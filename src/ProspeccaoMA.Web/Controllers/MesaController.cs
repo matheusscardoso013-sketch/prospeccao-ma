@@ -18,6 +18,9 @@ public class MesaController : Controller
 
     public async Task<IActionResult> Index(StatusSinergia? status, int? scoreMin, string? busca)
     {
+        // Padrão: foco no que presta (score >= 50). "Qualquer" chega como 0 explícito.
+        scoreMin ??= 50;
+
         var q = _db.SinergiasComprador
             .Include(s => s.Lead)
             .Include(s => s.Comprador)
@@ -28,7 +31,7 @@ public class MesaController : Controller
             ? q.Where(s => s.Status != StatusSinergia.Descartado)
             : q.Where(s => s.Status == status);
 
-        if (scoreMin is not null)
+        if (scoreMin > 0)
             q = q.Where(s => s.Score >= scoreMin);
 
         if (!string.IsNullOrWhiteSpace(busca))
@@ -62,6 +65,7 @@ public class MesaController : Controller
     /// <summary>Vista em quadro (Kanban): uma coluna por status, arrastar-e-soltar move o match.</summary>
     public async Task<IActionResult> Kanban(int? scoreMin, string? busca)
     {
+        scoreMin ??= 50; // mesmo padrão da tabela: foco no que presta
         var vm = new KanbanVm { ScoreMin = scoreMin, Busca = busca };
         var b = busca?.Trim();
 
@@ -71,7 +75,7 @@ public class MesaController : Controller
                 .Include(s => s.Lead).Include(s => s.Comprador)
                 .Where(s => s.Status == st);
 
-            if (scoreMin is not null) q = q.Where(s => s.Score >= scoreMin);
+            if (scoreMin > 0) q = q.Where(s => s.Score >= scoreMin);
             if (!string.IsNullOrWhiteSpace(b))
                 q = q.Where(s => EF.Functions.ILike(s.Lead!.RazaoSocial, $"%{b}%")
                               || EF.Functions.ILike(s.Comprador!.Nome, $"%{b}%"));

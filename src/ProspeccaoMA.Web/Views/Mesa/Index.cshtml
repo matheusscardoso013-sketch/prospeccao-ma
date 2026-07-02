@@ -44,9 +44,9 @@
         <div class="field">
             <label>Score mínimo</label>
             <select name="scoreMin">
-                <option value="">Qualquer</option>
-                <option value="70" selected="@((int?)ViewData["ScoreMin"] == 70)">70+</option>
-                <option value="50" selected="@((int?)ViewData["ScoreMin"] == 50)">50+</option>
+                <option value="70" selected="@((int?)ViewData["ScoreMin"] == 70)">70+ (quentes)</option>
+                <option value="50" selected="@((int?)ViewData["ScoreMin"] == 50)">50+ (padrão)</option>
+                <option value="0" selected="@((int?)ViewData["ScoreMin"] == 0)">Qualquer</option>
             </select>
         </div>
         <div class="field" style="flex:1">
@@ -74,7 +74,7 @@
                         <td><span class="m-score @CorScore(s.Score)">@s.Score</span></td>
                         <td>
                             <a class="m-name" asp-controller="Lead" asp-action="Compradores" asp-route-id="@s.LeadId">@s.Lead?.RazaoSocial</a>
-                            <div class="m-sub">@(s.Lead?.Segmento ?? s.Lead?.Cnae)</div>
+                            <div class="m-sub">@(string.IsNullOrWhiteSpace(s.Lead?.Segmento) ? ProspeccaoMA.Web.Util.CnaeCatalogo.Rotulo(s.Lead?.Cnae) : s.Lead!.Segmento)</div>
                         </td>
                         <td>
                             <a class="m-name" asp-controller="Comprador" asp-action="Alvos" asp-route-id="@s.CompradorId">@s.Comprador?.Nome</a>

@@ -52,7 +52,7 @@
                 <option value="">Todos</option>
                 @foreach (var c in Model.Cnaes)
                 {
-                    <option value="@c" selected="@(c == Model.Cnae)">@c</option>
+                    <option value="@c" selected="@(c == Model.Cnae)">@c — @(ProspeccaoMA.Web.Util.CnaeCatalogo.Rotulo(c, 40))</option>
                 }
             </select>
         </div>
@@ -131,7 +131,7 @@
                             <div class="lc-tags">
                                 @if (l.Origem == ProspeccaoMA.Web.Models.Lead.OrigemValore) { <span class="lc-tag cur">★ Curado Valore</span> }
                                 @if (l.EditadoManualmente) { <span class="lc-tag">✎ editado</span> }
-                                @if (!string.IsNullOrWhiteSpace(l.Cnae)) { <span class="lc-tag">CNAE @l.Cnae</span> }
+                                @if (!string.IsNullOrWhiteSpace(l.Cnae)) { <span class="lc-tag" title="CNAE @l.Cnae">@ProspeccaoMA.Web.Util.CnaeCatalogo.Rotulo(l.Cnae)</span> }
                                 @if (!string.IsNullOrWhiteSpace(l.Segmento)) { <span class="lc-tag">@l.Segmento</span> }
                                 @if (!string.IsNullOrWhiteSpace(l.Uf)) { <span class="lc-tag">@l.Municipio/@l.Uf</span> }
                                 @if (!string.IsNullOrWhiteSpace(l.Situacao)) { <span class="lc-tag on">● @l.Situacao</span> }

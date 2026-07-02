@@ -87,7 +87,7 @@
             var sub = string.Join(" · ", new[]
             {
                 l.Origem == ProspeccaoMA.Web.Models.Lead.OrigemValore ? "★ Curado Valore" : null,
-                !string.IsNullOrWhiteSpace(l.Segmento) ? l.Segmento : (!string.IsNullOrWhiteSpace(l.Cnae) ? $"CNAE {l.Cnae}" : null),
+                !string.IsNullOrWhiteSpace(l.Segmento) ? l.Segmento : (!string.IsNullOrWhiteSpace(l.Cnae) ? ProspeccaoMA.Web.Util.CnaeCatalogo.Rotulo(l.Cnae) : null),
                 !string.IsNullOrWhiteSpace(l.Uf) ? $"{l.Municipio}/{l.Uf}" : null
             }.Where(x => !string.IsNullOrWhiteSpace(x)));
             <div class="fa-buyer">
@@ -105,6 +105,10 @@
                         @if (!string.IsNullOrWhiteSpace(sub)) { <span class="fa-b-faixa">@sub</span> }
                     </div>
                     @if (!string.IsNullOrWhiteSpace(s.Racional)) { <div class="fa-b-rac">@s.Racional</div> }
+                    @if (s.ScoreSetor is not null)
+                    {
+                        <div class="fa-b-sub">Setor @s.ScoreSetor/40 · Porte @s.ScorePorte/25 · Modelo @s.ScoreModelo/20 · Geo @s.ScoreGeo/15</div>
+                    }
                     <div class="fa-b-ctrl">
                         <span class="stpill @StatusUi.Css(s.Status)">@StatusUi.Rotulo(s.Status)</span>
                         <form asp-controller="Sinergia" asp-action="Atualizar" asp-route-id="@s.Id" method="post" class="fa-b-ctrl" style="flex:1;margin:0">

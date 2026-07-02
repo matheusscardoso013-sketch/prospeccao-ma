@@ -112,8 +112,19 @@ public partial class GeminiClassificador : IClassificadorIA
         return texto;
     }
 
-    /// <summary>Tenta um modelo específico com retry/backoff (429/5xx). Null se esgotar.</summary>
+    /// <summary>Tenta um modelo específico com retry/backoff (429/5xx). Null se esgotar
+    /// ou se a operação for cancelada (ex.: tempo-limite do chamador) — nunca lança.</summary>
     private async Task<string?> TentarModeloAsync(string modelo, string prompt, string idLog, CancellationToken ct)
+    {
+        try { return await TentarModeloInternoAsync(modelo, prompt, idLog, ct); }
+        catch (OperationCanceledException)
+        {
+            _log.LogWarning("Chamada ao Gemini cancelada pelo tempo-limite do chamador ({Id})", idLog);
+            return null;
+        }
+    }
+
+    private async Task<string?> TentarModeloInternoAsync(string modelo, string prompt, string idLog, CancellationToken ct)
     {
         var corpo = new
         {
@@ -207,7 +218,7 @@ public partial class GeminiClassificador : IClassificadorIA
         sb.AppendLine();
         sb.AppendLine("## Empresa-alvo (dados reais)");
         sb.AppendLine($"- Razão social: {lead.RazaoSocial}");
-        if (!string.IsNullOrWhiteSpace(lead.Cnae)) sb.AppendLine($"- CNAE: {lead.Cnae}");
+        if (!string.IsNullOrWhiteSpace(lead.Cnae)) sb.AppendLine($"- Atividade (CNAE oficial): {Util.CnaeCatalogo.ParaPrompt(lead.Cnae)}");
         if (!string.IsNullOrWhiteSpace(lead.Segmento)) sb.AppendLine($"- Segmento: {lead.Segmento}");
         if (!string.IsNullOrWhiteSpace(lead.Uf)) sb.AppendLine($"- UF: {lead.Uf}");
         sb.AppendLine($"- Porte estimado: {lead.PorteEstimado}");
@@ -258,8 +269,12 @@ public partial class GeminiClassificador : IClassificadorIA
         sb.AppendLine("- RED FLAG: se o alvo viola uma exclusão explícita da tese (ex.: 'não olham produto', 'sem muitos PJs'), o score final é no MÁXIMO 20 e o racional cita a violação.");
         sb.AppendLine("- DADOS FALTANTES: não presuma a favor — reduza a subnota correspondente e cite a lacuna no racional.");
         sb.AppendLine("- NÃO invente informações; porte/faturamento do alvo são ESTIMADOS (capital social é proxy).");
+        sb.AppendLine("Calibração (use a escala inteira — a maioria dos pares reais fica entre 30 e 70):");
+        sb.AppendLine("- ~90 = fit raro: setor exato da tese + porte dentro da faixa + modelo buscado (ex.: SaaS B2B recorrente para consolidador de software na faixa certa).");
+        sb.AppendLine("- ~60 = fit parcial digno de análise: setor adjacente OU porte nas bordas da faixa, sem violações (ex.: distribuidora de alimentos para fundo de consumo que prefere marcas próprias).");
+        sb.AppendLine("- ~30 = fit fraco: só coincidências genéricas, setor distinto do núcleo da tese (ex.: indústria pesada para tese de saúde; varejo físico para tese de software).");
         sb.AppendLine("- Responda ESTRITAMENTE em JSON:");
-        sb.AppendLine("{\"setor\":n,\"porte\":n,\"modelo\":n,\"geografia\":n,\"score\":n,\"racional\":\"<1-3 frases, terminando com a linha 'Setor n/40 · Porte n/25 · Modelo n/20 · Geo n/15'>\"}");
+        sb.AppendLine("{\"setor\":n,\"porte\":n,\"modelo\":n,\"geografia\":n,\"score\":n,\"racional\":\"<1-3 frases objetivas>\"}");
         sb.AppendLine();
         sb.AppendLine("## Comprador e sua tese");
         sb.AppendLine($"- Nome: {comprador.Nome}");
@@ -288,7 +303,7 @@ public partial class GeminiClassificador : IClassificadorIA
         sb.AppendLine($"## Empresa-alvo (dados reais — {lead.Origem})");
         sb.AppendLine($"- Razão social: {lead.RazaoSocial}");
         if (!string.IsNullOrWhiteSpace(lead.Cnae))
-            sb.AppendLine($"- CNAE: {lead.Cnae}");
+            sb.AppendLine($"- Atividade (CNAE oficial): {Util.CnaeCatalogo.ParaPrompt(lead.Cnae)}");
         if (!string.IsNullOrWhiteSpace(lead.Uf))
             sb.AppendLine($"- UF/Município: {lead.Uf}/{lead.Municipio}");
         if (!string.IsNullOrWhiteSpace(lead.Segmento))
@@ -344,7 +359,7 @@ public partial class GeminiClassificador : IClassificadorIA
         sb.AppendLine("## Empresa-alvo (dados reais da Receita Federal)");
         sb.AppendLine($"- Razão social: {lead.RazaoSocial}");
         sb.AppendLine($"- CNPJ: {lead.Cnpj}");
-        sb.AppendLine($"- CNAE: {lead.Cnae}");
+        sb.AppendLine($"- Atividade (CNAE oficial): {Util.CnaeCatalogo.ParaPrompt(lead.Cnae)}");
         sb.AppendLine($"- UF/Município: {lead.Uf} / {lead.Municipio}");
         sb.AppendLine($"- Capital social: {lead.CapitalSocial:C}");
         sb.AppendLine($"- Situação cadastral: {lead.Situacao}");
@@ -381,18 +396,27 @@ public partial class GeminiClassificador : IClassificadorIA
             using var doc = JsonDocument.Parse(bruto);
             var raiz = doc.RootElement;
 
-            var score = 0;
-            if (raiz.TryGetProperty("score", out var s))
-            {
-                if (s.ValueKind == JsonValueKind.Number && s.TryGetInt32(out var si)) score = si;
-                else if (s.ValueKind == JsonValueKind.String && int.TryParse(s.GetString(), out var ss)) score = ss;
-            }
+            var score = LerInt(raiz, "score") ?? 0;
             score = Math.Clamp(score, 0, 100);
 
             var racional = raiz.TryGetProperty("racional", out var r) ? r.GetString() ?? string.Empty : string.Empty;
             if (string.IsNullOrWhiteSpace(racional)) racional = "Sem racional retornado pela IA.";
 
-            return new ResultadoClassificacao(score, racional.Trim());
+            // Subnotas da rubrica de sinergia (quando presentes), com clamp por dimensão.
+            var setor = ClampOuNull(LerInt(raiz, "setor"), 40);
+            var porte = ClampOuNull(LerInt(raiz, "porte"), 25);
+            var modelo = ClampOuNull(LerInt(raiz, "modelo"), 20);
+            var geo = ClampOuNull(LerInt(raiz, "geografia") ?? LerInt(raiz, "geo"), 15);
+
+            // Coerência: se todas as subnotas vieram, o score É a soma (nota auditável).
+            if (setor is not null && porte is not null && modelo is not null && geo is not null)
+            {
+                var soma = setor.Value + porte.Value + modelo.Value + geo.Value;
+                // red flag da tese pode ter rebaixado o score abaixo da soma — respeita o menor.
+                score = Math.Min(Math.Clamp(soma, 0, 100), score > 0 ? score : soma);
+            }
+
+            return new ResultadoClassificacao(score, racional.Trim(), setor, porte, modelo, geo);
         }
         catch (Exception ex)
         {
@@ -400,4 +424,14 @@ public partial class GeminiClassificador : IClassificadorIA
             return new ResultadoClassificacao(0, "Resposta da IA fora do formato esperado; lead não pontuado.");
         }
     }
+
+    private static int? LerInt(JsonElement raiz, string prop)
+    {
+        if (!raiz.TryGetProperty(prop, out var e)) return null;
+        if (e.ValueKind == JsonValueKind.Number && e.TryGetInt32(out var i)) return i;
+        if (e.ValueKind == JsonValueKind.String && int.TryParse(e.GetString(), out var s)) return s;
+        return null;
+    }
+
+    private static int? ClampOuNull(int? v, int max) => v is null ? null : Math.Clamp(v.Value, 0, max);
 }

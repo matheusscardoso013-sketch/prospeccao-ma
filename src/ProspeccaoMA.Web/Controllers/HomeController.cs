@@ -75,7 +75,7 @@ public class HomeController : Controller
         {
             LeadId = s.LeadId,
             Alvo = s.Lead?.RazaoSocial ?? "—",
-            Setor = PrimeiroNaoVazio(s.Lead?.Segmento, s.Lead?.Cnae, "—"),
+            Setor = PrimeiroNaoVazio(s.Lead?.Segmento, Util.CnaeCatalogo.Rotulo(s.Lead?.Cnae, 30), "—"),
             Comprador = s.Comprador?.Nome ?? "—",
             Score = s.Score,
             Racional = Resumir(s.Racional),

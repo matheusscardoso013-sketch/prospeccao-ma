@@ -341,9 +341,7 @@ public class RotinaProspeccao
                 if (s.Lead is null || s.Comprador is null) continue;
 
                 var r = await _ia.ClassificarSinergiaAsync(s.Lead, s.Comprador, ct);
-                s.Score = r.Score;
-                s.Racional = r.Racional;
-                s.GeradoEm = DateTime.UtcNow;
+                Matching.MotorSinergia.AplicarResultado(s, r);
                 sinergiasOk++;
             }
         }

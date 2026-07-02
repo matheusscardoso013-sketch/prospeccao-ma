@@ -2,8 +2,10 @@ using ProspeccaoMA.Web.Models;
 
 namespace ProspeccaoMA.Web.IA;
 
-/// <summary>Saída da IA para um candidato: nota de sinergia e racional textual.</summary>
-public record ResultadoClassificacao(int Score, string Racional);
+/// <summary>Saída da IA para um candidato: nota de sinergia, racional e (quando a rubrica
+/// estruturada respondeu) as subnotas — setor 0-40, porte 0-25, modelo 0-20, geo 0-15.</summary>
+public record ResultadoClassificacao(int Score, string Racional,
+    int? Setor = null, int? Porte = null, int? Modelo = null, int? Geo = null);
 
 /// <summary>
 /// Abstração do motor de qualificação. A IA NUNCA descobre/inventa empresas — recebe

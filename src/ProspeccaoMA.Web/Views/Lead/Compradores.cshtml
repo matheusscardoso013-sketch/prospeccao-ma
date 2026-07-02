@@ -11,7 +11,7 @@
     string CorScore(int s) => s >= 80 ? "teal" : s >= 60 ? "bronze" : "muted";
 
     var setor = !string.IsNullOrWhiteSpace(lead.Segmento) ? lead.Segmento
-              : !string.IsNullOrWhiteSpace(lead.Cnae) ? $"CNAE {lead.Cnae}" : "—";
+              : !string.IsNullOrWhiteSpace(lead.Cnae) ? ProspeccaoMA.Web.Util.CnaeCatalogo.Rotulo(lead.Cnae, 60) : "—";
 
     // Ficha só mostra dado que existe (alvos da Receita têm menos campos que os curados).
     var facts = new List<(string k, string v)>();
@@ -99,6 +99,10 @@
                         @if (!string.IsNullOrWhiteSpace(c.FaixaFaturamento)) { <span class="fa-b-faixa">· @c.FaixaFaturamento</span> }
                     </div>
                     @if (!string.IsNullOrWhiteSpace(s.Racional)) { <div class="fa-b-rac">@s.Racional</div> }
+                    @if (s.ScoreSetor is not null)
+                    {
+                        <div class="fa-b-sub">Setor @s.ScoreSetor/40 · Porte @s.ScorePorte/25 · Modelo @s.ScoreModelo/20 · Geo @s.ScoreGeo/15</div>
+                    }
                     <div class="fa-b-ctrl">
                         <span class="stpill @StatusUi.Css(s.Status)">@StatusUi.Rotulo(s.Status)</span>
                         <form asp-controller="Sinergia" asp-action="Atualizar" asp-route-id="@s.Id" method="post" class="fa-b-ctrl" style="flex:1;margin:0">

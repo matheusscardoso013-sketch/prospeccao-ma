@@ -22,9 +22,9 @@
         <div class="field">
             <label>Score mínimo</label>
             <select name="scoreMin" onchange="this.form.submit()">
-                <option value="">Qualquer</option>
-                <option value="70" selected="@(Model.ScoreMin == 70)">70+</option>
-                <option value="50" selected="@(Model.ScoreMin == 50)">50+</option>
+                <option value="70" selected="@(Model.ScoreMin == 70)">70+ (quentes)</option>
+                <option value="50" selected="@(Model.ScoreMin == 50)">50+ (padrão)</option>
+                <option value="0" selected="@(Model.ScoreMin == 0)">Qualquer</option>
             </select>
         </div>
         <div class="field" style="flex:1">
