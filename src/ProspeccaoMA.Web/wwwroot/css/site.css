@@ -334,6 +334,7 @@ tbody tr:last-child td{border-bottom:none}
        border-radius:20px;padding:2px 8px;font-weight:600;vertical-align:2px;margin-left:6px}
 .bc-avalidar{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--bronze);background:#fdf3e2;
              border-radius:20px;padding:2px 8px;font-weight:600;margin-left:8px}
+.cf-alta{color:#0e7c68} .cf-media{color:var(--bronze)} .cf-baixa{color:#9aa7b2}
 .lc-tag.hash{color:var(--vb-azul);border-color:#d5e6f2;background:#f2f8fc}
 @media(max-width:820px){.lc-grid{grid-template-columns:1fr}}
 

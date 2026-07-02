@@ -72,6 +72,13 @@ public class Comprador
 
     public DateTime? PerfilSiteEm { get; set; }
 
+    /// <summary>Vetor semântico da tese (JSON de floats) — triagem por similaridade.
+    /// Regenerado quando o hash muda (tese/perfil editados). Ver comando gerar-embeddings.</summary>
+    public string? TeseEmbedding { get; set; }
+
+    /// <summary>Hash do texto que gerou o embedding (detecta tese desatualizada).</summary>
+    public string? TeseEmbeddingHash { get; set; }
+
     public bool Ativo { get; set; } = true;
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
 

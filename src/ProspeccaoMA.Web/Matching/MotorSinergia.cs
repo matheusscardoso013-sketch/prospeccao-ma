@@ -31,6 +31,8 @@ public class MotorSinergia : IMotorSinergia
     private readonly ILogger<MotorSinergia> _log;
     private readonly int _max;
     private readonly bool _usarTriagemIA;
+    private readonly bool _usarEmbeddings;
+    private readonly bool _doisEstagios;
 
     public MotorSinergia(AppDbContext db, IClassificadorIA ia, ILogger<MotorSinergia> log, IConfiguration cfg)
     {
@@ -39,6 +41,8 @@ public class MotorSinergia : IMotorSinergia
         _log = log;
         _max = Math.Max(1, cfg.GetValue("Sinergia:MaxCompradoresPorLead", 12));
         _usarTriagemIA = cfg.GetValue("Sinergia:UsarTriagemIA", true);
+        _usarEmbeddings = cfg.GetValue("Sinergia:UsarEmbeddings", true);
+        _doisEstagios = cfg.GetValue("Sinergia:DoisEstagios", false);
     }
 
     public async Task<int> CruzarLeadAsync(int leadId, CancellationToken ct = default)
@@ -55,10 +59,17 @@ public class MotorSinergia : IMotorSinergia
             .Where(c => c.Ativo && c.Tese.Length >= 20)
             .ToListAsync(ct);
 
-        // Triagem semântica (1 chamada de IA escolhe os candidatos lendo as teses);
-        // em falha/desligada, cai para o pré-filtro por palavras-chave do setor.
+        // Cascata de triagem: 1) similaridade vetorial (embeddings — determinística, cota
+        // separada); 2) triagem semântica por LLM; 3) palavras-chave do setor.
         List<Comprador> shortlist = new();
-        if (_usarTriagemIA)
+        if (_usarEmbeddings)
+        {
+            shortlist = await ShortlistPorEmbeddingsAsync(lead, compradores, ct);
+            if (shortlist.Count > 0)
+                _log.LogInformation("Lead {Nome}: triagem por embeddings selecionou {N} comprador(es)", lead.RazaoSocial, shortlist.Count);
+        }
+
+        if (shortlist.Count == 0 && _usarTriagemIA)
         {
             var ids = await _ia.SelecionarCompradoresAsync(lead, compradores, _max, ct);
             if (ids is { Count: > 0 })
@@ -100,7 +111,7 @@ public class MotorSinergia : IMotorSinergia
             }
             else
             {
-                var r = await _ia.ClassificarSinergiaAsync(lead, comprador, ct);
+                var r = await PontuarAsync(lead, comprador, ct);
                 AplicarResultado(sinergia, r);
             }
 
@@ -190,7 +201,7 @@ public class MotorSinergia : IMotorSinergia
             var elim = FiltroDuro(s.Lead, comprador);
             var r = elim is not null
                 ? new ResultadoClassificacao(10, elim, Porte: 0)
-                : await _ia.ClassificarSinergiaAsync(s.Lead, comprador, ct);
+                : await PontuarAsync(s.Lead, comprador, ct);
             AplicarResultado(s, r);
             n++;
         }
@@ -218,7 +229,7 @@ public class MotorSinergia : IMotorSinergia
             var elim = FiltroDuro(lead, s.Comprador);
             var r = elim is not null
                 ? new ResultadoClassificacao(10, elim, Porte: 0)
-                : await _ia.ClassificarSinergiaAsync(lead, s.Comprador, ct);
+                : await PontuarAsync(lead, s.Comprador, ct);
             AplicarResultado(s, r);
             n++;
         }
@@ -226,6 +237,105 @@ public class MotorSinergia : IMotorSinergia
         await _db.SaveChangesAsync(ct);
         _log.LogInformation("Lead {Nome}: {N} sinergia(s) recalculada(s) com os dados atuais", lead.RazaoSocial, n);
         return n;
+    }
+
+    /// <summary>Pontuação com dois estágios opcionais: o pente largo (flash-lite) avalia todos;
+    /// finalistas (≥60) são re-pontuados pelo modelo forte quando Sinergia:DoisEstagios=true.
+    /// Se o estágio preciso falhar (cota), fica o resultado do primeiro.</summary>
+    private async Task<ResultadoClassificacao> PontuarAsync(Lead lead, Comprador comprador, CancellationToken ct)
+    {
+        var r = await _ia.ClassificarSinergiaAsync(lead, comprador, ct: ct);
+        if (_doisEstagios && r.Score >= 60)
+        {
+            var refinado = await _ia.ClassificarSinergiaAsync(lead, comprador, preciso: true, ct: ct);
+            if (refinado.Score > 0) r = refinado;
+        }
+        return r;
+    }
+
+    // Cache dos vetores de tese (deserializar 245 × 768 floats a cada cruzamento seria caro).
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<int, (string Hash, float[] Vetor)> _cacheVetores = new();
+
+    /// <summary>Triagem vetorial: compara o embedding do lead com o de cada tese (cosseno) e
+    /// devolve os top-N. Vazio se o lead não puder ser vetorizado ou se poucos compradores
+    /// tiverem embedding atual — aí a cascata segue para a triagem por LLM.</summary>
+    private async Task<List<Comprador>> ShortlistPorEmbeddingsAsync(
+        Lead lead, List<Comprador> compradores, CancellationToken ct)
+    {
+        var comVetor = new List<(Comprador C, float[] V)>();
+        foreach (var c in compradores)
+        {
+            if (string.IsNullOrWhiteSpace(c.TeseEmbedding) || c.TeseEmbeddingHash != HashTese(c)) continue;
+            if (!_cacheVetores.TryGetValue(c.Id, out var entrada) || entrada.Hash != c.TeseEmbeddingHash)
+            {
+                try
+                {
+                    var v = System.Text.Json.JsonSerializer.Deserialize<float[]>(c.TeseEmbedding);
+                    if (v is null || v.Length == 0) continue;
+                    entrada = (c.TeseEmbeddingHash!, v);
+                    _cacheVetores[c.Id] = entrada;
+                }
+                catch { continue; }
+            }
+            comVetor.Add((c, entrada.Vetor));
+        }
+
+        // Com poucos vetores a comparação não é representativa — melhor cair no fallback.
+        if (comVetor.Count < Math.Max(10, _max))
+        {
+            _log.LogInformation("Triagem vetorial indisponível ({N} tese(s) com embedding) — usando fallback", comVetor.Count);
+            return new();
+        }
+
+        var vetorLead = await _ia.GerarEmbeddingAsync(TextoLead(lead), ct);
+        if (vetorLead is null) return new();
+
+        return comVetor
+            .Select(x => new { x.C, Sim = Cosseno(vetorLead, x.V) })
+            .OrderByDescending(x => x.Sim)
+            .Take(_max)
+            .Select(x => x.C)
+            .ToList();
+    }
+
+    /// <summary>Texto canônico da tese para o embedding (o hash detecta quando mudou).</summary>
+    internal static string TextoTese(Comprador c)
+    {
+        var partes = new[]
+        {
+            c.Nome, c.TipoEmpresa, c.Segmento, c.Tags,
+            c.Tese.Length > 1500 ? c.Tese[..1500] : c.Tese,
+            c.ModeloNegocioAlvo, c.GeografiaAlvo,
+            c.PerfilSite is { Length: > 400 } ? c.PerfilSite[..400] : c.PerfilSite
+        };
+        return string.Join("\n", partes.Where(p => !string.IsNullOrWhiteSpace(p)));
+    }
+
+    internal static string HashTese(Comprador c)
+    {
+        var bytes = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(TextoTese(c)));
+        return Convert.ToHexString(bytes)[..16];
+    }
+
+    private static string TextoLead(Lead l)
+    {
+        var partes = new[]
+        {
+            l.RazaoSocial, l.Segmento,
+            Util.CnaeCatalogo.Descricao(l.Cnae),
+            l.ModeloNegocio, l.Abrangencia, l.PorteEstimado,
+            l.Descricao is { Length: > 900 } ? l.Descricao[..900] : l.Descricao,
+            l.PerfilSite is { Length: > 400 } ? l.PerfilSite[..400] : l.PerfilSite
+        };
+        return string.Join("\n", partes.Where(p => !string.IsNullOrWhiteSpace(p)));
+    }
+
+    private static double Cosseno(float[] a, float[] b)
+    {
+        var n = Math.Min(a.Length, b.Length);
+        double dot = 0, na = 0, nb = 0;
+        for (var i = 0; i < n; i++) { dot += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; }
+        return na == 0 || nb == 0 ? 0 : dot / (Math.Sqrt(na) * Math.Sqrt(nb));
     }
 
     /// <summary>Fallback barato: ordena compradores por sobreposição de palavras-chave do setor.</summary>

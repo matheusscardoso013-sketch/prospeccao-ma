@@ -340,7 +340,7 @@ public class RotinaProspeccao
                 ct.ThrowIfCancellationRequested();
                 if (s.Lead is null || s.Comprador is null) continue;
 
-                var r = await _ia.ClassificarSinergiaAsync(s.Lead, s.Comprador, ct);
+                var r = await _ia.ClassificarSinergiaAsync(s.Lead, s.Comprador, ct: ct);
                 Matching.MotorSinergia.AplicarResultado(s, r);
                 sinergiasOk++;
             }

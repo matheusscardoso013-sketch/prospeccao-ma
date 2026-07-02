@@ -13,6 +13,12 @@ public class GeminiOptions
     /// <summary>Modelo tentado automaticamente quando o principal esgota as tentativas
     /// (o free tier do flash satura com frequência; o lite tem limites maiores).</summary>
     public string ModeloFallback { get; set; } = "gemini-2.5-flash-lite";
+
+    /// <summary>Modelo forte do segundo estágio (re-pontua finalistas). Vazio = desligado.</summary>
+    public string ModeloPreciso { get; set; } = "gemini-2.5-flash";
+
+    /// <summary>Modelo de embeddings (cota separada da geração no free tier).</summary>
+    public string ModeloEmbedding { get; set; } = "gemini-embedding-001";
 }
 
 /// <summary>
@@ -52,11 +58,82 @@ public partial class GeminiClassificador : IClassificadorIA
     }
 
     public async Task<ResultadoClassificacao> ClassificarSinergiaAsync(
-        Lead lead, Comprador comprador, CancellationToken ct = default)
+        Lead lead, Comprador comprador, bool preciso = false, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(_opt.ApiKey))
             return new ResultadoClassificacao(0, "IA não configurada: defina Gemini:ApiKey.");
-        return await ChamarAsync(MontarPromptSinergia(lead, comprador), $"{lead.Cnpj}~{comprador.Nome}", ct);
+
+        var prompt = MontarPromptSinergia(lead, comprador);
+        var idLog = $"{lead.Cnpj}~{comprador.Nome}";
+
+        // Segundo estágio: o modelo forte re-pontua o finalista; se ele falhar (cota),
+        // devolvemos falha e o chamador mantém o resultado do primeiro estágio.
+        if (preciso && !string.IsNullOrWhiteSpace(_opt.ModeloPreciso))
+        {
+            var texto = await TentarModeloAsync(_opt.ModeloPreciso, prompt, $"preciso~{idLog}", ct);
+            return texto is null
+                ? new ResultadoClassificacao(0, "IA indisponível no momento (limite de uso); tente novamente.")
+                : ParsearResultado(texto, idLog);
+        }
+
+        return await ChamarAsync(prompt, idLog, ct);
+    }
+
+    // Espaçamento próprio dos embeddings (cota/limite separados da geração; muito mais folgados).
+    private static readonly SemaphoreSlim _portaEmbed = new(1, 1);
+    private static DateTime _ultimaEmbed = DateTime.MinValue;
+    private static readonly TimeSpan IntervaloEmbed = TimeSpan.FromMilliseconds(700);
+
+    public async Task<float[]?> GerarEmbeddingAsync(string texto, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(_opt.ApiKey) || string.IsNullOrWhiteSpace(texto)) return null;
+
+        var corpo = new
+        {
+            model = $"models/{_opt.ModeloEmbedding}",
+            content = new { parts = new[] { new { text = texto.Length > 7000 ? texto[..7000] : texto } } },
+            outputDimensionality = 768 // Matryoshka: 768 dims bastam p/ triagem e pesam 4x menos
+        };
+        var url = $"v1beta/models/{_opt.ModeloEmbedding}:embedContent?key={_opt.ApiKey}";
+
+        for (var tentativa = 1; tentativa <= 3; tentativa++)
+        {
+            try
+            {
+                await _portaEmbed.WaitAsync(ct);
+                try
+                {
+                    var decorrido = DateTime.UtcNow - _ultimaEmbed;
+                    if (decorrido < IntervaloEmbed) await Task.Delay(IntervaloEmbed - decorrido, ct);
+                    _ultimaEmbed = DateTime.UtcNow;
+                }
+                finally { _portaEmbed.Release(); }
+
+                using var req = new StringContent(JsonSerializer.Serialize(corpo), Encoding.UTF8, "application/json");
+                var resp = await _http.PostAsync(url, req, ct);
+                if ((int)resp.StatusCode == 429 || (int)resp.StatusCode >= 500)
+                {
+                    if (tentativa < 3) { await Task.Delay(TimeSpan.FromSeconds(3 * tentativa), ct); continue; }
+                    _log.LogWarning("Embedding rate limit/erro {Status}", (int)resp.StatusCode);
+                    return null;
+                }
+                resp.EnsureSuccessStatusCode();
+
+                using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync(ct));
+                var valores = doc.RootElement.GetProperty("embedding").GetProperty("values");
+                var v = new float[valores.GetArrayLength()];
+                var i = 0;
+                foreach (var e in valores.EnumerateArray()) v[i++] = e.GetSingle();
+                return v;
+            }
+            catch (OperationCanceledException) { return null; }
+            catch (Exception ex)
+            {
+                if (tentativa >= 3) { _log.LogWarning(ex, "Falha ao gerar embedding"); return null; }
+                await Task.Delay(TimeSpan.FromSeconds(2 * tentativa), ct);
+            }
+        }
+        return null;
     }
 
     // Espaçamento mínimo entre chamadas: o free tier do gemini-2.5-flash permite ~10 req/min,

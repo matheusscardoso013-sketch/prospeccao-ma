@@ -38,6 +38,7 @@
                 <span>Setor <b>@setor</b></span>
                 @if (!string.IsNullOrWhiteSpace(lead.Uf)) { <span>Local <b>@(string.IsNullOrWhiteSpace(lead.Municipio) ? lead.Uf : $"{lead.Municipio}/{lead.Uf}")</b></span> }
                 @if (!string.IsNullOrWhiteSpace(lead.Situacao)) { <span>Situação <b>@lead.Situacao</b></span> }
+                <span>Dado <b class="@ProspeccaoMA.Web.Util.Confianca.Css(lead)" title="Riqueza do insumo que a IA usou para pontuar — dado raso (só CNAE) gera score menos confiável">confiança @ProspeccaoMA.Web.Util.Confianca.Nivel(lead)</b></span>
                 @if (lead.EditadoManualmente) { <span>· <b>editado à mão</b></span> }
             </div>
         </div>

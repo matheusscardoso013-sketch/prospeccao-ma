@@ -127,6 +127,50 @@ public static partial class ComandoDadoRico
         Console.WriteLine($"Resultado: {ok} perfil(is) gerado(s), {falhas} sem perfil (site fora/insuficiente), {semSite} sem site.");
     }
 
+    /// <summary>Gera/atualiza o embedding da tese de cada comprador (triagem vetorial).
+    /// Retomável: só processa quem não tem vetor ou cuja tese mudou (hash diferente).</summary>
+    public static async Task GerarEmbeddingsAsync(IServiceProvider sp, string[] args)
+    {
+        var max = LerMax(args, 300);
+
+        using var escopo = sp.CreateScope();
+        var db = escopo.ServiceProvider.GetRequiredService<AppDbContext>();
+        var ia = escopo.ServiceProvider.GetRequiredService<IClassificadorIA>();
+
+        var candidatos = (await db.Compradores
+                .Where(c => c.Ativo && c.Tese.Length >= 20)
+                .OrderBy(c => c.Id)
+                .ToListAsync())
+            .Where(c => c.TeseEmbedding == null || c.TeseEmbeddingHash != Matching.MotorSinergia.HashTese(c))
+            .Take(max)
+            .ToList();
+
+        Console.WriteLine($"Gerar embeddings: {candidatos.Count} tese(s) pendente(s)/desatualizada(s) (máx {max})");
+
+        int ok = 0, falhas = 0;
+        foreach (var c in candidatos)
+        {
+            try
+            {
+                var v = await ia.GerarEmbeddingAsync(Matching.MotorSinergia.TextoTese(c));
+                if (v is null) { falhas++; Console.WriteLine($"  FALHA  {c.Nome}"); continue; }
+
+                c.TeseEmbedding = System.Text.Json.JsonSerializer.Serialize(v);
+                c.TeseEmbeddingHash = Matching.MotorSinergia.HashTese(c);
+                await db.SaveChangesAsync();
+                ok++;
+                if (ok % 25 == 0) Console.WriteLine($"  ... {ok} gerado(s)");
+            }
+            catch (Exception ex)
+            {
+                // Soluço transitório (rede/Neon) não derruba o lote — o item fica p/ a próxima rodada.
+                falhas++;
+                Console.WriteLine($"  ERRO   {c.Nome}: {ex.GetType().Name}");
+            }
+        }
+        Console.WriteLine($"Resultado: {ok} embedding(s) gerado(s), {falhas} falha(s).");
+    }
+
     private static async Task<(string? Perfil, string Motivo)> PerfilDoSiteAsync(
         HttpClient http, IClassificadorIA ia, string nome, string site)
     {

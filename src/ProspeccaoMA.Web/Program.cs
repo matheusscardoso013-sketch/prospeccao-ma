@@ -153,6 +153,55 @@ if (args.Length > 0 && string.Equals(args[0], "enriquecer-perfis", StringCompari
     return;
 }
 
+if (args.Length > 0 && string.Equals(args[0], "gerar-embeddings", StringComparison.OrdinalIgnoreCase))
+{
+    await ComandoDadoRico.GerarEmbeddingsAsync(app.Services, args);
+    return;
+}
+
+// Exporta o pool completo de empresas da Receita que está na plataforma para um .xlsx
+// (entregável para o time — o dado bruto do governo tem dezenas de GB; este é o recorte útil).
+if (args.Length >= 2 && string.Equals(args[0], "exportar-pool", StringComparison.OrdinalIgnoreCase))
+{
+    using var escopoX = app.Services.CreateScope();
+    var dbX = escopoX.ServiceProvider.GetRequiredService<AppDbContext>();
+    var leadsX = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToListAsync(
+        dbX.Leads.Where(l => l.Origem == ProspeccaoMA.Web.Models.Lead.OrigemReceita)
+            .OrderByDescending(l => l.CapitalSocial));
+
+    using var wbX = new ClosedXML.Excel.XLWorkbook();
+    var wsX = wbX.AddWorksheet("Empresas Receita");
+    string[] cabX = { "Razão social", "CNPJ", "CNAE", "Atividade (oficial)", "Município", "UF",
+        "Capital social", "Porte (estimado)", "Situação", "Contato", "Importado em" };
+    for (var i = 0; i < cabX.Length; i++) wsX.Cell(1, i + 1).Value = cabX[i];
+    wsX.Row(1).Style.Font.Bold = true;
+
+    var linhaX = 2;
+    foreach (var l in leadsX)
+    {
+        wsX.Cell(linhaX, 1).Value = l.RazaoSocial;
+        wsX.Cell(linhaX, 2).Value = ProspeccaoMA.Web.Ingestao.CnpjUtil.Formatar(l.Cnpj);
+        wsX.Cell(linhaX, 3).Value = l.Cnae;
+        wsX.Cell(linhaX, 4).Value = ProspeccaoMA.Web.Util.CnaeCatalogo.Descricao(l.Cnae) ?? "";
+        wsX.Cell(linhaX, 5).Value = l.Municipio;
+        wsX.Cell(linhaX, 6).Value = l.Uf;
+        wsX.Cell(linhaX, 7).Value = l.CapitalSocial;
+        wsX.Cell(linhaX, 7).Style.NumberFormat.Format = "#,##0";
+        wsX.Cell(linhaX, 8).Value = l.PorteEstimado;
+        wsX.Cell(linhaX, 9).Value = l.Situacao;
+        wsX.Cell(linhaX, 10).Value = l.Contato ?? "";
+        wsX.Cell(linhaX, 11).Value = l.CriadoEm.ToString("dd/MM/yyyy");
+        linhaX++;
+    }
+    // Larguras fixas (AdjustToContents em 5k linhas é lento e desnecessário aqui).
+    double[] largX = { 52, 20, 10, 48, 24, 6, 16, 18, 10, 60, 12 };
+    for (var i = 0; i < largX.Length; i++) wsX.Column(i + 1).Width = largX[i];
+
+    wbX.SaveAs(args[1]);
+    Console.WriteLine($"Exportado: {leadsX.Count} empresa(s) da Receita para {args[1]}");
+    return;
+}
+
 // Atrás do proxy da hospedagem (Render/Railway): repassa esquema/host reais
 // para o HTTPS e o cookie de login funcionarem corretamente.
 app.UseForwardedHeaders(new ForwardedHeadersOptions
