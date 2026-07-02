@@ -16,9 +16,29 @@
     </div>
 
     <form method="get" asp-controller="Comprador" asp-action="Index" class="lf">
-        <div class="field" style="flex:1">
+        <div class="field" style="flex:1;min-width:180px">
             <label>Buscar</label>
             <input type="text" name="busca" value="@ViewData["Busca"]" placeholder="nome, tese, setor ou tag (ex.: saúde, fintech, agro)" style="width:100%" />
+        </div>
+        <div class="field">
+            <label>Responsável</label>
+            <select name="resp">
+                <option value="">Todos</option>
+                @foreach (var r in (List<string>)ViewData["Responsaveis"]!)
+                {
+                    <option value="@r" selected="@(r == (string?)ViewData["Resp"])">@r</option>
+                }
+            </select>
+        </div>
+        <div class="field">
+            <label>Tipo</label>
+            <select name="tipo">
+                <option value="">Todos</option>
+                @foreach (var t in (List<string>)ViewData["Tipos"]!)
+                {
+                    <option value="@t" selected="@(t == (string?)ViewData["Tipo"])">@t</option>
+                }
+            </select>
         </div>
         <button type="submit" class="fa-btn s">Filtrar</button>
         @if (semTese)
@@ -42,15 +62,26 @@
     }
     else
     {
+        var grupoAtual = -1;
         <div class="lc-grid">
             @foreach (var c in Model)
             {
+                var grupo = ProspeccaoMA.Web.Controllers.CompradorController.GrupoCompletude(c);
+                if (grupo != grupoAtual)
+                {
+                    grupoAtual = grupo;
+                    <div class="bc-grupo">
+                        @(grupo == 0 ? "Prontos para o matching — tese + critérios estruturados"
+                          : grupo == 1 ? "Tese só em texto — preencher critérios melhora o score"
+                          : "Sem tese — fora do cruzamento até preencher")
+                    </div>
+                }
                 var matches = c.Sinergias.Count;
                 <div class="lc">
                     <div class="lc-top">
                         <div class="bc-av">@(string.IsNullOrEmpty(c.Nome) ? "?" : c.Nome.Substring(0, 1).ToUpper())</div>
                         <div class="lc-id">
-                            <div class="lc-razao">@c.Nome</div>
+                            <div class="lc-razao">@c.Nome @if (grupo == 0) { <span class="bc-ok" title="Critérios estruturados preenchidos">critérios ✓</span> }</div>
                             @if (!string.IsNullOrWhiteSpace(c.RazaoSocial)) { <div class="lc-cnpj" style="font-family:inherit">@c.RazaoSocial</div> }
                             <div class="lc-tags">
                                 @if (!string.IsNullOrWhiteSpace(c.TipoEmpresa)) { <span class="lc-tag">@c.TipoEmpresa</span> }

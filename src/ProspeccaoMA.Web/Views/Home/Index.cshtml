@@ -56,7 +56,7 @@
 
     <div class="px-rule"></div>
 
-    <div class="px-sect">Melhores oportunidades de hoje</div>
+    <div class="px-sect">Fila do dia — próximas abordagens</div>
 
     @if (Model.Melhores.Count == 0)
     {
@@ -78,7 +78,7 @@
                 </div>
                 <div class="px-opp-txt">
                     <div class="co">@o.Alvo</div>
-                    <div class="fl">encaixa com <b>@o.Comprador</b></div>
+                    <div class="fl">encaixa com <b>@o.Comprador</b>@(string.IsNullOrWhiteSpace(o.Responsavel) ? "" : $" · resp. {o.Responsavel}")</div>
                 </div>
                 <span class="px-tag">@o.Setor</span>
                 <span class="px-go">Abrir →</span>

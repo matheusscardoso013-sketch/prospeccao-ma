@@ -119,17 +119,20 @@ public class LeadController : Controller
         return View(sinergias);
     }
 
-    public async Task<IActionResult> Index(string? cnae, string? uf, int? scoreMin, OrdenacaoLeads ordenar = OrdenacaoLeads.Score)
+    public async Task<IActionResult> Index(AbaLeads aba = AbaLeads.Valore, string? busca = null,
+        string? cnae = null, string? uf = null, int? scoreMin = null,
+        OrdenacaoLeads ordenar = OrdenacaoLeads.Score, int pagina = 1)
     {
-        var linhas = await CarregarLinhasAsync(cnae, uf, scoreMin, ordenar);
+        var linhas = await CarregarLinhasAsync(cnae, uf, scoreMin, ordenar, aba, busca);
 
         var vm = new LeadsViewModel
         {
+            Aba = aba,
+            Busca = busca,
             Cnae = cnae,
             Uf = uf,
             ScoreMin = scoreMin,
             Ordenar = ordenar,
-            Leads = linhas,
             TotalLeads = await _db.Leads.CountAsync(),
             GeradosHoje = await _db.LeadScores.CountAsync(s => s.GeradoEm.Date == DateTime.UtcNow.Date),
             // Média só de quem já foi pontuado (score > 0) — alvos curados ainda não
@@ -139,19 +142,51 @@ public class LeadController : Controller
                 : 0,
             UltimaExecucao = await _db.ExecucoesJob.OrderByDescending(e => e.IniciadoEm).FirstOrDefaultAsync(),
             Ufs = await _db.Leads.Where(l => l.Uf != "").Select(l => l.Uf).Distinct().OrderBy(u => u).ToListAsync(),
-            Cnaes = await _db.Leads.Where(l => l.Cnae != "").Select(l => l.Cnae).Distinct().OrderBy(c => c).ToListAsync()
+            Cnaes = await _db.Leads.Where(l => l.Cnae != "").Select(l => l.Cnae).Distinct().OrderBy(c => c).ToListAsync(),
+            // Contagens das abas (independem dos filtros — orientam a navegação)
+            TotalValore = await _db.Leads.CountAsync(l => l.Origem == Models.Lead.OrigemValore),
+            TotalReceita = await _db.Leads.CountAsync(l => l.Origem == Models.Lead.OrigemReceita),
+            TotalQuentes = await _db.SinergiasComprador
+                .Where(s => s.Score >= 80 && s.Status != StatusSinergia.Descartado)
+                .Select(s => s.LeadId).Distinct().CountAsync(),
         };
+
+        // Paginação em memória (a montagem das linhas já é in-memory pela melhor sinergia).
+        vm.TotalResultados = linhas.Count;
+        vm.Pagina = Math.Clamp(pagina, 1, vm.TotalPaginas);
+        vm.Leads = linhas.Skip((vm.Pagina - 1) * LeadsViewModel.PorPagina).Take(LeadsViewModel.PorPagina).ToList();
         return View(vm);
     }
 
-    /// <summary>Monta as linhas (lead + melhor score) aplicando os filtros. Reusado pelo export.
-    /// Inclui os alvos curados da Valore (sem LeadScore): para eles, o score exibido é o da
-    /// melhor sinergia com um comprador.</summary>
-    private async Task<List<LeadLinha>> CarregarLinhasAsync(string? cnae, string? uf, int? scoreMin, OrdenacaoLeads ordenar)
+    /// <summary>Monta as linhas (lead + melhor score) aplicando os filtros. Reusado pelo export
+    /// (aba nula = comportamento clássico: só quem tem score ou é curado). A aba Receita inclui
+    /// também o pool ainda não pontuado ("no radar") — é onde a busca por nome encontra tudo.</summary>
+    private async Task<List<LeadLinha>> CarregarLinhasAsync(string? cnae, string? uf, int? scoreMin,
+        OrdenacaoLeads ordenar, AbaLeads? aba = null, string? busca = null)
     {
-        var query = _db.Leads.Include(l => l.Scores)
-            .Where(l => l.Scores.Any() || l.Origem != Models.Lead.OrigemReceita);
+        var query = _db.Leads.Include(l => l.Scores).AsQueryable();
 
+        switch (aba)
+        {
+            case AbaLeads.Valore:
+                query = query.Where(l => l.Origem == Models.Lead.OrigemValore);
+                break;
+            case AbaLeads.Receita:
+                query = query.Where(l => l.Origem == Models.Lead.OrigemReceita);
+                break;
+            case AbaLeads.Quentes:
+                var quentes = _db.SinergiasComprador
+                    .Where(s => s.Score >= 80 && s.Status != StatusSinergia.Descartado)
+                    .Select(s => s.LeadId);
+                query = query.Where(l => quentes.Contains(l.Id));
+                break;
+            default: // export/legado: pontuados + curados
+                query = query.Where(l => l.Scores.Any() || l.Origem != Models.Lead.OrigemReceita);
+                break;
+        }
+
+        if (!string.IsNullOrWhiteSpace(busca))
+            query = query.Where(l => EF.Functions.ILike(l.RazaoSocial, $"%{busca.Trim()}%"));
         if (!string.IsNullOrWhiteSpace(uf))
             query = query.Where(l => l.Uf == uf);
         if (!string.IsNullOrWhiteSpace(cnae))
@@ -195,6 +230,7 @@ public class LeadController : Controller
 
         linhas = ordenar switch
         {
+            OrdenacaoLeads.Sinergia => linhas.OrderByDescending(x => x.MelhorSinergiaScore ?? -1).ThenByDescending(x => x.Score),
             OrdenacaoLeads.Capital => linhas.OrderByDescending(x => x.Lead.CapitalSocial),
             OrdenacaoLeads.Recente => linhas.OrderByDescending(x => x.GeradoEm),
             _ => linhas.OrderByDescending(x => x.Score)

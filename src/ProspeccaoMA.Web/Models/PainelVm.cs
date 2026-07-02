@@ -32,6 +32,7 @@ public class OportunidadePainel
     public string Alvo { get; set; } = "";
     public string Setor { get; set; } = "";
     public string Comprador { get; set; } = "";
+    public string? Responsavel { get; set; }
     public int Score { get; set; }
     public string Racional { get; set; } = "";
 }

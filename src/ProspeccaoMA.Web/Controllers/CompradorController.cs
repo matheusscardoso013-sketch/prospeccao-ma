@@ -30,12 +30,16 @@ public class CompradorController : Controller
     // Tese com menos de 20 caracteres é tratada como "sem tese" (vazia ou inservível p/ matching).
     private const int TamanhoMinimoTese = 20;
 
-    public async Task<IActionResult> Index(string? busca, bool semTese = false)
+    public async Task<IActionResult> Index(string? busca, string? resp, string? tipo, bool semTese = false)
     {
         var query = _db.Compradores.Include(c => c.Sinergias).Where(c => c.Ativo);
 
         if (semTese)
             query = query.Where(c => c.Tese.Length < TamanhoMinimoTese);
+        if (!string.IsNullOrWhiteSpace(resp))
+            query = query.Where(c => c.Responsavel == resp);
+        if (!string.IsNullOrWhiteSpace(tipo))
+            query = query.Where(c => c.TipoEmpresa == tipo);
 
         if (!string.IsNullOrWhiteSpace(busca))
         {
@@ -48,11 +52,36 @@ public class CompradorController : Controller
         }
 
         ViewData["Busca"] = busca;
+        ViewData["Resp"] = resp;
+        ViewData["Tipo"] = tipo;
         ViewData["SemTese"] = semTese;
         ViewData["Total"] = await _db.Compradores.CountAsync(c => c.Ativo);
         ViewData["TotalSemTese"] = await _db.Compradores.CountAsync(c => c.Ativo && c.Tese.Length < TamanhoMinimoTese);
-        var lista = await query.OrderBy(c => c.Nome).ToListAsync();
+        ViewData["Responsaveis"] = await _db.Compradores
+            .Where(c => c.Ativo && c.Responsavel != null && c.Responsavel != "")
+            .Select(c => c.Responsavel!).Distinct().OrderBy(r => r).ToListAsync();
+        ViewData["Tipos"] = await _db.Compradores
+            .Where(c => c.Ativo && c.TipoEmpresa != null && c.TipoEmpresa != "")
+            .Select(c => c.TipoEmpresa!).Distinct().OrderBy(t => t).ToListAsync();
+
+        // Ordena por completude do cadastro (prontos p/ matching primeiro) e, dentro do
+        // grupo, por atividade (quem tem mais matches sobe) — vira um painel de qualidade.
+        var lista = (await query.ToListAsync())
+            .OrderBy(c => GrupoCompletude(c))
+            .ThenByDescending(c => c.Sinergias.Count)
+            .ThenBy(c => c.Nome)
+            .ToList();
         return View(lista);
+    }
+
+    /// <summary>0 = tese + critérios estruturados ("pronto"); 1 = só tese em texto; 2 = sem tese.</summary>
+    public static int GrupoCompletude(Comprador c)
+    {
+        if (string.IsNullOrWhiteSpace(c.Tese) || c.Tese.Length < TamanhoMinimoTese) return 2;
+        var temCriterios = c.FaturamentoMinAlvo is not null || c.FaturamentoMaxAlvo is not null
+            || c.MargemEbitdaMinima is not null || !string.IsNullOrWhiteSpace(c.ModeloNegocioAlvo)
+            || !string.IsNullOrWhiteSpace(c.Exclusoes) || !string.IsNullOrWhiteSpace(c.GeografiaAlvo);
+        return temCriterios ? 0 : 1;
     }
 
     [HttpGet]

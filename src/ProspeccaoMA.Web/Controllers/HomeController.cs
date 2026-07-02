@@ -77,6 +77,7 @@ public class HomeController : Controller
             Alvo = s.Lead?.RazaoSocial ?? "—",
             Setor = PrimeiroNaoVazio(s.Lead?.Segmento, Util.CnaeCatalogo.Rotulo(s.Lead?.Cnae, 30), "—"),
             Comprador = s.Comprador?.Nome ?? "—",
+            Responsavel = s.Comprador?.Responsavel,
             Score = s.Score,
             Racional = Resumir(s.Racional),
         }).ToList();
