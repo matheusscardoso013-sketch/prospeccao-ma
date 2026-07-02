@@ -41,6 +41,10 @@
             </select>
         </div>
         <button type="submit" class="fa-btn s">Filtrar</button>
+        @if ((int)(ViewData["AValidar"] ?? 0) > 0)
+        {
+            <a class="fa-btn s" style="color:var(--bronze);border-color:#e8d5ae" asp-controller="Comprador" asp-action="Revisao">Revisar critérios da IA (@ViewData["AValidar"])</a>
+        }
         @if (semTese)
         {
             <a class="fa-btn p" asp-controller="Comprador" asp-action="Index">Mostrar todos</a>

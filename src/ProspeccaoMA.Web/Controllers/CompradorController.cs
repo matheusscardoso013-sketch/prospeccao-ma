@@ -57,6 +57,7 @@ public class CompradorController : Controller
         ViewData["SemTese"] = semTese;
         ViewData["Total"] = await _db.Compradores.CountAsync(c => c.Ativo);
         ViewData["TotalSemTese"] = await _db.Compradores.CountAsync(c => c.Ativo && c.Tese.Length < TamanhoMinimoTese);
+        ViewData["AValidar"] = await _db.Compradores.CountAsync(c => c.Ativo && c.CriteriosExtraidosEm != null && !c.CriteriosValidados);
         ViewData["Responsaveis"] = await _db.Compradores
             .Where(c => c.Ativo && c.Responsavel != null && c.Responsavel != "")
             .Select(c => c.Responsavel!).Distinct().OrderBy(r => r).ToListAsync();
@@ -72,6 +73,30 @@ public class CompradorController : Controller
             .ThenBy(c => c.Nome)
             .ToList();
         return View(lista);
+    }
+
+    /// <summary>Fila de revisão: critérios extraídos automaticamente da tese pela IA,
+    /// aguardando o olho do time. Confirmar não altera nada — só marca como validado;
+    /// se algo estiver errado, o caminho é Editar (que também valida).</summary>
+    public async Task<IActionResult> Revisao()
+    {
+        var pendentes = await _db.Compradores
+            .Where(c => c.Ativo && c.CriteriosExtraidosEm != null && !c.CriteriosValidados)
+            .OrderBy(c => c.Nome)
+            .ToListAsync();
+        return View(pendentes);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ValidarCriterios(int id)
+    {
+        var c = await _db.Compradores.FirstOrDefaultAsync(x => x.Id == id);
+        if (c is null) return NotFound();
+        c.CriteriosValidados = true;
+        await _db.SaveChangesAsync();
+        TempData["Ok"] = $"Critérios de {c.Nome} validados.";
+        return RedirectToAction(nameof(Revisao));
     }
 
     /// <summary>0 = tese + critérios estruturados ("pronto"); 1 = só tese em texto; 2 = sem tese.</summary>
@@ -124,6 +149,9 @@ public class CompradorController : Controller
         c.Exclusoes = modelo.Exclusoes;
         c.Cultura = modelo.Cultura;
         c.Ativo = modelo.Ativo;
+
+        // Passou pelo olho do time ao salvar a edição — critérios considerados validados.
+        if (c.CriteriosExtraidosEm is not null) c.CriteriosValidados = true;
 
         try
         {

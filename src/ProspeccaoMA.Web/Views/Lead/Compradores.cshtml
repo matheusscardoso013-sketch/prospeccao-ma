@@ -63,6 +63,22 @@
             <div class="fa-blk">Sobre a empresa</div>
             <div class="fa-desc">@lead.Descricao</div>
         }
+        else if (!curado)
+        {
+            @* Leads da Receita não trazem descrição — montamos uma factual, só com dados oficiais. *@
+            var sobre = $"Empresa {(string.IsNullOrWhiteSpace(lead.Situacao) ? "" : lead.Situacao.ToLower() + " ")}de " +
+                        $"{(ProspeccaoMA.Web.Util.CnaeCatalogo.Descricao(lead.Cnae)?.ToLower() ?? "atividade não classificada")}" +
+                        $"{(string.IsNullOrWhiteSpace(lead.Municipio) ? "" : $", sediada em {lead.Municipio}/{lead.Uf}")}." +
+                        $"{(lead.CapitalSocial > 0 ? $" Capital social de {lead.CapitalSocial:C0}." : "")}" +
+                        $"{(string.IsNullOrWhiteSpace(lead.PorteEstimado) ? "" : $" Porte estimado: {lead.PorteEstimado}.")}";
+            <div class="fa-blk">Sobre a empresa <span style="text-transform:none;letter-spacing:0">— dados oficiais da Receita</span></div>
+            <div class="fa-desc">@sobre</div>
+        }
+        @if (!string.IsNullOrWhiteSpace(lead.PerfilSite))
+        {
+            <div class="fa-blk">Perfil <span style="text-transform:none;letter-spacing:0">— resumo do site oficial@(lead.PerfilSiteEm is null ? "" : $" em {ProspeccaoMA.Web.Util.Fuso.Brasil(lead.PerfilSiteEm.Value):dd/MM/yyyy}")</span></div>
+            <div class="fa-desc">@lead.PerfilSite</div>
+        }
         <div class="fa-blk">Dados da empresa</div>
         <div class="fa-facts">
             @foreach (var f in facts)

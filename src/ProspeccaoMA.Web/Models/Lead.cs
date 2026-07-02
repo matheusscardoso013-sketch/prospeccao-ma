@@ -68,6 +68,12 @@ public class Lead
     /// <summary>Aspectos de cultura/gestão relevantes para fit com compradores.</summary>
     public string? Cultura { get; set; }
 
+    /// <summary>Resumo do que a empresa faz, gerado a partir do SITE OFICIAL dela (fonte real,
+    /// nunca inventado). Complementa a Descricao da planilha no prompt e na ficha.</summary>
+    public string? PerfilSite { get; set; }
+
+    public DateTime? PerfilSiteEm { get; set; }
+
     /// <summary>Marcado quando o usuário editou o lead à mão (rastreabilidade da fonte;
     /// reimportações preservam leads editados em vez de sobrescrevê-los).</summary>
     public bool EditadoManualmente { get; set; }

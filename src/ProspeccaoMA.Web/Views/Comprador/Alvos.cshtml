@@ -61,9 +61,20 @@
     <div class="fa-dados">
         <div class="fa-blk">Tese de investimento</div>
         <div class="fa-desc">@(string.IsNullOrWhiteSpace(c.Tese) ? "Tese ainda não preenchida." : c.Tese)</div>
+        @if (!string.IsNullOrWhiteSpace(c.PerfilSite))
+        {
+            <div class="fa-blk">Perfil <span style="text-transform:none;letter-spacing:0">— resumo do site oficial@(c.PerfilSiteEm is null ? "" : $" em {ProspeccaoMA.Web.Util.Fuso.Brasil(c.PerfilSiteEm.Value):dd/MM/yyyy}")</span></div>
+            <div class="fa-desc">@c.PerfilSite</div>
+        }
         @if (facts.Count > 0)
         {
-            <div class="fa-blk">Critérios estruturados</div>
+            <div class="fa-blk">
+                Critérios estruturados
+                @if (c.CriteriosExtraidosEm is not null && !c.CriteriosValidados)
+                {
+                    <span class="bc-avalidar">extraídos pela IA — a validar</span>
+                }
+            </div>
             <div class="fa-facts">
                 @foreach (var f in facts)
                 {

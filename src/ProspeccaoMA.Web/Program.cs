@@ -139,6 +139,20 @@ if (args.Length >= 2 && string.Equals(args[0], "importar-alvos", StringCompariso
     return;
 }
 
+// Onda "dado rico": IA extrai critérios estruturados das teses (estruturar-teses) e
+// resume perfis a partir do site oficial (enriquecer-perfis). Ver ComandoDadoRico.
+if (args.Length > 0 && string.Equals(args[0], "estruturar-teses", StringComparison.OrdinalIgnoreCase))
+{
+    await ComandoDadoRico.EstruturarTesesAsync(app.Services, args);
+    return;
+}
+
+if (args.Length > 0 && string.Equals(args[0], "enriquecer-perfis", StringComparison.OrdinalIgnoreCase))
+{
+    await ComandoDadoRico.EnriquecerPerfisAsync(app.Services, args);
+    return;
+}
+
 // Atrás do proxy da hospedagem (Render/Railway): repassa esquema/host reais
 // para o HTTPS e o cookie de login funcionarem corretamente.
 app.UseForwardedHeaders(new ForwardedHeadersOptions

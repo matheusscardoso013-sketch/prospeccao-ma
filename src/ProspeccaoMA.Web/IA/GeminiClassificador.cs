@@ -239,6 +239,99 @@ public partial class GeminiClassificador : IClassificadorIA
         return sb.ToString();
     }
 
+    /// <summary>Extrai critérios estruturados EXPLÍCITOS da tese (anti-presunção). Null em falha.</summary>
+    public async Task<CriteriosTese?> ExtrairCriteriosTeseAsync(Comprador comprador, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(_opt.ApiKey) || string.IsNullOrWhiteSpace(comprador.Tese)) return null;
+
+        var sb = new StringBuilder();
+        sb.AppendLine("Você é um analista de M&A. Extraia do texto da TESE DE INVESTIMENTO abaixo os critérios estruturados EXPLÍCITOS.");
+        sb.AppendLine("Regras rígidas:");
+        sb.AppendLine("- Extraia SOMENTE o que está escrito de forma explícita ou inequívoca no texto. NUNCA presuma ou complete.");
+        sb.AppendLine("- O que o texto não disser, devolva null.");
+        sb.AppendLine("- Valores monetários em NÚMERO (reais/ano). Ex.: 'R$ 30 a 120 mi de receita' → fat_min 30000000, fat_max 120000000.");
+        sb.AppendLine("- margem_min em número percentual (ex.: 'EBITDA acima de 15%' → 15).");
+        sb.AppendLine("- tipo_operacao: 'Controle', 'Minoritária', '100%' ou 'Indiferente' (só se explícito).");
+        sb.AppendLine("- exclusoes: o que a tese diz que NÃO olham (red flags), texto curto.");
+        sb.AppendLine("Responda ESTRITAMENTE em JSON:");
+        sb.AppendLine("{\"fat_min\":n|null,\"fat_max\":n|null,\"margem_min\":n|null,\"tipo_operacao\":\"\"|null,\"geografia\":\"\"|null,\"modelo\":\"\"|null,\"exclusoes\":\"\"|null,\"cultura\":\"\"|null}");
+        sb.AppendLine();
+        sb.AppendLine($"## Comprador: {comprador.Nome}");
+        if (!string.IsNullOrWhiteSpace(comprador.FaixaFaturamento)) sb.AppendLine($"## Faixa de faturamento (campo da planilha): {comprador.FaixaFaturamento}");
+        sb.AppendLine($"## Tese: {Resumir(comprador.Tese, 2500)}");
+
+        var texto = await ChamarTextoAsync(sb.ToString(), $"criterios~{comprador.Nome}", ct);
+        if (string.IsNullOrWhiteSpace(texto)) return null;
+
+        try
+        {
+            var bruto = texto.Trim();
+            var m = BlocoJson().Match(bruto);
+            if (m.Success) bruto = m.Value;
+            using var doc = JsonDocument.Parse(bruto);
+            var r = doc.RootElement;
+
+            return new CriteriosTese(
+                LerDecimal(r, "fat_min"), LerDecimal(r, "fat_max"), LerDecimal(r, "margem_min"),
+                LerTexto(r, "tipo_operacao"), LerTexto(r, "geografia"), LerTexto(r, "modelo"),
+                LerTexto(r, "exclusoes"), LerTexto(r, "cultura"));
+        }
+        catch (Exception ex)
+        {
+            _log.LogWarning(ex, "Extração de critérios fora do formato ({Nome}). Resposta: {Texto}", comprador.Nome, texto);
+            return null;
+        }
+    }
+
+    /// <summary>Resume o perfil da empresa com base APENAS no texto do site. Null se insuficiente.</summary>
+    public async Task<string?> ResumirPerfilSiteAsync(string nomeEmpresa, string textoSite, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(_opt.ApiKey) || string.IsNullOrWhiteSpace(textoSite)) return null;
+
+        var sb = new StringBuilder();
+        sb.AppendLine("Resuma QUEM É esta empresa com base APENAS no texto abaixo, extraído do site oficial dela.");
+        sb.AppendLine("Regras: 2-4 frases objetivas (o que faz, para quem, modelo de negócio, portfólio/aquisições se citados).");
+        sb.AppendLine("NUNCA acrescente informação que não esteja no texto. Se o texto não permitir um resumo útil, responda {\"resumo\":null}.");
+        sb.AppendLine("Responda ESTRITAMENTE em JSON: {\"resumo\":\"...\"} ou {\"resumo\":null}.");
+        sb.AppendLine();
+        sb.AppendLine($"## Empresa: {nomeEmpresa}");
+        sb.AppendLine($"## Texto do site: {Resumir(textoSite, 4000)}");
+
+        var texto = await ChamarTextoAsync(sb.ToString(), $"perfil~{nomeEmpresa}", ct);
+        if (string.IsNullOrWhiteSpace(texto)) return null;
+
+        try
+        {
+            var bruto = texto.Trim();
+            var m = BlocoJson().Match(bruto);
+            if (m.Success) bruto = m.Value;
+            using var doc = JsonDocument.Parse(bruto);
+            var resumo = LerTexto(doc.RootElement, "resumo");
+            return string.IsNullOrWhiteSpace(resumo) || resumo.Length < 30 ? null : resumo;
+        }
+        catch (Exception ex)
+        {
+            _log.LogWarning(ex, "Resumo de perfil fora do formato ({Nome}).", nomeEmpresa);
+            return null;
+        }
+    }
+
+    private static decimal? LerDecimal(JsonElement raiz, string prop)
+    {
+        if (!raiz.TryGetProperty(prop, out var e)) return null;
+        if (e.ValueKind == JsonValueKind.Number && e.TryGetDecimal(out var d)) return d;
+        if (e.ValueKind == JsonValueKind.String && decimal.TryParse(e.GetString(),
+            System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var s)) return s;
+        return null;
+    }
+
+    private static string? LerTexto(JsonElement raiz, string prop)
+    {
+        if (!raiz.TryGetProperty(prop, out var e) || e.ValueKind != JsonValueKind.String) return null;
+        var v = e.GetString()?.Trim();
+        return string.IsNullOrWhiteSpace(v) || v is "null" or "N/A" or "n/a" ? null : v;
+    }
+
     private static async Task EspacarAsync(CancellationToken ct)
     {
         await _porta.WaitAsync(ct);
@@ -282,6 +375,8 @@ public partial class GeminiClassificador : IClassificadorIA
         if (!string.IsNullOrWhiteSpace(comprador.Segmento)) sb.AppendLine($"- Segmento: {comprador.Segmento}");
         if (!string.IsNullOrWhiteSpace(comprador.Tags)) sb.AppendLine($"- Tags da tese: {comprador.Tags}");
         sb.AppendLine($"- Tese: {Resumir(comprador.Tese, 1500)}");
+        if (!string.IsNullOrWhiteSpace(comprador.PerfilSite))
+            sb.AppendLine($"- Perfil (do site oficial): {Resumir(comprador.PerfilSite, 600)}");
         sb.AppendLine("### Critérios estruturados do comprador (quando informados, têm prioridade sobre o texto da tese)");
         if (comprador.FaturamentoMinAlvo is not null || comprador.FaturamentoMaxAlvo is not null)
             sb.AppendLine($"- Faixa de faturamento alvo: {(comprador.FaturamentoMinAlvo is null ? "até" : comprador.FaturamentoMinAlvo.Value.ToString("C0"))} a {(comprador.FaturamentoMaxAlvo is null ? "sem teto" : comprador.FaturamentoMaxAlvo.Value.ToString("C0"))} — pontue a subnota 'porte' comparando com o faturamento estimado do alvo.");
@@ -325,6 +420,8 @@ public partial class GeminiClassificador : IClassificadorIA
             sb.AppendLine($"- Cultura/gestão: {lead.Cultura}");
         if (!string.IsNullOrWhiteSpace(lead.Descricao))
             sb.AppendLine($"- Resumo da empresa: {Resumir(lead.Descricao, 1200)}");
+        if (!string.IsNullOrWhiteSpace(lead.PerfilSite))
+            sb.AppendLine($"- Perfil (do site oficial): {Resumir(lead.PerfilSite, 600)}");
         sb.AppendLine();
         sb.AppendLine("Avalie o fit (0-100) e escreva um racional curto (1-3 frases).");
         return sb.ToString();

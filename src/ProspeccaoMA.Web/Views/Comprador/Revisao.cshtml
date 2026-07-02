@@ -1,0 +1,75 @@
+@model List<ProspeccaoMA.Web.Models.Comprador>
+@{
+    ViewData["Title"] = "Revisão de critérios";
+    string Curto(string? s, int n) => string.IsNullOrWhiteSpace(s) ? "" : (s.Length > n ? s.Substring(0, n) + "…" : s);
+}
+
+<div class="lead-wrap">
+    <div class="lead-head">
+        <div>
+            <div class="px-ey">Qualidade do dado</div>
+            <h1 class="px-h1">Revisão de critérios extraídos pela IA</h1>
+            <div class="px-sub">A IA leu a tese de cada comprador e extraiu os critérios EXPLÍCITOS no texto. Confirme o que está certo — ou abra a edição para corrigir (salvar também valida).</div>
+        </div>
+        <a class="fa-btn s" style="align-self:flex-start" asp-controller="Comprador" asp-action="Index">← Compradores</a>
+    </div>
+
+    @if (Model.Count == 0)
+    {
+        <div class="lead-vazio">Nada pendente de revisão. ✓</div>
+    }
+    else
+    {
+        <div class="rz-count">@Model.Count comprador(es) aguardando revisão</div>
+        <div class="rz-list">
+            @foreach (var c in Model)
+            {
+                var criterios = new List<string>();
+                if (c.FaturamentoMinAlvo is not null || c.FaturamentoMaxAlvo is not null)
+                {
+                    criterios.Add($"Faturamento {(c.FaturamentoMinAlvo?.ToString("C0") ?? "até")} – {(c.FaturamentoMaxAlvo?.ToString("C0") ?? "sem teto")}");
+                }
+                if (c.MargemEbitdaMinima is not null) { criterios.Add($"Margem mín. {c.MargemEbitdaMinima:0.#}%"); }
+                if (!string.IsNullOrWhiteSpace(c.TipoOperacao)) { criterios.Add($"Operação: {c.TipoOperacao}"); }
+                if (!string.IsNullOrWhiteSpace(c.GeografiaAlvo)) { criterios.Add($"Geo: {c.GeografiaAlvo}"); }
+                if (!string.IsNullOrWhiteSpace(c.ModeloNegocioAlvo)) { criterios.Add($"Modelo: {Curto(c.ModeloNegocioAlvo, 60)}"); }
+                if (!string.IsNullOrWhiteSpace(c.Exclusoes)) { criterios.Add($"NÃO olham: {Curto(c.Exclusoes, 70)}"); }
+                <details class="lcx">
+                    <summary class="lcx-row">
+                        <span class="lcx-co">
+                            <span class="nm">@c.Nome</span>
+                            <span class="st">@(criterios.Count == 0 ? "tese sem critérios explícitos (só confirmar)" : string.Join(" · ", criterios.Take(3)))</span>
+                        </span>
+                        <span class="rz-chip novo">@criterios.Count critério(s)</span>
+                        <span class="lcx-arrow">▾</span>
+                    </summary>
+                    <div class="lcx-body">
+                        <div class="lc-rac" style="margin-top:0;padding-top:0;border-top:none">
+                            <div class="h">Critérios extraídos</div>
+                            @if (criterios.Count == 0)
+                            {
+                                <p>A tese não explicita critérios objetivos — nada foi preenchido. Confirmar apenas registra a revisão.</p>
+                            }
+                            else
+                            {
+                                <p>@string.Join(" · ", criterios)</p>
+                            }
+                        </div>
+                        <div class="lc-rac">
+                            <div class="h">Tese (fonte da extração)</div>
+                            <p>@Curto(c.Tese, 420)</p>
+                        </div>
+                        <div class="lc-foot">
+                            <div class="spacer"></div>
+                            <a class="act" asp-controller="Comprador" asp-action="Editar" asp-route-id="@c.Id">Corrigir na edição</a>
+                            <form asp-controller="Comprador" asp-action="ValidarCriterios" asp-route-id="@c.Id" method="post" class="inline-form">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="fa-btn p" style="padding:7px 14px">Confirmar critérios</button>
+                            </form>
+                        </div>
+                    </div>
+                </details>
+            }
+        </div>
+    }
+</div>

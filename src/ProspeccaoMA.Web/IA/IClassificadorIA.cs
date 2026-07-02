@@ -31,4 +31,22 @@ public interface IClassificadorIA
     /// </summary>
     Task<List<int>?> SelecionarCompradoresAsync(
         Lead lead, IReadOnlyList<Comprador> compradores, int max, CancellationToken ct = default);
+
+    /// <summary>
+    /// Extrai da TESE (texto) os critérios estruturados EXPLÍCITOS — faixa de faturamento,
+    /// margem mínima, tipo de operação, geografia, modelo, exclusões, cultura. O que não
+    /// estiver explícito volta nulo (nunca presume). Null em falha.
+    /// </summary>
+    Task<CriteriosTese?> ExtrairCriteriosTeseAsync(Comprador comprador, CancellationToken ct = default);
+
+    /// <summary>
+    /// Resume quem é a empresa com base APENAS no texto do site oficial dela (fonte real).
+    /// Devolve null em falha ou se o texto não permitir um resumo honesto.
+    /// </summary>
+    Task<string?> ResumirPerfilSiteAsync(string nomeEmpresa, string textoSite, CancellationToken ct = default);
 }
+
+/// <summary>Critérios estruturados extraídos de uma tese. Campos nulos = a tese não explicita.</summary>
+public record CriteriosTese(
+    decimal? FaturamentoMin, decimal? FaturamentoMax, decimal? MargemEbitdaMinima,
+    string? TipoOperacao, string? Geografia, string? ModeloNegocio, string? Exclusoes, string? Cultura);

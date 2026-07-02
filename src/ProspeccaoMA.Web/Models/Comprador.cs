@@ -57,6 +57,21 @@ public class Comprador
     /// <summary>Aspectos de cultura/fit desejados (ex.: "fundador permanece; gestão profissionalizada").</summary>
     public string? Cultura { get; set; }
 
+    // ----- Dado rico (Onda 3) -----
+
+    /// <summary>Quando os critérios estruturados foram extraídos automaticamente da tese pela IA
+    /// (nulo = nunca extraídos). A extração só preenche campos vazios, nunca sobrescreve.</summary>
+    public DateTime? CriteriosExtraidosEm { get; set; }
+
+    /// <summary>Time revisou/confirmou os critérios extraídos pela IA.</summary>
+    public bool CriteriosValidados { get; set; }
+
+    /// <summary>Resumo de quem é o comprador, gerado a partir do SITE OFICIAL (fonte real,
+    /// nunca inventado). Alimenta o prompt de matching e a ficha.</summary>
+    public string? PerfilSite { get; set; }
+
+    public DateTime? PerfilSiteEm { get; set; }
+
     public bool Ativo { get; set; } = true;
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
 
