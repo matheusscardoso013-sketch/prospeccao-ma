@@ -55,5 +55,17 @@ public class SinergiaComprador
     /// <summary>Anotações do time sobre a abordagem (feedback que no futuro alimenta a IA).</summary>
     public string? Anotacoes { get; set; }
 
+    /// <summary>Por que o time descartou (porte errado, setor errado, sem apetite…) —
+    /// vira exemplo negativo no prompt do comprador (feedback loop).</summary>
+    public string? MotivoDescarte { get; set; }
+
+    /// <summary>Próxima ação combinada pelo time (lembrete do mini-CRM).</summary>
+    public DateTime? ProximaAcaoEm { get; set; }
+
+    public string? ProximaAcaoNota { get; set; }
+
+    /// <summary>Histórico de interações do time (anotações datadas e assinadas).</summary>
+    public List<InteracaoMatch> Interacoes { get; set; } = new();
+
     public DateTime? AtualizadoEm { get; set; }
 }

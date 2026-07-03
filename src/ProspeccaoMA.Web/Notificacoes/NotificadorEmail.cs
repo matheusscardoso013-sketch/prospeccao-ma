@@ -12,6 +12,10 @@ public interface INotificadorEmail
 {
     /// <summary>Envia o resumo diário (leads do dia + melhores compradores). Nunca lança.</summary>
     Task EnviarResumoDiarioAsync(CancellationToken ct = default);
+
+    /// <summary>Alerta imediato de match quente (score >= 80): o time fica sabendo na hora,
+    /// sem esperar o resumo diário. Nunca lança.</summary>
+    Task EnviarMatchQuenteAsync(Lead lead, Comprador comprador, int score, string racional, CancellationToken ct = default);
 }
 
 /// <summary>
@@ -92,6 +96,49 @@ public class NotificadorEmail : INotificadorEmail
         catch (Exception ex)
         {
             _log.LogError(ex, "Falha ao enviar o e-mail diário (rotina segue normalmente).");
+        }
+    }
+
+    public async Task EnviarMatchQuenteAsync(Lead lead, Comprador comprador, int score, string racional, CancellationToken ct = default)
+    {
+        try
+        {
+            var ativo = _cfg.GetValue("Email:Ativo", false);
+            var host = _cfg["Email:SmtpHost"];
+            var para = _cfg["Email:Para"];
+            if (!ativo || string.IsNullOrWhiteSpace(host) || string.IsNullOrWhiteSpace(para)) return;
+
+            var html = new StringBuilder();
+            html.Append("<div style='font-family:Segoe UI,Arial,sans-serif;color:#1c2533;max-width:640px'>");
+            html.Append("<h2 style='color:#0E3A56'>🔥 Match quente na mesa</h2>");
+            html.Append($"<p><strong>{lead.RazaoSocial}</strong> × <strong>{comprador.Nome}</strong> — sinergia <strong>{score}/100</strong>" +
+                        $"{(string.IsNullOrWhiteSpace(comprador.Responsavel) ? "" : $"<br/>Responsável: {comprador.Responsavel}")}</p>");
+            html.Append($"<p style='color:#6b7686;font-size:13px'>{Recortar(racional, 300)}</p>");
+            html.Append($"<p><a href='https://prospeccao-ma.onrender.com/Lead/Compradores/{lead.Id}' style='background:#0E3A56;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none'>Abrir a ficha do alvo</a></p>");
+            html.Append("</div>");
+
+            var de = _cfg["Email:De"] ?? _cfg["Email:Usuario"] ?? "prospeccao@valore.local";
+            using var msg = new MailMessage
+            {
+                From = new MailAddress(de, "Valore Brasil — Originação M&A"),
+                Subject = $"🔥 Match {score}/100: {lead.RazaoSocial} × {comprador.Nome}",
+                Body = html.ToString(),
+                IsBodyHtml = true
+            };
+            foreach (var dest in para.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                msg.To.Add(dest);
+
+            using var smtp = new SmtpClient(host, _cfg.GetValue("Email:SmtpPorta", 587))
+            {
+                EnableSsl = true,
+                Credentials = new NetworkCredential(_cfg["Email:Usuario"], _cfg["Email:Senha"])
+            };
+            await smtp.SendMailAsync(msg, ct);
+            _log.LogInformation("Alerta de match quente enviado ({Lead} × {Comprador}, {Score}).", lead.RazaoSocial, comprador.Nome, score);
+        }
+        catch (Exception ex)
+        {
+            _log.LogError(ex, "Falha ao enviar alerta de match quente (fluxo segue normalmente).");
         }
     }
 

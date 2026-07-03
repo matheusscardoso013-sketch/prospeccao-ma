@@ -21,10 +21,11 @@ public interface IClassificadorIA
     /// Pontua a sinergia (0-100) entre um lead REAL e a TESE de investimento de um comprador
     /// (buy-side). A IA não inventa dados — só avalia o fit com base no que foi fornecido.
     /// Com <paramref name="preciso"/>, usa o modelo mais forte (Gemini:ModeloPreciso) — o
-    /// segundo estágio para finalistas.
+    /// segundo estágio para finalistas. <paramref name="feedback"/> traz descartes anteriores
+    /// do time para este comprador (exemplos negativos — o motor aprende com a mesa).
     /// </summary>
     Task<ResultadoClassificacao> ClassificarSinergiaAsync(
-        Lead lead, Comprador comprador, bool preciso = false, CancellationToken ct = default);
+        Lead lead, Comprador comprador, bool preciso = false, string? feedback = null, CancellationToken ct = default);
 
     /// <summary>
     /// Vetor semântico (embedding) de um texto — cota SEPARADA da geração no free tier.

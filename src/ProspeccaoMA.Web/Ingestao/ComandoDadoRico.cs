@@ -36,6 +36,11 @@ public static partial class ComandoDadoRico
         int ok = 0, semNada = 0, falhas = 0;
         foreach (var c in pendentes)
         {
+            if (IA.GeminiClassificador.GeracaoSuspensa)
+            {
+                Console.WriteLine("ABORTADO: freio de cota acionado (429 em série) — rode de novo quando a cota renovar.");
+                break;
+            }
             var r = await ia.ExtrairCriteriosTeseAsync(c);
             if (r is null) { falhas++; Console.WriteLine($"  FALHA  {c.Nome}"); continue; }
 
@@ -102,6 +107,7 @@ public static partial class ComandoDadoRico
         foreach (var c in compradores)
         {
             if (feitos >= max) break;
+            if (IA.GeminiClassificador.GeracaoSuspensa) { Console.WriteLine("ABORTADO: freio de cota acionado."); break; }
             feitos++;
             var (perfil, motivo) = await PerfilDoSiteAsync(http, ia, c.Nome, c.Site!);
             c.PerfilSiteEm = DateTime.UtcNow;   // marca a tentativa (não refaz site quebrado a cada lote)
@@ -114,6 +120,7 @@ public static partial class ComandoDadoRico
         foreach (var l in curados)
         {
             if (feitos >= max) break;
+            if (IA.GeminiClassificador.GeracaoSuspensa) { Console.WriteLine("ABORTADO: freio de cota acionado."); break; }
             feitos++;
             var (perfil, motivo) = await PerfilDoSiteAsync(http, ia, l.RazaoSocial, l.Site!);
             l.PerfilSiteEm = DateTime.UtcNow;

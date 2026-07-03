@@ -1,0 +1,52 @@
+@model ProspeccaoMA.Web.Models.SinergiaComprador
+@{
+    var voltar = (string)(ViewData["Voltar"] ?? "/Mesa");
+    var interacoes = Model.Interacoes.OrderByDescending(i => i.Em).Take(8).ToList();
+    var temProxima = Model.ProximaAcaoEm is not null;
+}
+
+<details class="crm">
+    <summary class="crm-sum">
+        Histórico e próxima ação
+        <span class="crm-badges">
+            @if (interacoes.Count > 0) { <span class="crm-n">@Model.Interacoes.Count interação(ões)</span> }
+            @if (temProxima)
+            {
+                var venceu = Model.ProximaAcaoEm!.Value <= DateTime.UtcNow;
+                <span class="crm-prox @(venceu ? "due" : "")">próx.: @ProspeccaoMA.Web.Util.Fuso.Brasil(Model.ProximaAcaoEm.Value).ToString("dd/MM") @Model.ProximaAcaoNota</span>
+            }
+        </span>
+    </summary>
+    <div class="crm-body">
+        @if (interacoes.Count == 0)
+        {
+            <div class="crm-vazio">Sem interações registradas ainda.</div>
+        }
+        else
+        {
+            <div class="crm-linha-t">
+                @foreach (var i in interacoes)
+                {
+                    <div class="crm-item">
+                        <span class="quando">@ProspeccaoMA.Web.Util.Fuso.Brasil(i.Em).ToString("dd/MM HH:mm")</span>
+                        <span class="quem">@(i.Autor.Contains('@') ? i.Autor.Split('@')[0] : i.Autor)</span>
+                        <span class="oque">@i.Texto</span>
+                    </div>
+                }
+            </div>
+        }
+        <form asp-controller="Sinergia" asp-action="Anotar" asp-route-id="@Model.Id" method="post" class="crm-form">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="voltar" value="@voltar" />
+            <input type="text" name="texto" placeholder="registrar interação (ligação, e-mail, contexto)…" required />
+            <button type="submit" class="fa-btn s" style="padding:6px 12px">Anotar</button>
+        </form>
+        <form asp-controller="Sinergia" asp-action="ProximaAcao" asp-route-id="@Model.Id" method="post" class="crm-form">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="voltar" value="@voltar" />
+            <input type="date" name="quando" value="@(Model.ProximaAcaoEm is null ? "" : ProspeccaoMA.Web.Util.Fuso.Brasil(Model.ProximaAcaoEm.Value).ToString("yyyy-MM-dd"))" />
+            <input type="text" name="nota" value="@Model.ProximaAcaoNota" placeholder="próxima ação (ex.: follow-up com o fundador)" />
+            <button type="submit" class="fa-btn s" style="padding:6px 12px">Agendar</button>
+        </form>
+    </div>
+</details>

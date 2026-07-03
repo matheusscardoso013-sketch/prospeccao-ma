@@ -21,6 +21,7 @@ public class AppDbContext : IdentityDbContext<Usuario>, IDataProtectionKeyContex
     public DbSet<ExecucaoJob> ExecucoesJob => Set<ExecucaoJob>();
     public DbSet<Comprador> Compradores => Set<Comprador>();
     public DbSet<SinergiaComprador> SinergiasComprador => Set<SinergiaComprador>();
+    public DbSet<InteracaoMatch> InteracoesMatch => Set<InteracaoMatch>();
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
     protected override void OnModelCreating(ModelBuilder builder)
@@ -95,6 +96,12 @@ public class AppDbContext : IdentityDbContext<Usuario>, IDataProtectionKeyContex
             .HasOne(s => s.Comprador)
             .WithMany(c => c.Sinergias)
             .HasForeignKey(s => s.CompradorId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<InteracaoMatch>()
+            .HasOne(i => i.Sinergia)
+            .WithMany(s => s.Interacoes)
+            .HasForeignKey(i => i.SinergiaId)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }

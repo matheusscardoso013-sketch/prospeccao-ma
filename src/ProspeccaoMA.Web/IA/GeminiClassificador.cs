@@ -58,12 +58,12 @@ public partial class GeminiClassificador : IClassificadorIA
     }
 
     public async Task<ResultadoClassificacao> ClassificarSinergiaAsync(
-        Lead lead, Comprador comprador, bool preciso = false, CancellationToken ct = default)
+        Lead lead, Comprador comprador, bool preciso = false, string? feedback = null, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(_opt.ApiKey))
             return new ResultadoClassificacao(0, "IA não configurada: defina Gemini:ApiKey.");
 
-        var prompt = MontarPromptSinergia(lead, comprador);
+        var prompt = MontarPromptSinergia(lead, comprador, feedback);
         var idLog = $"{lead.Cnpj}~{comprador.Nome}";
 
         // Segundo estágio: o modelo forte re-pontua o finalista; se ele falhar (cota),
@@ -158,10 +158,26 @@ public partial class GeminiClassificador : IClassificadorIA
     private static int _falhasPrimarioSeguidas;
     private static DateTime _primarioSuspensoAte = DateTime.MinValue;
 
+    // FREIO GLOBAL DE COTA: quando a cota DIÁRIA esgota, cada chamada ainda gastava 4
+    // tentativas (retry storm) — a esteira horária sozinha queimava ~960 req/dia em retries
+    // e a cota nunca se recuperava. Após 3 chamadas seguidas terminando em 429, TODA a
+    // geração fica suspensa por 45 min (retorna null na hora); qualquer sucesso rearma.
+    private static int _finais429Seguidos;
+    private static DateTime _geracaoSuspensaAte = DateTime.MinValue;
+
+    /// <summary>Geração suspensa pelo freio global de cota (visível p/ lotes abortarem cedo).</summary>
+    public static bool GeracaoSuspensa => DateTime.UtcNow < _geracaoSuspensaAte;
+
     /// <summary>Chamada bruta ao Gemini: tenta o modelo principal e, se ele esgotar as
     /// tentativas (cota/saturação do free tier), cai automaticamente para o ModeloFallback.</summary>
     private async Task<string?> ChamarTextoAsync(string prompt, string idLog, CancellationToken ct)
     {
+        if (GeracaoSuspensa)
+        {
+            _log.LogDebug("Geração suspensa pelo freio de cota — chamada pulada ({Id})", idLog);
+            return null;
+        }
+
         var temFallback = !string.Equals(_opt.Modelo, _opt.ModeloFallback, StringComparison.OrdinalIgnoreCase);
 
         string? texto = null;
@@ -222,10 +238,16 @@ public partial class GeminiClassificador : IClassificadorIA
                 {
                     if (tentativa < MaxTentativas) { await BackoffAsync(tentativa, ct); continue; }
                     _log.LogWarning("Gemini rate limit/erro {Status} após {N} tentativas ({Id})", (int)resp.StatusCode, tentativa, idLog);
+                    if ((int)resp.StatusCode == 429 && Interlocked.Increment(ref _finais429Seguidos) >= 3)
+                    {
+                        _geracaoSuspensaAte = DateTime.UtcNow.AddMinutes(45);
+                        _log.LogWarning("FREIO DE COTA acionado: 3 chamadas seguidas esgotaram em 429 — geração suspensa por 45 min (retries não vão mais canibalizar a cota).");
+                    }
                     return null;
                 }
 
                 resp.EnsureSuccessStatusCode();
+                _finais429Seguidos = 0; // sucesso rearma o freio
                 var json = await resp.Content.ReadAsStringAsync(ct);
                 return ExtrairTextoDaResposta(json);
             }
@@ -425,7 +447,7 @@ public partial class GeminiClassificador : IClassificadorIA
         => Task.Delay(TimeSpan.FromSeconds(2 * Math.Pow(2, tentativa)), ct); // 4s,8s,16s
 
     /// <summary>Prompt buy-side: fit do lead REAL com a tese do comprador. Anti-invenção.</summary>
-    private static string MontarPromptSinergia(Lead lead, Comprador comprador)
+    private static string MontarPromptSinergia(Lead lead, Comprador comprador, string? feedback = null)
     {
         var sb = new StringBuilder();
         sb.AppendLine("Você é um analista de M&A buy-side avaliando o fit entre uma empresa-alvo REAL e a TESE de investimento de um comprador.");
@@ -471,6 +493,12 @@ public partial class GeminiClassificador : IClassificadorIA
             sb.AppendLine($"- EXCLUSÕES (red flags ELIMINATÓRIAS — score máximo 20 se o alvo violar): {comprador.Exclusoes}");
         if (!string.IsNullOrWhiteSpace(comprador.Cultura))
             sb.AppendLine($"- Cultura/fit desejado: {comprador.Cultura}");
+        if (!string.IsNullOrWhiteSpace(feedback))
+        {
+            sb.AppendLine("### Aprendizado da mesa (alvos que o time JÁ DESCARTOU para este comprador, com o motivo)");
+            sb.AppendLine("Considere esses padrões: alvo semelhante aos descartados deve perder pontos na dimensão citada.");
+            sb.AppendLine(feedback);
+        }
         sb.AppendLine();
         sb.AppendLine($"## Empresa-alvo (dados reais — {lead.Origem})");
         sb.AppendLine($"- Razão social: {lead.RazaoSocial}");

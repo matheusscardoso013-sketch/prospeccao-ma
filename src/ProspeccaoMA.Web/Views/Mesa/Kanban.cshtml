@@ -110,13 +110,21 @@
             var card = dragged;
             var id = card.dataset.id;
             var status = col.dataset.status;
+
+            // Feedback loop: descartar pede o motivo — ensina o matching deste comprador.
+            var motivo = '';
+            if (status === '4') {
+                motivo = window.prompt('Por que descartar? (ex.: porte errado, setor errado, comprador sem apetite)') || '';
+                if (motivo === '' && !window.confirm('Descartar sem motivo? O motivo ajuda a IA a não repetir o erro.')) return;
+            }
+
             var list = col.querySelector('.kb-list');
             var empty = list.querySelector('.kb-empty');
             if (empty) empty.remove();
             list.insertBefore(card, list.firstChild);
             adjust(from, -1); adjust(col, +1);
 
-            var body = new URLSearchParams({ id: id, status: status, __RequestVerificationToken: token });
+            var body = new URLSearchParams({ id: id, status: status, motivo: motivo, __RequestVerificationToken: token });
             fetch('/Sinergia/Mover', {
                 method: 'POST', credentials: 'same-origin',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body

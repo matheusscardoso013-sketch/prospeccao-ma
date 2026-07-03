@@ -111,6 +111,7 @@ public class LeadController : Controller
 
         var sinergias = await _db.SinergiasComprador
             .Include(s => s.Comprador)
+            .Include(s => s.Interacoes)
             .Where(s => s.LeadId == id)
             .OrderByDescending(s => s.Score)
             .ToListAsync();

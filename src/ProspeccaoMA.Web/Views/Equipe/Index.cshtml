@@ -1,0 +1,57 @@
+@model List<ProspeccaoMA.Web.Models.Usuario>
+@{
+    ViewData["Title"] = "Equipe";
+}
+
+<div class="lead-wrap">
+    <div class="lead-head">
+        <div>
+            <div class="px-ey">Acesso</div>
+            <h1 class="px-h1">Equipe</h1>
+            <div class="px-sub">Cada pessoa entra com o próprio login — as anotações do pipeline ficam assinadas por quem registrou.</div>
+        </div>
+    </div>
+
+    <div class="mesa-panel" style="max-width:640px">
+        <table class="mtable">
+            <thead><tr><th>E-mail</th><th style="text-align:right">Ações</th></tr></thead>
+            <tbody>
+            @foreach (var u in Model)
+            {
+                <tr>
+                    <td class="m-resp">@u.Email</td>
+                    <td style="text-align:right">
+                        @if (string.Equals(u.Email, User.Identity?.Name, StringComparison.OrdinalIgnoreCase))
+                        {
+                            <span class="m-sub">você</span>
+                        }
+                        else
+                        {
+                            <form asp-action="Excluir" asp-route-id="@u.Id" method="post" class="inline-form"
+                                  onsubmit="return confirm('Remover o acesso de @u.Email?');">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="act del" style="background:none;border:none;cursor:pointer;padding:0">Remover</button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="fa-sect" style="margin-top:26px">Adicionar pessoa</div>
+    <form asp-action="Criar" method="post" class="lf" style="max-width:640px;border-bottom:none">
+        @Html.AntiForgeryToken()
+        <div class="field" style="flex:1">
+            <label>E-mail</label>
+            <input type="email" name="email" placeholder="pessoa@valorebrasil.com.br" style="width:100%" required />
+        </div>
+        <div class="field">
+            <label>Senha inicial</label>
+            <input type="password" name="senha" required />
+        </div>
+        <button type="submit" class="fa-btn p">Criar conta</button>
+    </form>
+    <div class="hint" style="max-width:640px">A senha precisa de maiúscula, minúscula, número e símbolo (mínimo 6 caracteres). A pessoa pode continuar usando a mesma senha ou você define uma forte e compartilha com segurança.</div>
+</div>

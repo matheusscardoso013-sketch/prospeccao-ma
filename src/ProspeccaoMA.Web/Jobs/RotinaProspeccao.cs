@@ -313,6 +313,7 @@ public class RotinaProspeccao
         foreach (var s in scoresFalha)
         {
             ct.ThrowIfCancellationRequested();
+            if (IA.GeminiClassificador.GeracaoSuspensa) break; // cota morta — não queimar retries
             if (s.Lead is null) continue;
             var config = await _db.Configuracoes.FirstOrDefaultAsync(c => c.Id == s.ConfiguracaoId, ct);
             if (config is null) continue;
@@ -338,6 +339,7 @@ public class RotinaProspeccao
             foreach (var s in sinFalha)
             {
                 ct.ThrowIfCancellationRequested();
+                if (IA.GeminiClassificador.GeracaoSuspensa) break; // cota morta — não queimar retries
                 if (s.Lead is null || s.Comprador is null) continue;
 
                 var r = await _ia.ClassificarSinergiaAsync(s.Lead, s.Comprador, ct: ct);

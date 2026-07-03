@@ -28,16 +28,19 @@ public class MotorSinergia : IMotorSinergia
 {
     private readonly AppDbContext _db;
     private readonly IClassificadorIA _ia;
+    private readonly Notificacoes.INotificadorEmail _email;
     private readonly ILogger<MotorSinergia> _log;
     private readonly int _max;
     private readonly bool _usarTriagemIA;
     private readonly bool _usarEmbeddings;
     private readonly bool _doisEstagios;
 
-    public MotorSinergia(AppDbContext db, IClassificadorIA ia, ILogger<MotorSinergia> log, IConfiguration cfg)
+    public MotorSinergia(AppDbContext db, IClassificadorIA ia, Notificacoes.INotificadorEmail email,
+        ILogger<MotorSinergia> log, IConfiguration cfg)
     {
         _db = db;
         _ia = ia;
+        _email = email;
         _log = log;
         _max = Math.Max(1, cfg.GetValue("Sinergia:MaxCompradoresPorLead", 12));
         _usarTriagemIA = cfg.GetValue("Sinergia:UsarTriagemIA", true);
@@ -99,6 +102,8 @@ public class MotorSinergia : IMotorSinergia
         {
             if (jaFeitos.Contains(comprador.Id)) continue;
             ct.ThrowIfCancellationRequested();
+            // Cota morta: parar de criar pares fadados ao score 0 — o lead volta na próxima esteira.
+            if (IA.GeminiClassificador.GeracaoSuspensa) break;
 
             var sinergia = new SinergiaComprador { LeadId = lead.Id, CompradorId = comprador.Id };
 
@@ -241,16 +246,42 @@ public class MotorSinergia : IMotorSinergia
 
     /// <summary>Pontuação com dois estágios opcionais: o pente largo (flash-lite) avalia todos;
     /// finalistas (≥60) são re-pontuados pelo modelo forte quando Sinergia:DoisEstagios=true.
-    /// Se o estágio preciso falhar (cota), fica o resultado do primeiro.</summary>
+    /// Se o estágio preciso falhar (cota), fica o resultado do primeiro. O prompt inclui os
+    /// descartes anteriores do time para o comprador (feedback loop) e, ao nascer um match
+    /// quente (≥80), o time é alertado por e-mail na hora.</summary>
     private async Task<ResultadoClassificacao> PontuarAsync(Lead lead, Comprador comprador, CancellationToken ct)
     {
-        var r = await _ia.ClassificarSinergiaAsync(lead, comprador, ct: ct);
+        var feedback = await FeedbackDoCompradorAsync(comprador.Id, lead.Id, ct);
+
+        var r = await _ia.ClassificarSinergiaAsync(lead, comprador, feedback: feedback, ct: ct);
         if (_doisEstagios && r.Score >= 60)
         {
-            var refinado = await _ia.ClassificarSinergiaAsync(lead, comprador, preciso: true, ct: ct);
+            var refinado = await _ia.ClassificarSinergiaAsync(lead, comprador, preciso: true, feedback: feedback, ct: ct);
             if (refinado.Score > 0) r = refinado;
         }
+
+        if (r.Score >= 80)
+            await _email.EnviarMatchQuenteAsync(lead, comprador, r.Score, r.Racional, ct);
+
         return r;
+    }
+
+    /// <summary>Últimos descartes COM MOTIVO do time para este comprador — exemplos negativos
+    /// que entram no prompt (a mesa ensina o motor). Null se não houver histórico.</summary>
+    private async Task<string?> FeedbackDoCompradorAsync(int compradorId, int leadAtualId, CancellationToken ct)
+    {
+        var descartes = await _db.SinergiasComprador
+            .Include(s => s.Lead)
+            .Where(s => s.CompradorId == compradorId && s.LeadId != leadAtualId
+                     && s.Status == StatusSinergia.Descartado
+                     && s.MotivoDescarte != null && s.MotivoDescarte != "")
+            .OrderByDescending(s => s.AtualizadoEm ?? s.GeradoEm)
+            .Take(3)
+            .ToListAsync(ct);
+
+        if (descartes.Count == 0) return null;
+        return string.Join("\n", descartes.Select(d =>
+            $"- {d.Lead?.RazaoSocial ?? "alvo"} ({d.Lead?.Segmento ?? d.Lead?.Cnae}): {d.MotivoDescarte}"));
     }
 
     // Cache dos vetores de tese (deserializar 245 × 768 floats a cada cruzamento seria caro).

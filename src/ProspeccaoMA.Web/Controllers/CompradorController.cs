@@ -188,6 +188,7 @@ public class CompradorController : Controller
 
         var sinergias = await _db.SinergiasComprador
             .Include(s => s.Lead)
+            .Include(s => s.Interacoes)
             .Where(s => s.CompradorId == id)
             .OrderByDescending(s => s.Score)
             .ToListAsync();

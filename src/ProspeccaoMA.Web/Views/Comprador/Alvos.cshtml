@@ -136,6 +136,10 @@
                         </form>
                         <a class="tese" asp-controller="Lead" asp-action="Compradores" asp-route-id="@l.Id">Ver alvo →</a>
                     </div>
+                    @{
+                        ViewData["Voltar"] = Context.Request.Path + Context.Request.QueryString;
+                    }
+                    <partial name="_CrmMatch" model="s" view-data="ViewData" />
                 </div>
             </div>
         }
