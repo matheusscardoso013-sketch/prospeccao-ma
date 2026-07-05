@@ -14,6 +14,13 @@ public class GeminiOptions
     /// (o free tier do flash satura com frequência; o lite tem limites maiores).</summary>
     public string ModeloFallback { get; set; } = "gemini-2.5-flash-lite";
 
+    /// <summary>ROTAÇÃO DE MODELOS (contorno do free tier): a cota gratuita é de ~20 req/dia
+    /// POR MODELO. Rotacionando entre vários modelos (cada um com sua cota), a capacidade
+    /// diária soma. O motor tenta na ordem, suspende individualmente o que esgota (429) e
+    /// segue para o próximo. Se vazia, usa [Modelo, ModeloFallback]. Só modelos concretos
+    /// (evitar aliases "-latest", que podem compartilhar cota).</summary>
+    public string[] Modelos { get; set; } = Array.Empty<string>();
+
     /// <summary>Modelo forte do segundo estágio (re-pontua finalistas). Vazio = desligado.</summary>
     public string ModeloPreciso { get; set; } = "gemini-2.5-flash";
 
@@ -152,24 +159,33 @@ public partial class GeminiClassificador : IClassificadorIA
         return ParsearResultado(texto, idLog);
     }
 
-    // Circuit breaker do modelo principal: se ele falhar 2x seguidas (saturação do free
-    // tier), vai direto ao fallback por 10 min — evita desperdiçar ~30s de retries por
-    // chamada numa rodada longa (60 alvos × 13 chamadas viraria horas perdidas).
-    private static int _falhasPrimarioSeguidas;
-    private static DateTime _primarioSuspensoAte = DateTime.MinValue;
+    // Cooldown por modelo: quando um modelo esgota (429), fica suspenso por um tempo e a
+    // rotação pula direto para o próximo — sem re-tentar o modelo morto a cada chamada.
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, DateTime> _modeloSuspensoAte = new();
+    private const int CooldownModeloMin = 30;
 
-    // FREIO GLOBAL DE COTA: quando a cota DIÁRIA esgota, cada chamada ainda gastava 4
-    // tentativas (retry storm) — a esteira horária sozinha queimava ~960 req/dia em retries
-    // e a cota nunca se recuperava. Após 3 chamadas seguidas terminando em 429, TODA a
-    // geração fica suspensa por 45 min (retorna null na hora); qualquer sucesso rearma.
+    // FREIO GLOBAL DE COTA: quando TODOS os modelos da rotação estão esgotados, cada chamada
+    // ainda gastaria tentativas à toa. Após 2 chamadas seguidas com todos os modelos mortos,
+    // a geração fica suspensa por 45 min (retorna null na hora); qualquer sucesso rearma.
     private static int _finais429Seguidos;
     private static DateTime _geracaoSuspensaAte = DateTime.MinValue;
 
     /// <summary>Geração suspensa pelo freio global de cota (visível p/ lotes abortarem cedo).</summary>
     public static bool GeracaoSuspensa => DateTime.UtcNow < _geracaoSuspensaAte;
 
-    /// <summary>Chamada bruta ao Gemini: tenta o modelo principal e, se ele esgotar as
-    /// tentativas (cota/saturação do free tier), cai automaticamente para o ModeloFallback.</summary>
+    /// <summary>Modelos da rotação (config Gemini:Modelos, ou [Modelo, ModeloFallback]).</summary>
+    private string[] ModelosEfetivos()
+    {
+        var lista = _opt.Modelos is { Length: > 0 }
+            ? _opt.Modelos
+            : new[] { _opt.Modelo, _opt.ModeloFallback };
+        return lista.Where(m => !string.IsNullOrWhiteSpace(m)).Select(m => m.Trim()).Distinct().ToArray();
+    }
+
+    /// <summary>Chamada bruta ao Gemini com ROTAÇÃO DE MODELOS: tenta cada modelo na ordem,
+    /// pulando os que estão em cooldown; o primeiro que responder vence. Quando um modelo
+    /// esgota (429), entra em cooldown e a rotação segue. Se todos morrerem, aciona o freio
+    /// global. Cada modelo tem cota gratuita própria, então a soma multiplica a capacidade.</summary>
     private async Task<string?> ChamarTextoAsync(string prompt, string idLog, CancellationToken ct)
     {
         if (GeracaoSuspensa)
@@ -178,38 +194,39 @@ public partial class GeminiClassificador : IClassificadorIA
             return null;
         }
 
-        var temFallback = !string.Equals(_opt.Modelo, _opt.ModeloFallback, StringComparison.OrdinalIgnoreCase);
-
-        string? texto = null;
-        if (!temFallback || DateTime.UtcNow >= _primarioSuspensoAte)
+        var modelos = ModelosEfetivos();
+        foreach (var modelo in modelos)
         {
-            texto = await TentarModeloAsync(_opt.Modelo, prompt, idLog, ct);
+            if (_modeloSuspensoAte.TryGetValue(modelo, out var ate) && DateTime.UtcNow < ate)
+                continue; // modelo em cooldown — pula sem gastar chamada
+
+            var texto = await TentarModeloAsync(modelo, prompt, idLog, ct, maxTentativas: 2);
             if (texto is not null)
             {
-                _falhasPrimarioSeguidas = 0;
+                _finais429Seguidos = 0;
+                _modeloSuspensoAte.TryRemove(modelo, out _);
+                return texto;
             }
-            else if (temFallback && Interlocked.Increment(ref _falhasPrimarioSeguidas) >= 2)
-            {
-                _primarioSuspensoAte = DateTime.UtcNow.AddMinutes(10);
-                _falhasPrimarioSeguidas = 0;
-                _log.LogWarning("Modelo {Modelo} saturado — usando só o fallback {Fallback} pelos próximos 10 min",
-                    _opt.Modelo, _opt.ModeloFallback);
-            }
+            _modeloSuspensoAte[modelo] = DateTime.UtcNow.AddMinutes(CooldownModeloMin);
+            _log.LogInformation("Modelo {Modelo} indisponível ({Id}) — suspenso {Min}min; tentando o próximo",
+                modelo, idLog, CooldownModeloMin);
         }
 
-        if (texto is null && temFallback)
+        // Nenhum modelo respondeu. Se todos estão suspensos, aciona o freio global.
+        if (modelos.All(m => _modeloSuspensoAte.TryGetValue(m, out var a) && DateTime.UtcNow < a)
+            && Interlocked.Increment(ref _finais429Seguidos) >= 2)
         {
-            _log.LogInformation("Usando fallback {Fallback} ({Id})", _opt.ModeloFallback, idLog);
-            texto = await TentarModeloAsync(_opt.ModeloFallback, prompt, idLog, ct);
+            _geracaoSuspensaAte = DateTime.UtcNow.AddMinutes(45);
+            _log.LogWarning("FREIO DE COTA: todos os {N} modelo(s) da rotação esgotados — geração suspensa por 45 min.", modelos.Length);
         }
-        return texto;
+        return null;
     }
 
     /// <summary>Tenta um modelo específico com retry/backoff (429/5xx). Null se esgotar
     /// ou se a operação for cancelada (ex.: tempo-limite do chamador) — nunca lança.</summary>
-    private async Task<string?> TentarModeloAsync(string modelo, string prompt, string idLog, CancellationToken ct)
+    private async Task<string?> TentarModeloAsync(string modelo, string prompt, string idLog, CancellationToken ct, int maxTentativas = MaxTentativas)
     {
-        try { return await TentarModeloInternoAsync(modelo, prompt, idLog, ct); }
+        try { return await TentarModeloInternoAsync(modelo, prompt, idLog, ct, maxTentativas); }
         catch (OperationCanceledException)
         {
             _log.LogWarning("Chamada ao Gemini cancelada pelo tempo-limite do chamador ({Id})", idLog);
@@ -217,7 +234,7 @@ public partial class GeminiClassificador : IClassificadorIA
         }
     }
 
-    private async Task<string?> TentarModeloInternoAsync(string modelo, string prompt, string idLog, CancellationToken ct)
+    private async Task<string?> TentarModeloInternoAsync(string modelo, string prompt, string idLog, CancellationToken ct, int maxTentativas)
     {
         var corpo = new
         {
@@ -226,7 +243,7 @@ public partial class GeminiClassificador : IClassificadorIA
         };
         var url = $"v1beta/models/{modelo}:generateContent?key={_opt.ApiKey}";
 
-        for (var tentativa = 1; tentativa <= MaxTentativas; tentativa++)
+        for (var tentativa = 1; tentativa <= maxTentativas; tentativa++)
         {
             await EspacarAsync(ct);
             try
@@ -236,29 +253,25 @@ public partial class GeminiClassificador : IClassificadorIA
 
                 if ((int)resp.StatusCode == 429 || (int)resp.StatusCode >= 500)
                 {
-                    if (tentativa < MaxTentativas) { await BackoffAsync(tentativa, ct); continue; }
-                    _log.LogWarning("Gemini rate limit/erro {Status} após {N} tentativas ({Id})", (int)resp.StatusCode, tentativa, idLog);
-                    if ((int)resp.StatusCode == 429 && Interlocked.Increment(ref _finais429Seguidos) >= 3)
-                    {
-                        _geracaoSuspensaAte = DateTime.UtcNow.AddMinutes(45);
-                        _log.LogWarning("FREIO DE COTA acionado: 3 chamadas seguidas esgotaram em 429 — geração suspensa por 45 min (retries não vão mais canibalizar a cota).");
-                    }
+                    // 429 = cota esgotada neste modelo: não insiste (a rotação troca de modelo).
+                    // 5xx = transitório: um retry rápido antes de desistir deste modelo.
+                    if ((int)resp.StatusCode >= 500 && tentativa < maxTentativas) { await BackoffAsync(tentativa, ct); continue; }
+                    _log.LogWarning("{Modelo}: {Status} ({Id})", modelo, (int)resp.StatusCode, idLog);
                     return null;
                 }
 
                 resp.EnsureSuccessStatusCode();
-                _finais429Seguidos = 0; // sucesso rearma o freio
                 var json = await resp.Content.ReadAsStringAsync(ct);
                 return ExtrairTextoDaResposta(json);
             }
-            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException && tentativa < MaxTentativas)
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException && tentativa < maxTentativas)
             {
-                _log.LogWarning(ex, "Falha transitória no Gemini (tentativa {N}, {Id})", tentativa, idLog);
+                _log.LogWarning(ex, "Falha transitória no Gemini ({Modelo}, tentativa {N}, {Id})", modelo, tentativa, idLog);
                 await BackoffAsync(tentativa, ct);
             }
             catch (Exception ex)
             {
-                _log.LogError(ex, "Falha na chamada ao Gemini ({Id})", idLog);
+                _log.LogError(ex, "Falha na chamada ao Gemini ({Modelo}, {Id})", modelo, idLog);
                 return null;
             }
         }

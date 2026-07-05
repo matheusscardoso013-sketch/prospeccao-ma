@@ -58,11 +58,12 @@ public class JobsController : Controller
                 else if (soCurados)
                 {
                     // Esteira horária: drena a fila de curados; quando ela esvazia, o mesmo
-                    // disparo passa a curar falhas antigas (score 0 por cota estourada) —
-                    // sem isso elas só saíam a 1 lote/dia e acumulavam às centenas.
+                    // disparo passa a curar falhas antigas (score 0). Lote pequeno (loteFalhas)
+                    // p/ não canibalizar a cota diária compartilhada com a rodada do meio-dia
+                    // (free tier: ~80 chamadas/dia somando a rotação de modelos).
                     var cruzados = await rotina.CruzarCuradosPendentesAsync(loteCurados, CancellationToken.None);
                     if (cruzados == 0)
-                        await rotina.ReprocessarFalhasAsync(Math.Max(loteFalhas, 10), CancellationToken.None);
+                        await rotina.ReprocessarFalhasAsync(loteFalhas, CancellationToken.None);
                 }
                 else
                     await rotina.ExecutarAsync(CancellationToken.None);
