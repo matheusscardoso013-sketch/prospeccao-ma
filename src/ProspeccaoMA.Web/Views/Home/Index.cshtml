@@ -54,6 +54,24 @@
         }
     </div>
 
+    @if (Model.Agenda.Count > 0)
+    {
+        <div class="px-rule"></div>
+        <div class="px-sect">Agenda — ações marcadas para hoje ou vencidas</div>
+        @foreach (var a in Model.Agenda)
+        {
+            <a class="px-opp" asp-controller="Lead" asp-action="Compradores" asp-route-id="@a.LeadId">
+                <span class="px-when @(a.Vencida ? "venc" : "")">@ProspeccaoMA.Web.Util.Fuso.Brasil(a.Quando).ToString("dd/MM")</span>
+                <div class="px-opp-txt">
+                    <div class="co">@a.Alvo <span style="color:var(--muted);font-weight:400">× @a.Comprador</span></div>
+                    <div class="fl">@(string.IsNullOrWhiteSpace(a.Nota) ? "sem nota" : a.Nota)@(string.IsNullOrWhiteSpace(a.Responsavel) ? "" : $" · resp. {a.Responsavel}")</div>
+                </div>
+                @if (a.Vencida) { <span class="rz-chip pend" style="background:#fbe7e7;color:#9d3535">vencida</span> }
+                <span class="px-go">Abrir →</span>
+            </a>
+        }
+    }
+
     <div class="px-rule"></div>
 
     <div class="px-sect">Fila do dia — próximas abordagens</div>

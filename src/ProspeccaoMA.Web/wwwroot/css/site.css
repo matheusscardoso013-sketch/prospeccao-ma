@@ -212,6 +212,8 @@ tbody tr:last-child td{border-bottom:none}
 .px-legend .sw{width:16px;height:3px;border-radius:2px;display:inline-block}
 .px-legend .sw.teal{background:var(--teal)} .px-legend .sw.bronze{background:var(--bronze)}
 .px-vazio{font-size:13px;color:var(--muted);font-style:italic;padding:8px 0}
+.px-when{flex:0 0 auto;min-width:46px;font-family:var(--serif);font-size:14px;color:var(--vb-navy);font-variant-numeric:tabular-nums}
+.px-when.venc{color:#9d3535}
 
 /* ============ FICHA (Alvo / Comprador — redesenho refinado) ============ */
 .fa{max-width:940px;margin:2px auto 0}

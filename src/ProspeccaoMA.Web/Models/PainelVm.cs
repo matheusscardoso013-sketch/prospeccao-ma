@@ -16,6 +16,20 @@ public class PainelVm
     public List<EtapaFunil> Funil { get; set; } = new();
 
     public List<OportunidadePainel> Melhores { get; set; } = new();
+
+    /// <summary>Ações agendadas para hoje ou vencidas (mini-CRM) — o que o time não pode esquecer.</summary>
+    public List<AcaoPainel> Agenda { get; set; } = new();
+}
+
+public class AcaoPainel
+{
+    public int LeadId { get; set; }
+    public string Alvo { get; set; } = "";
+    public string Comprador { get; set; } = "";
+    public string? Responsavel { get; set; }
+    public string? Nota { get; set; }
+    public DateTime Quando { get; set; }
+    public bool Vencida { get; set; }
 }
 
 public class EtapaFunil

@@ -82,6 +82,27 @@ public class HomeController : Controller
             Racional = Resumir(s.Racional),
         }).ToList();
 
+        // Agenda: ações agendadas para hoje/vencidas (o mini-CRM ganha utilidade real).
+        var fimHoje = inicioHoje.AddDays(1);
+        var agenda = await _db.SinergiasComprador
+            .Include(s => s.Lead).Include(s => s.Comprador)
+            .Where(s => s.ProximaAcaoEm != null && s.ProximaAcaoEm < fimHoje
+                     && s.Status != StatusSinergia.Descartado)
+            .OrderBy(s => s.ProximaAcaoEm)
+            .Take(8)
+            .ToListAsync();
+
+        vm.Agenda = agenda.Select(s => new AcaoPainel
+        {
+            LeadId = s.LeadId,
+            Alvo = s.Lead?.RazaoSocial ?? "—",
+            Comprador = s.Comprador?.Nome ?? "—",
+            Responsavel = s.Comprador?.Responsavel,
+            Nota = s.ProximaAcaoNota,
+            Quando = s.ProximaAcaoEm!.Value,
+            Vencida = s.ProximaAcaoEm!.Value < inicioHoje,
+        }).ToList();
+
         return View(vm);
     }
 
