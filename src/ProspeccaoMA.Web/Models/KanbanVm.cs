@@ -6,6 +6,8 @@ public class KanbanVm
 {
     public int? ScoreMin { get; set; }
     public string? Busca { get; set; }
+    public string? Resp { get; set; }
+    public List<string> Responsaveis { get; set; } = new();
     public List<KanbanColuna> Colunas { get; set; } = new();
 }
 

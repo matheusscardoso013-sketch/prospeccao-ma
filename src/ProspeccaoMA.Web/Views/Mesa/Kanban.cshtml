@@ -27,6 +27,16 @@
                 <option value="0" selected="@(Model.ScoreMin == 0)">Qualquer</option>
             </select>
         </div>
+        <div class="field">
+            <label>Responsável</label>
+            <select name="resp" onchange="this.form.submit()">
+                <option value="">Todos</option>
+                @foreach (var r in Model.Responsaveis)
+                {
+                    <option value="@r" selected="@(r == Model.Resp)">@r</option>
+                }
+            </select>
+        </div>
         <div class="field" style="flex:1">
             <label>Buscar</label>
             <input type="text" name="busca" value="@Model.Busca" placeholder="alvo ou comprador" style="width:100%" />

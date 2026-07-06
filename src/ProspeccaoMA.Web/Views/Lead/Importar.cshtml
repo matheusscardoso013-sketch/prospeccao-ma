@@ -2,24 +2,29 @@
     ViewData["Title"] = "Importar CNPJs";
 }
 
-<div class="pagehead">
-    <div>
-        <h1>Importar CNPJs reais</h1>
-        <div class="sub">Cole uma lista de CNPJs reais (um por linha ou separados por vírgula).
-            Cada um é enriquecido pela BrasilAPI com dados da Receita — nada é inventado.</div>
+<div class="lead-wrap">
+    <div class="lead-head">
+        <div>
+            <div class="px-ey">Prospecção</div>
+            <h1 class="px-h1">Importar CNPJs reais</h1>
+            <div class="px-sub">Cole uma lista de CNPJs reais (um por linha ou separados por vírgula).
+                Cada um é enriquecido pela BrasilAPI com dados oficiais da Receita — nada é inventado.</div>
+        </div>
+        <a class="fa-btn s" style="align-self:flex-start" asp-controller="Lead" asp-action="Index">← Voltar aos leads</a>
     </div>
-    <a class="btn ghost" asp-controller="Lead" asp-action="Index">← Voltar aos leads</a>
-</div>
 
-<div class="panel" style="padding:22px;max-width:760px">
     <form asp-controller="Lead" asp-action="Importar" method="post">
         @Html.AntiForgeryToken()
-        <div class="field">
-            <label>CNPJs</label>
-            <textarea name="cnpjs" placeholder="00.000.000/0001-00&#10;11111111000111&#10;..."></textarea>
-            <div class="hint">A descoberta por setor (CNAE/UF) é feita pela rotina sobre a base; aqui você
-                insere CNPJs específicos para enriquecer e pontuar.</div>
+        <div class="formgrid" style="max-width:760px">
+            <div class="field full">
+                <label>CNPJs</label>
+                <textarea name="cnpjs" placeholder="00.000.000/0001-00&#10;11111111000111&#10;..."></textarea>
+                <div class="hint">A descoberta por setor (CNAE/UF) é feita pela rotina diária sobre a base;
+                    aqui você insere CNPJs específicos para enriquecer e pontuar.</div>
+            </div>
+            <div class="full">
+                <button type="submit" class="fa-btn p">Importar e enriquecer</button>
+            </div>
         </div>
-        <button type="submit" class="btn primary" style="margin-top:12px">Importar e enriquecer</button>
     </form>
 </div>

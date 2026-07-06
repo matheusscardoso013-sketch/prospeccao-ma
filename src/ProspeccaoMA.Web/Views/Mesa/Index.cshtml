@@ -49,6 +49,16 @@
                 <option value="0" selected="@((int?)ViewData["ScoreMin"] == 0)">Qualquer</option>
             </select>
         </div>
+        <div class="field">
+            <label>Responsável</label>
+            <select name="resp">
+                <option value="">Todos</option>
+                @foreach (var r in (List<string>)ViewData["Responsaveis"]!)
+                {
+                    <option value="@r" selected="@(r == (string?)ViewData["Resp"])">@r</option>
+                }
+            </select>
+        </div>
         <div class="field" style="flex:1">
             <label>Buscar</label>
             <input type="text" name="busca" value="@ViewData["Busca"]" placeholder="alvo, comprador ou responsável" style="width:100%" />
