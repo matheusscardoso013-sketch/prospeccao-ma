@@ -34,6 +34,7 @@ public class MotorSinergia : IMotorSinergia
     private readonly bool _usarTriagemIA;
     private readonly bool _usarEmbeddings;
     private readonly bool _doisEstagios;
+    private readonly int _limiarSegundoEstagio;
 
     public MotorSinergia(AppDbContext db, IClassificadorIA ia, Notificacoes.INotificadorEmail email,
         ILogger<MotorSinergia> log, IConfiguration cfg)
@@ -46,6 +47,7 @@ public class MotorSinergia : IMotorSinergia
         _usarTriagemIA = cfg.GetValue("Sinergia:UsarTriagemIA", true);
         _usarEmbeddings = cfg.GetValue("Sinergia:UsarEmbeddings", true);
         _doisEstagios = cfg.GetValue("Sinergia:DoisEstagios", false);
+        _limiarSegundoEstagio = cfg.GetValue("Sinergia:LimiarSegundoEstagio", 70);
     }
 
     public async Task<int> CruzarLeadAsync(int leadId, CancellationToken ct = default)
@@ -254,10 +256,18 @@ public class MotorSinergia : IMotorSinergia
         var feedback = await FeedbackDoCompradorAsync(comprador.Id, lead.Id, ct);
 
         var r = await _ia.ClassificarSinergiaAsync(lead, comprador, feedback: feedback, ct: ct);
-        if (_doisEstagios && r.Score >= 60)
+
+        // Segundo estágio: só para finalistas promissores (>= limiar) e se ainda há cota —
+        // re-pontua com os modelos fortes. Poupa chamadas (a maioria dos pares nem chega lá).
+        if (_doisEstagios && r.Score >= _limiarSegundoEstagio && !IA.GeminiClassificador.GeracaoSuspensa)
         {
             var refinado = await _ia.ClassificarSinergiaAsync(lead, comprador, preciso: true, feedback: feedback, ct: ct);
-            if (refinado.Score > 0) r = refinado;
+            if (refinado.Score > 0)
+            {
+                _log.LogInformation("2º estágio ({Lead} × {Comprador}): {De} → {Para} (modelo forte)",
+                    lead.RazaoSocial, comprador.Nome, r.Score, refinado.Score);
+                r = refinado;
+            }
         }
 
         if (r.Score >= 80)

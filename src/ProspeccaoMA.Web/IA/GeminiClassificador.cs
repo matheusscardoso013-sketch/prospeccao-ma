@@ -24,6 +24,10 @@ public class GeminiOptions
     /// <summary>Modelo forte do segundo estágio (re-pontua finalistas). Vazio = desligado.</summary>
     public string ModeloPreciso { get; set; } = "gemini-2.5-flash";
 
+    /// <summary>Rotação de modelos FORTES do segundo estágio (cada um com cota própria).
+    /// Vazio = usa só ModeloPreciso. Devem ser modelos mais capazes que a rotação normal.</summary>
+    public string[] ModelosPrecisos { get; set; } = Array.Empty<string>();
+
     /// <summary>Modelo de embeddings (cota separada da geração no free tier).</summary>
     public string ModeloEmbedding { get; set; } = "gemini-embedding-001";
 }
@@ -73,11 +77,11 @@ public partial class GeminiClassificador : IClassificadorIA
         var prompt = MontarPromptSinergia(lead, comprador, feedback);
         var idLog = $"{lead.Cnpj}~{comprador.Nome}";
 
-        // Segundo estágio: o modelo forte re-pontua o finalista; se ele falhar (cota),
-        // devolvemos falha e o chamador mantém o resultado do primeiro estágio.
-        if (preciso && !string.IsNullOrWhiteSpace(_opt.ModeloPreciso))
+        // Segundo estágio: modelos FORTES re-pontuam o finalista (rotação própria). Se todos
+        // falharem (cota), devolvemos falha e o chamador mantém o resultado do primeiro estágio.
+        if (preciso)
         {
-            var texto = await TentarModeloAsync(_opt.ModeloPreciso, prompt, $"preciso~{idLog}", ct);
+            var texto = await ChamarComRotacaoAsync(prompt, $"preciso~{idLog}", ModelosPrecisosEfetivos(), ct);
             return texto is null
                 ? new ResultadoClassificacao(0, "IA indisponível no momento (limite de uso); tente novamente.")
                 : ParsearResultado(texto, idLog);
@@ -182,11 +186,26 @@ public partial class GeminiClassificador : IClassificadorIA
         return lista.Where(m => !string.IsNullOrWhiteSpace(m)).Select(m => m.Trim()).Distinct().ToArray();
     }
 
-    /// <summary>Chamada bruta ao Gemini com ROTAÇÃO DE MODELOS: tenta cada modelo na ordem,
-    /// pulando os que estão em cooldown; o primeiro que responder vence. Quando um modelo
-    /// esgota (429), entra em cooldown e a rotação segue. Se todos morrerem, aciona o freio
-    /// global. Cada modelo tem cota gratuita própria, então a soma multiplica a capacidade.</summary>
-    private async Task<string?> ChamarTextoAsync(string prompt, string idLog, CancellationToken ct)
+    /// <summary>Modelos FORTES do segundo estágio (config Gemini:ModelosPrecisos, ou o
+    /// ModeloPreciso único). Rotacionados igual aos normais, com cota própria de cada.</summary>
+    private string[] ModelosPrecisosEfetivos()
+    {
+        var lista = _opt.ModelosPrecisos is { Length: > 0 }
+            ? _opt.ModelosPrecisos
+            : new[] { _opt.ModeloPreciso };
+        return lista.Where(m => !string.IsNullOrWhiteSpace(m)).Select(m => m.Trim()).Distinct().ToArray();
+    }
+
+    /// <summary>Chamada bruta ao Gemini (rotação dos modelos normais).</summary>
+    private Task<string?> ChamarTextoAsync(string prompt, string idLog, CancellationToken ct)
+        => ChamarComRotacaoAsync(prompt, idLog, ModelosEfetivos(), ct);
+
+    /// <summary>ROTAÇÃO DE MODELOS: tenta cada modelo da lista na ordem, pulando os em
+    /// cooldown; o primeiro que responder vence. Modelo que esgota (429) entra em cooldown e
+    /// a rotação segue. Se todos morrerem, aciona o freio global. Cada modelo tem cota
+    /// gratuita própria — a soma multiplica a capacidade diária. Compartilha o cooldown e o
+    /// freio entre a rotação normal e a "precisa" (é a mesma chave/cota do projeto).</summary>
+    private async Task<string?> ChamarComRotacaoAsync(string prompt, string idLog, string[] modelos, CancellationToken ct)
     {
         if (GeracaoSuspensa)
         {
@@ -194,7 +213,6 @@ public partial class GeminiClassificador : IClassificadorIA
             return null;
         }
 
-        var modelos = ModelosEfetivos();
         foreach (var modelo in modelos)
         {
             if (_modeloSuspensoAte.TryGetValue(modelo, out var ate) && DateTime.UtcNow < ate)
@@ -217,7 +235,7 @@ public partial class GeminiClassificador : IClassificadorIA
             && Interlocked.Increment(ref _finais429Seguidos) >= 2)
         {
             _geracaoSuspensaAte = DateTime.UtcNow.AddMinutes(45);
-            _log.LogWarning("FREIO DE COTA: todos os {N} modelo(s) da rotação esgotados — geração suspensa por 45 min.", modelos.Length);
+            _log.LogWarning("FREIO DE COTA: todos os {N} modelo(s) esgotados — geração suspensa por 45 min.", modelos.Length);
         }
         return null;
     }
