@@ -159,6 +159,29 @@ if (args.Length > 0 && string.Equals(args[0], "gerar-embeddings", StringComparis
     return;
 }
 
+// Higiene de dados: unifica grafias de responsável vindas da planilha
+// (ex.: "JAziel" e "Jaziel" são a mesma pessoa). Uso:
+//   unificar-responsavel "JAziel" "Jaziel" [--gravar]
+if (args.Length >= 3 && string.Equals(args[0], "unificar-responsavel", StringComparison.OrdinalIgnoreCase))
+{
+    using var escopoR = app.Services.CreateScope();
+    var dbR = escopoR.ServiceProvider.GetRequiredService<AppDbContext>();
+    var de = args[1]; var para = args[2];
+    var gravarR = args.Any(a => a.Equals("--gravar", StringComparison.OrdinalIgnoreCase));
+    var afetados = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToListAsync(
+        dbR.Compradores.Where(c => c.Responsavel == de));
+    Console.WriteLine($"Compradores com responsável '{de}': {afetados.Count}");
+    foreach (var c in afetados) Console.WriteLine($"  - {c.Nome}");
+    if (gravarR && afetados.Count > 0)
+    {
+        afetados.ForEach(c => c.Responsavel = para);
+        await dbR.SaveChangesAsync();
+        Console.WriteLine($"Unificado: '{de}' → '{para}' em {afetados.Count} comprador(es).");
+    }
+    else if (!gravarR) Console.WriteLine("Dry-run (use --gravar para aplicar).");
+    return;
+}
+
 // Exporta o pool completo de empresas da Receita que está na plataforma para um .xlsx
 // (entregável para o time — o dado bruto do governo tem dezenas de GB; este é o recorte útil).
 if (args.Length >= 2 && string.Equals(args[0], "exportar-pool", StringComparison.OrdinalIgnoreCase))
