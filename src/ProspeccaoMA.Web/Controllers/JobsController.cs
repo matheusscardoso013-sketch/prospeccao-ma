@@ -37,8 +37,10 @@ public class JobsController : Controller
 
         // modo=falhas: só reavalia pontuações que falharam, sem rodar a prospecção do dia.
         // modo=curados: só cruza um lote de alvos curados pendentes (backfill sob demanda).
+        // modo=email: só (re)envia o resumo do dia — teste de SMTP sem gastar cota de IA.
         var soFalhas = string.Equals(modo, "falhas", StringComparison.OrdinalIgnoreCase);
         var soCurados = string.Equals(modo, "curados", StringComparison.OrdinalIgnoreCase);
+        var soEmail = string.Equals(modo, "email", StringComparison.OrdinalIgnoreCase);
 
         // Lotes pequenos (config Prospeccao:*) para cada disparo terminar em poucos
         // minutos — no free tier a instância hiberna e mataria uma rodada longa no meio.
@@ -53,7 +55,12 @@ public class JobsController : Controller
             {
                 using var escopo = _escopos.CreateScope();
                 var rotina = escopo.ServiceProvider.GetRequiredService<RotinaProspeccao>();
-                if (soFalhas)
+                if (soEmail)
+                {
+                    var email = escopo.ServiceProvider.GetRequiredService<Notificacoes.INotificadorEmail>();
+                    await email.EnviarResumoDiarioAsync(CancellationToken.None);
+                }
+                else if (soFalhas)
                     await rotina.ReprocessarFalhasAsync(loteFalhas, CancellationToken.None);
                 else if (soCurados)
                 {
@@ -72,10 +79,12 @@ public class JobsController : Controller
             }
         });
 
-        return Content(soFalhas
-            ? $"Reprocessamento de falhas disparado (lote de até {loteFalhas})."
-            : soCurados
-                ? $"Backfill de alvos curados disparado (lote de até {loteCurados})."
-                : "Prospecção disparada. Acompanhe em Execuções.");
+        return Content(soEmail
+            ? "Resumo do dia disparado por e-mail (se houver novidades e o SMTP estiver configurado)."
+            : soFalhas
+                ? $"Reprocessamento de falhas disparado (lote de até {loteFalhas})."
+                : soCurados
+                    ? $"Backfill de alvos curados disparado (lote de até {loteCurados})."
+                    : "Prospecção disparada. Acompanhe em Execuções.");
     }
 }
