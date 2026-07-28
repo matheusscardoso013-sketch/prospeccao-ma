@@ -81,6 +81,8 @@ builder.Services.AddHttpClient<IClassificadorIA, GeminiClassificador>(c =>
 builder.Services.AddScoped<IMotorSinergia, MotorSinergia>();
 
 // Resumo diário por e-mail (pós-rotina das 12h). Configurar seção Email via env vars.
+// HttpClient nomeado para o envio via API HTTP (o free tier do Render bloqueia portas SMTP).
+builder.Services.AddHttpClient("email");
 builder.Services.AddScoped<ProspeccaoMA.Web.Notificacoes.INotificadorEmail, ProspeccaoMA.Web.Notificacoes.NotificadorEmail>();
 
 // Rotina de prospecção (compartilhada) + agendador diário às 12h.

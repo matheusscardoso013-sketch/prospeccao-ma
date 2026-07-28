@@ -29,12 +29,78 @@ public class NotificadorEmail : INotificadorEmail
     private readonly AppDbContext _db;
     private readonly IConfiguration _cfg;
     private readonly ILogger<NotificadorEmail> _log;
+    private readonly IHttpClientFactory _http;
 
-    public NotificadorEmail(AppDbContext db, IConfiguration cfg, ILogger<NotificadorEmail> log)
+    public NotificadorEmail(AppDbContext db, IConfiguration cfg, ILogger<NotificadorEmail> log, IHttpClientFactory http)
     {
         _db = db;
         _cfg = cfg;
         _log = log;
+        _http = http;
+    }
+
+    /// <summary>
+    /// Envia um e-mail pelo provedor configurado. O free tier do Render BLOQUEIA as portas
+    /// SMTP (25/465/587) desde set/2025, então o padrão é a API HTTP do Brevo (porta 443,
+    /// não bloqueada; 300 e-mails/dia no plano gratuito). Email:Provedor="smtp" volta ao
+    /// SMTP direto (funciona fora do Render ou em instância paga). Nunca lança.
+    /// </summary>
+    private async Task<bool> EnviarAsync(string assunto, string html, CancellationToken ct)
+    {
+        var para = _cfg["Email:Para"] ?? "";
+        var de = _cfg["Email:De"] ?? _cfg["Email:Usuario"] ?? "prospeccao@valore.local";
+        var destinos = para.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (destinos.Length == 0) return false;
+
+        var provedor = (_cfg["Email:Provedor"] ?? "brevo").Trim().ToLowerInvariant();
+
+        if (provedor == "smtp")
+        {
+            using var msg = new MailMessage
+            {
+                From = new MailAddress(de, "Valore Brasil — Originação M&A"),
+                Subject = assunto,
+                Body = html,
+                IsBodyHtml = true
+            };
+            foreach (var d in destinos) msg.To.Add(d);
+            using var smtp = new SmtpClient(_cfg["Email:SmtpHost"], _cfg.GetValue("Email:SmtpPorta", 587))
+            {
+                EnableSsl = true,
+                Credentials = new NetworkCredential(_cfg["Email:Usuario"], _cfg["Email:Senha"])
+            };
+            await smtp.SendMailAsync(msg, ct);
+            return true;
+        }
+
+        // Brevo (HTTP): https://developers.brevo.com — chave em Email:ApiKey.
+        var apiKey = _cfg["Email:ApiKey"];
+        if (string.IsNullOrWhiteSpace(apiKey))
+        {
+            _log.LogWarning("Email:ApiKey não configurada — e-mail não enviado (provedor {Prov}).", provedor);
+            return false;
+        }
+
+        var corpo = new
+        {
+            sender = new { name = "Valore Brasil — Originação M&A", email = de },
+            to = destinos.Select(d => new { email = d }).ToArray(),
+            subject = assunto,
+            htmlContent = html
+        };
+
+        var cliente = _http.CreateClient("email");
+        using var req = new HttpRequestMessage(HttpMethod.Post, "https://api.brevo.com/v3/smtp/email");
+        req.Headers.Add("api-key", apiKey);
+        req.Content = new StringContent(System.Text.Json.JsonSerializer.Serialize(corpo),
+            Encoding.UTF8, "application/json");
+
+        var resp = await cliente.SendAsync(req, ct);
+        if (resp.IsSuccessStatusCode) return true;
+
+        var erro = await resp.Content.ReadAsStringAsync(ct);
+        _log.LogError("Brevo recusou o envio ({Status}): {Erro}", (int)resp.StatusCode, Recortar(erro, 300));
+        return false;
     }
 
     public async Task EnviarResumoDiarioAsync(CancellationToken ct = default)
@@ -42,11 +108,10 @@ public class NotificadorEmail : INotificadorEmail
         try
         {
             var ativo = _cfg.GetValue("Email:Ativo", false);
-            var host = _cfg["Email:SmtpHost"];
             var para = _cfg["Email:Para"];
-            if (!ativo || string.IsNullOrWhiteSpace(host) || string.IsNullOrWhiteSpace(para))
+            if (!ativo || string.IsNullOrWhiteSpace(para))
             {
-                _log.LogInformation("E-mail diário desativado/não configurado (Email:Ativo/SmtpHost/Para) — pulando.");
+                _log.LogInformation("E-mail diário desativado/não configurado (Email:Ativo/Para) — pulando.");
                 return;
             }
 
@@ -73,25 +138,10 @@ public class NotificadorEmail : INotificadorEmail
             }
 
             var html = MontarHtml(leadsHoje, paresHoje);
+            var assunto = $"Valore Brasil — {Fuso.Brasil(DateTime.UtcNow):dd/MM}: {leadsHoje.Count} lead(s) novo(s), {paresHoje.Count} match(es)";
 
-            var de = _cfg["Email:De"] ?? _cfg["Email:Usuario"] ?? "prospeccao@valore.local";
-            using var msg = new MailMessage
-            {
-                From = new MailAddress(de, "Valore Brasil — Originação M&A"),
-                Subject = $"Valore Brasil — {Fuso.Brasil(DateTime.UtcNow):dd/MM}: {leadsHoje.Count} lead(s) novo(s), {paresHoje.Count} match(es)",
-                Body = html,
-                IsBodyHtml = true
-            };
-            foreach (var dest in para.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-                msg.To.Add(dest);
-
-            using var smtp = new SmtpClient(host, _cfg.GetValue("Email:SmtpPorta", 587))
-            {
-                EnableSsl = true,
-                Credentials = new NetworkCredential(_cfg["Email:Usuario"], _cfg["Email:Senha"])
-            };
-            await smtp.SendMailAsync(msg, ct);
-            _log.LogInformation("E-mail diário enviado para {Para}.", para);
+            if (await EnviarAsync(assunto, html, ct))
+                _log.LogInformation("E-mail diário enviado para {Para}.", para);
         }
         catch (Exception ex)
         {
@@ -104,9 +154,8 @@ public class NotificadorEmail : INotificadorEmail
         try
         {
             var ativo = _cfg.GetValue("Email:Ativo", false);
-            var host = _cfg["Email:SmtpHost"];
             var para = _cfg["Email:Para"];
-            if (!ativo || string.IsNullOrWhiteSpace(host) || string.IsNullOrWhiteSpace(para)) return;
+            if (!ativo || string.IsNullOrWhiteSpace(para)) return;
 
             var html = new StringBuilder();
             html.Append("<div style='font-family:Segoe UI,Arial,sans-serif;color:#1c2533;max-width:640px'>");
@@ -117,24 +166,8 @@ public class NotificadorEmail : INotificadorEmail
             html.Append($"<p><a href='https://prospeccao-ma.onrender.com/Lead/Compradores/{lead.Id}' style='background:#0E3A56;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none'>Abrir a ficha do alvo</a></p>");
             html.Append("</div>");
 
-            var de = _cfg["Email:De"] ?? _cfg["Email:Usuario"] ?? "prospeccao@valore.local";
-            using var msg = new MailMessage
-            {
-                From = new MailAddress(de, "Valore Brasil — Originação M&A"),
-                Subject = $"🔥 Match {score}/100: {lead.RazaoSocial} × {comprador.Nome}",
-                Body = html.ToString(),
-                IsBodyHtml = true
-            };
-            foreach (var dest in para.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-                msg.To.Add(dest);
-
-            using var smtp = new SmtpClient(host, _cfg.GetValue("Email:SmtpPorta", 587))
-            {
-                EnableSsl = true,
-                Credentials = new NetworkCredential(_cfg["Email:Usuario"], _cfg["Email:Senha"])
-            };
-            await smtp.SendMailAsync(msg, ct);
-            _log.LogInformation("Alerta de match quente enviado ({Lead} × {Comprador}, {Score}).", lead.RazaoSocial, comprador.Nome, score);
+            if (await EnviarAsync($"🔥 Match {score}/100: {lead.RazaoSocial} × {comprador.Nome}", html.ToString(), ct))
+                _log.LogInformation("Alerta de match quente enviado ({Lead} × {Comprador}, {Score}).", lead.RazaoSocial, comprador.Nome, score);
         }
         catch (Exception ex)
         {
