@@ -15,6 +15,12 @@ var ptBr = new System.Globalization.CultureInfo("pt-BR");
 System.Globalization.CultureInfo.DefaultThreadCurrentCulture = ptBr;
 System.Globalization.CultureInfo.DefaultThreadCurrentUICulture = ptBr;
 
+// Não vigiar o appsettings.json em disco (FileSystemWatcher/inotify). Em containers o
+// limite de instâncias inotify é do HOST e compartilhado — quando estoura, o app nem sobe
+// ("user limit on the number of inotify instances has been reached", visto no Render em
+// 28/07). A config só muda com redeploy, então o hot-reload não faz falta.
+Environment.SetEnvironmentVariable("DOTNET_hostBuilder__reloadConfigOnChange", "false");
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Hospedagem (Render/Railway): escutar a porta informada pela plataforma via env PORT.
