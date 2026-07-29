@@ -85,9 +85,20 @@ public class ImportadorReceita : IImportadorReceita
                 var cnpj = basico + c[1].Trim() + c[2].Trim();
                 if (cnpj.Length != 14) continue;
 
+                // UMA linha por EMPRESA, não por estabelecimento. O arquivo da Receita traz
+                // matriz e filiais como registros separados — sem isso, uma usina com 398
+                // fazendas virava 398 "empresas" (visto em 29/07), inflando a base e
+                // queimando cota de IA pontuando a mesma companhia dezenas de vezes.
+                // Preferimos a matriz (c[3] == "1"); a filial só entra se a matriz não
+                // casar o recorte (ex.: matriz em outra UF), para não perder a empresa.
+                var ehMatriz = c[3].Trim() == "1";
+                if (selecionados.TryGetValue(basico, out var jaEscolhido)
+                    && !ehMatriz
+                    && jaEscolhido.Cnpj!.Substring(8, 4) == "0001") continue;
+
                 var munNome = municipios.TryGetValue(c[20].Trim(), out var nome) ? nome : c[20].Trim();
 
-                selecionados[cnpj] = new Lead
+                selecionados[basico] = new Lead
                 {
                     Cnpj = cnpj,
                     Cnae = cnae,
@@ -153,12 +164,16 @@ public class ImportadorReceita : IImportadorReceita
             return new ResultadoImportacaoReceita(linhasEstab, selecionados.Count, 0, 0, false);
         }
 
-        // ----- Gravação idempotente por CNPJ -----
+        // ----- Gravação idempotente por EMPRESA (CNPJ raiz) -----
+        // Casar pelo CNPJ completo recriaria a linha quando o estabelecimento escolhido
+        // mudasse entre importações (ex.: a base já tem a filial 0013 e agora a matriz
+        // 0001 casa o recorte) — a empresa apareceria duas vezes.
         int novos = 0, atualizados = 0, processados = 0;
-        foreach (var (cnpj, novo) in selecionados)
+        foreach (var (basicoEmpresa, novo) in selecionados)
         {
             ct.ThrowIfCancellationRequested();
-            var existente = await _db.Leads.FirstOrDefaultAsync(l => l.Cnpj == cnpj, ct);
+            var existente = await _db.Leads.FirstOrDefaultAsync(
+                l => l.Origem == Lead.OrigemReceita && l.Cnpj != null && l.Cnpj.StartsWith(basicoEmpresa), ct);
             if (existente is null)
             {
                 _db.Leads.Add(novo);
@@ -170,6 +185,7 @@ public class ImportadorReceita : IImportadorReceita
             }
             else
             {
+                existente.Cnpj = novo.Cnpj; // pode migrar de filial p/ matriz entre importações
                 existente.RazaoSocial = novo.RazaoSocial;
                 existente.Cnae = novo.Cnae;
                 existente.Uf = novo.Uf;

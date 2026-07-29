@@ -107,6 +107,18 @@ if (args.Length > 0 && string.Equals(args[0], "status", StringComparison.Ordinal
     return;
 }
 
+if (args.Length > 0 && string.Equals(args[0], "duplicados", StringComparison.OrdinalIgnoreCase))
+{
+    await ComandoDuplicados.ExecutarAsync(app.Services);
+    return;
+}
+
+if (args.Length > 0 && string.Equals(args[0], "deduplicar", StringComparison.OrdinalIgnoreCase))
+{
+    await ComandoDeduplicar.ExecutarAsync(app.Services, args);
+    return;
+}
+
 // Comando de console para importar o recorte da Receita (fora do fluxo web).
 if (args.Length > 0 && string.Equals(args[0], "importar-receita", StringComparison.OrdinalIgnoreCase))
 {
