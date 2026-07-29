@@ -99,6 +99,14 @@ builder.Services.AddControllersWithViews();
 
 var app = builder.Build();
 
+// Raio-x da plataforma sem abrir o painel: últimas rodadas, base e funil.
+// Uso: dotnet run --project src/ProspeccaoMA.Web -- status
+if (args.Length > 0 && string.Equals(args[0], "status", StringComparison.OrdinalIgnoreCase))
+{
+    await ComandoStatus.ExecutarAsync(app.Services);
+    return;
+}
+
 // Comando de console para importar o recorte da Receita (fora do fluxo web).
 if (args.Length > 0 && string.Equals(args[0], "importar-receita", StringComparison.OrdinalIgnoreCase))
 {
