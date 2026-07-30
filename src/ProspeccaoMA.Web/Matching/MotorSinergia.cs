@@ -16,6 +16,11 @@ public interface IMotorSinergia
 
     /// <summary>Reavalia as sinergias existentes de um lead com os dados ATUAIS dele (após edição).</summary>
     Task<int> RecalcularLeadAsync(int leadId, CancellationToken ct = default);
+
+    /// <summary>Embedding do perfil do alvo, do banco quando já existe (grava no lead o vetor
+    /// novo, sem salvar — quem chamou controla o SaveChanges). Usado pela triagem e pela
+    /// priorização da fila de reavaliação.</summary>
+    Task<float[]?> EmbeddingDoLeadAsync(Lead lead, CancellationToken ct = default);
 }
 
 /// <summary>
@@ -342,7 +347,7 @@ public class MotorSinergia : IMotorSinergia
             return new();
         }
 
-        var vetorLead = await _ia.GerarEmbeddingAsync(TextoLead(lead), ct);
+        var vetorLead = await EmbeddingDoLeadAsync(lead, ct);
         if (vetorLead is null) return new();
 
         return comVetor
@@ -371,6 +376,41 @@ public class MotorSinergia : IMotorSinergia
         var bytes = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(TextoTese(c)));
         return Convert.ToHexString(bytes)[..16];
     }
+
+    internal static string HashLead(Lead l)
+    {
+        var bytes = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(TextoLead(l)));
+        return Convert.ToHexString(bytes)[..16];
+    }
+
+    /// <summary>
+    /// Embedding do alvo, reaproveitando o que está no banco. Antes ele era gerado a cada
+    /// rodada e jogado fora; agora fica gravado (com hash do texto de origem) e só é refeito
+    /// quando o perfil muda. Além de poupar chamadas, é o que permite ordenar a fila de
+    /// reavaliação por potencial sem gastar cota de GERAÇÃO — embeddings têm cota própria.
+    /// </summary>
+    public async Task<float[]?> EmbeddingDoLeadAsync(Lead lead, CancellationToken ct = default)
+    {
+        var hash = HashLead(lead);
+        if (lead.TextoEmbedding is not null && lead.TextoEmbeddingHash == hash)
+        {
+            try
+            {
+                var salvo = System.Text.Json.JsonSerializer.Deserialize<float[]>(lead.TextoEmbedding);
+                if (salvo is { Length: > 0 }) return salvo;
+            }
+            catch { /* vetor corrompido — refaz abaixo */ }
+        }
+
+        var vetor = await _ia.GerarEmbeddingAsync(TextoLead(lead), ct);
+        if (vetor is null || vetor.Length == 0) return null;
+
+        lead.TextoEmbedding = System.Text.Json.JsonSerializer.Serialize(vetor);
+        lead.TextoEmbeddingHash = hash;
+        return vetor;
+    }
+
+    internal static double Similaridade(float[] a, float[] b) => Cosseno(a, b);
 
     private static string TextoLead(Lead l)
     {

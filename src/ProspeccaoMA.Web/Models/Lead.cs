@@ -76,6 +76,14 @@ public class Lead
 
     /// <summary>Marcado quando o usuário editou o lead à mão (rastreabilidade da fonte;
     /// reimportações preservam leads editados em vez de sobrescrevê-los).</summary>
+    /// <summary>Embedding do perfil do alvo (JSON de float[]), espelhando o do comprador.
+    /// Guardado porque era regerado a cada rodada — e porque permite ordenar a fila de
+    /// reavaliação por potencial (cosseno alvo × tese) sem gastar cota de geração.</summary>
+    public string? TextoEmbedding { get; set; }
+
+    /// <summary>Hash do texto que originou o embedding: mudou o perfil, o vetor é refeito.</summary>
+    public string? TextoEmbeddingHash { get; set; }
+
     public bool EditadoManualmente { get; set; }
 
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;

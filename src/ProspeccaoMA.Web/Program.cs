@@ -107,6 +107,19 @@ if (args.Length > 0 && string.Equals(args[0], "status", StringComparison.Ordinal
     return;
 }
 
+// Espia a fila de reavaliação já ordenada por potencial (só cota de embedding).
+if (args.Length > 0 && string.Equals(args[0], "fila", StringComparison.OrdinalIgnoreCase))
+{
+    using var escopoF = app.Services.CreateScope();
+    var rotinaF = escopoF.ServiceProvider.GetRequiredService<RotinaProspeccao>();
+    var quantosF = args.Length >= 2 && int.TryParse(args[1], out var qf) ? qf : 15;
+    var filaF = await rotinaF.PreverFilaAsync(quantosF);
+    Console.WriteLine($"Próximos {filaF.Count} pares que a IA vai reavaliar (ordem de potencial):\n");
+    foreach (var s in filaF)
+        Console.WriteLine($"  {s.Lead?.RazaoSocial}  ×  {s.Comprador?.Nome}");
+    return;
+}
+
 if (args.Length > 0 && string.Equals(args[0], "qualidade", StringComparison.OrdinalIgnoreCase))
 {
     await ComandoQualidade.ExecutarAsync(app.Services, args);

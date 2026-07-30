@@ -272,6 +272,92 @@ public class RotinaProspeccao
         return ok;
     }
 
+    /// <summary>
+    /// Ordena a fila de reavaliação pelo cosseno entre o embedding do alvo e o da tese do
+    /// comprador — quem tem mais cara de match vai primeiro. Embeddings têm cota própria
+    /// (bem mais folgada que a de geração) e ficam gravados, então o custo é pago uma vez.
+    /// Quem não tiver vetor de um dos lados vai para o fim da fila, na ordem antiga, em vez
+    /// de ficar de fora: prioridade é melhoria, não requisito.
+    /// </summary>
+    /// <summary>Espia a fila de reavaliação já priorizada, SEM reavaliar nada (não gasta cota
+    /// de geração — só de embedding, que é separada). Serve ao comando de console "fila".</summary>
+    public async Task<List<Models.SinergiaComprador>> PreverFilaAsync(int quantos, CancellationToken ct = default)
+    {
+        var pendentes = (await _db.SinergiasComprador
+                .Include(s => s.Lead).Include(s => s.Comprador)
+                .Where(s => s.Score == 0)
+                .ToListAsync(ct))
+            .Where(s => MarcasFalha.Any(m => s.Racional.StartsWith(m)))
+            .ToList();
+        return await PriorizarPorPotencialAsync(pendentes, quantos, ct);
+    }
+
+    private async Task<List<Models.SinergiaComprador>> PriorizarPorPotencialAsync(
+        List<Models.SinergiaComprador> pendentes, int quantos, CancellationToken ct)
+    {
+        // A priorização é um GANHO, não um requisito: se qualquer coisa der errado aqui
+        // (embedding fora do ar, vetor corrompido), a rodada do dia não pode cair junto —
+        // caímos na ordem antiga, que é o comportamento que já existia.
+        try
+        {
+            return await OrdenarPorSimilaridadeAsync(pendentes, quantos, ct);
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            _log.LogWarning(ex, "Não consegui priorizar a fila de reavaliação — seguindo na ordem padrão.");
+            return pendentes.Take(quantos).ToList();
+        }
+    }
+
+    private async Task<List<Models.SinergiaComprador>> OrdenarPorSimilaridadeAsync(
+        List<Models.SinergiaComprador> pendentes, int quantos, CancellationToken ct)
+    {
+        if (pendentes.Count <= quantos) return pendentes;
+
+        var pontuados = new List<(Models.SinergiaComprador S, double Sim)>();
+        var semVetor = new List<Models.SinergiaComprador>();
+
+        // Só geramos embedding para os alvos que ainda não têm — no 1º dia isso custa algumas
+        // dezenas de chamadas de EMBEDDING (não de geração); depois já vem tudo do banco.
+        var orcamentoEmbeddings = 60;
+
+        foreach (var s in pendentes)
+        {
+            ct.ThrowIfCancellationRequested();
+            if (s.Lead is null || s.Comprador is null) { semVetor.Add(s); continue; }
+
+            var teseJson = s.Comprador.TeseEmbedding;
+            if (string.IsNullOrWhiteSpace(teseJson)) { semVetor.Add(s); continue; }
+
+            var temVetorSalvo = s.Lead.TextoEmbedding is not null
+                                && s.Lead.TextoEmbeddingHash == Matching.MotorSinergia.HashLead(s.Lead);
+            if (!temVetorSalvo && orcamentoEmbeddings <= 0) { semVetor.Add(s); continue; }
+
+            var vetorLead = await _motor.EmbeddingDoLeadAsync(s.Lead, ct);
+            if (!temVetorSalvo) orcamentoEmbeddings--;
+            if (vetorLead is null) { semVetor.Add(s); continue; }
+
+            try
+            {
+                var vetorTese = System.Text.Json.JsonSerializer.Deserialize<float[]>(teseJson);
+                if (vetorTese is null || vetorTese.Length == 0) { semVetor.Add(s); continue; }
+                pontuados.Add((s, Matching.MotorSinergia.Similaridade(vetorLead, vetorTese)));
+            }
+            catch { semVetor.Add(s); }
+        }
+
+        await _db.SaveChangesAsync(ct); // guarda os embeddings recém-gerados
+
+        var fila = pontuados.OrderByDescending(x => x.Sim).Select(x => x.S).Concat(semVetor).ToList();
+        if (pontuados.Count > 0)
+            _log.LogInformation("Fila de reavaliação priorizada: {N} par(es) com similaridade " +
+                                "(melhor {Max:0.00}), {Sem} sem vetor no fim.",
+                pontuados.Count, pontuados.Max(x => x.Sim), semVetor.Count);
+
+        return fila.Take(quantos).ToList();
+    }
+
     private static readonly string[] MarcasFalha =
     {
         "Falha ao contatar a IA",
@@ -328,13 +414,19 @@ public class RotinaProspeccao
         var restante = max - leadsOk;
         if (restante > 0)
         {
-            var sinFalha = (await _db.SinergiasComprador
+            var pendentes = (await _db.SinergiasComprador
                     .Include(s => s.Lead).Include(s => s.Comprador)
                     .Where(s => s.Score == 0)
                     .ToListAsync(ct))
                 .Where(s => MarcasFalha.Any(m => s.Racional.StartsWith(m)))
-                .Take(restante)
                 .ToList();
+
+            // Ordem por POTENCIAL, não por ordem de chegada. A fila de reavaliação é grande
+            // (1.133 pares em 30/07) e cabem poucos por dia na cota gratuita — pegar os
+            // primeiros da lista significava sortear. A similaridade alvo × tese vem de
+            // embeddings, cuja cota é SEPARADA da geração, então ranquear sai de graça e os
+            // pares mais promissores chegam à Mesa em dias, não em meses.
+            var sinFalha = (await PriorizarPorPotencialAsync(pendentes, restante, ct));
 
             foreach (var s in sinFalha)
             {
