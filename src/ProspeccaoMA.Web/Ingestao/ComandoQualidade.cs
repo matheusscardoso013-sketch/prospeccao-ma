@@ -1,0 +1,130 @@
+using Microsoft.EntityFrameworkCore;
+using ProspeccaoMA.Web.Data;
+using ProspeccaoMA.Web.Models;
+
+namespace ProspeccaoMA.Web.Ingestao;
+
+/// <summary>
+/// Auditoria da QUALIDADE do matching (não da execução): distribuição de scores,
+/// concentração por comprador (tese vaga casa com tudo), cobertura dos subscores e
+/// amostra de racionais para leitura humana. Só lê. Uso:
+///   dotnet run --project src/ProspeccaoMA.Web -- qualidade [nome-do-comprador]
+/// </summary>
+public static class ComandoQualidade
+{
+    public static async Task ExecutarAsync(IServiceProvider sp, string[] args)
+    {
+        using var escopo = sp.CreateScope();
+        var db = escopo.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var filtro = args.Length >= 2 ? string.Join(' ', args[1..]) : null;
+        if (filtro is not null) { await DetalharCompradorAsync(db, filtro); return; }
+
+        var total = await db.SinergiasComprador.CountAsync();
+        Console.WriteLine($"=== Qualidade do matching — {total} pares avaliados ===\n");
+
+        Console.WriteLine("-- Distribuição de scores --");
+        var faixas = new (string Rotulo, int Min, int Max)[]
+        {
+            ("90-100 (excelente)", 90, 100), ("80-89 (quente)", 80, 89),
+            ("60-79 (morno)",      60, 79),  ("40-59 (fraco)", 40, 59),
+            ("10 (filtro duro)",   10, 10),  ("1-39 (descartado)", 1, 39),
+            ("0 (falha da IA)",     0, 0)
+        };
+        foreach (var f in faixas)
+        {
+            var n = await db.SinergiasComprador.CountAsync(s => s.Score >= f.Min && s.Score <= f.Max);
+            var pct = total == 0 ? 0 : 100.0 * n / total;
+            Console.WriteLine($"  {f.Rotulo,-22} {n,5}  {new string('#', (int)Math.Round(pct / 2))} {pct:0.#}%");
+        }
+
+        Console.WriteLine("\n-- Subscores preenchidos (rubrica da Onda 1) --");
+        var comSub = await db.SinergiasComprador.CountAsync(s => s.ScoreSetor != null);
+        Console.WriteLine($"  {comSub}/{total} pares com breakdown setor/porte/modelo/geo");
+
+        Console.WriteLine("\n-- Concentração: compradores que mais aparecem nos QUENTES (>=80) --");
+        Console.WriteLine("   (um comprador em muitos quentes = tese genérica casando com tudo)");
+        var quentes = await db.SinergiasComprador
+            .Where(s => s.Score >= 80)
+            .Include(s => s.Comprador)
+            .Select(s => new { s.CompradorId, Nome = s.Comprador!.Nome, TeseLen = s.Comprador.Tese.Length,
+                               TemCriterios = s.Comprador.CriteriosExtraidosEm != null })
+            .ToListAsync();
+
+        foreach (var g in quentes.GroupBy(q => q.CompradorId).OrderByDescending(g => g.Count()).Take(12))
+        {
+            var p = g.First();
+            var pct = quentes.Count == 0 ? 0 : 100.0 * g.Count() / quentes.Count;
+            Console.WriteLine($"  {g.Count(),3}x ({pct,4:0.#}% dos quentes)  {p.Nome}" +
+                              $"   [tese {p.TeseLen} chars, critérios: {(p.TemCriterios ? "sim" : "NÃO")}]");
+        }
+
+        Console.WriteLine("\n-- Alvos que aparecem em muitos quentes (empresa 'coringa') --");
+        var porLead = await db.SinergiasComprador
+            .Where(s => s.Score >= 80)
+            .Include(s => s.Lead)
+            .Select(s => new { s.LeadId, Nome = s.Lead!.RazaoSocial })
+            .ToListAsync();
+        foreach (var g in porLead.GroupBy(x => x.LeadId).OrderByDescending(g => g.Count()).Take(8))
+            Console.WriteLine($"  {g.Count(),3}x  {g.First().Nome}");
+
+        Console.WriteLine("\n-- Os pares com score 0: o que aconteceu? --");
+        var zeros = await db.SinergiasComprador
+            .Where(s => s.Score == 0)
+            .GroupBy(s => s.Racional)
+            .Select(g => new { Motivo = g.Key, Qtd = g.Count() })
+            .OrderByDescending(x => x.Qtd)
+            .Take(6).ToListAsync();
+        foreach (var z in zeros)
+            Console.WriteLine($"  {z.Qtd,5}x  \"{Curto(z.Motivo, 110)}\"");
+
+        var zerosNovos = await db.SinergiasComprador.CountAsync(s => s.Score == 0 && s.Status == StatusSinergia.Novo);
+        var novosTotal = await db.SinergiasComprador.CountAsync(s => s.Status == StatusSinergia.Novo);
+        Console.WriteLine($"\n  Desses, {zerosNovos} estão como 'Novo' na Mesa — de {novosTotal} linhas totais " +
+                          $"({(novosTotal == 0 ? 0 : 100.0 * zerosNovos / novosTotal):0.#}% do que o time vê é par NÃO AVALIADO).");
+
+        var maisAntigo = await db.SinergiasComprador.Where(s => s.Score == 0).MinAsync(s => (DateTime?)s.GeradoEm);
+        Console.WriteLine($"  Falha mais antiga na fila: {(maisAntigo is null ? "-" : Util.Fuso.Brasil(maisAntigo.Value).ToString("dd/MM/yyyy"))}");
+
+        Console.WriteLine("\n-- Amostra dos 8 maiores scores (ler o racional com olho crítico) --");
+        var amostra = await db.SinergiasComprador
+            .Include(s => s.Lead).Include(s => s.Comprador)
+            .OrderByDescending(s => s.Score).ThenByDescending(s => s.GeradoEm)
+            .Take(8).ToListAsync();
+        foreach (var s in amostra)
+        {
+            Console.WriteLine($"\n  [{s.Score}] {s.Lead?.RazaoSocial}  ×  {s.Comprador?.Nome}");
+            Console.WriteLine($"      CNAE {s.Lead?.Cnae} · {s.Lead?.Municipio}/{s.Lead?.Uf} · capital {s.Lead?.CapitalSocial:C0}");
+            if (s.ScoreSetor != null)
+                Console.WriteLine($"      setor {s.ScoreSetor}/40 · porte {s.ScorePorte}/25 · modelo {s.ScoreModelo}/20 · geo {s.ScoreGeo}/15");
+            Console.WriteLine($"      {Curto(s.Racional, 240)}");
+        }
+    }
+
+    private static async Task DetalharCompradorAsync(AppDbContext db, string filtro)
+    {
+        var c = await db.Compradores.FirstOrDefaultAsync(x => x.Nome.Contains(filtro));
+        if (c is null) { Console.WriteLine($"Comprador não encontrado: {filtro}"); return; }
+
+        Console.WriteLine($"=== {c.Nome} ===");
+        Console.WriteLine($"Tipo: {c.TipoEmpresa ?? "-"} | Responsável: {c.Responsavel ?? "-"}");
+        Console.WriteLine($"\nTESE ({c.Tese.Length} chars):\n{c.Tese}\n");
+        Console.WriteLine($"Critérios extraídos: {(c.CriteriosExtraidosEm is null ? "NÃO" : c.CriteriosExtraidosEm.ToString())} | validados: {c.CriteriosValidados}");
+        Console.WriteLine($"  faturamento {c.FaturamentoMinAlvo:C0} a {c.FaturamentoMaxAlvo:C0} | margem min {c.MargemEbitdaMinima}");
+        Console.WriteLine($"  operação: {c.TipoOperacao ?? "-"} | geografia: {c.GeografiaAlvo ?? "-"}");
+        Console.WriteLine($"  modelo: {c.ModeloNegocioAlvo ?? "-"}");
+        Console.WriteLine($"  exclusões: {c.Exclusoes ?? "-"}");
+
+        var pares = await db.SinergiasComprador
+            .Where(s => s.CompradorId == c.Id)
+            .Include(s => s.Lead)
+            .OrderByDescending(s => s.Score)
+            .Take(15).ToListAsync();
+        Console.WriteLine($"\nTop {pares.Count} pares deste comprador:");
+        foreach (var s in pares)
+            Console.WriteLine($"  [{s.Score,3}] {s.Lead?.RazaoSocial} (CNAE {s.Lead?.Cnae})\n        {Curto(s.Racional, 200)}");
+    }
+
+    private static string Curto(string? s, int n)
+        => string.IsNullOrWhiteSpace(s) ? "" : (s.Length > n ? s[..n] + "…" : s);
+}

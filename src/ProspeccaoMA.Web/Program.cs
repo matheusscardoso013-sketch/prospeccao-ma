@@ -107,6 +107,12 @@ if (args.Length > 0 && string.Equals(args[0], "status", StringComparison.Ordinal
     return;
 }
 
+if (args.Length > 0 && string.Equals(args[0], "qualidade", StringComparison.OrdinalIgnoreCase))
+{
+    await ComandoQualidade.ExecutarAsync(app.Services, args);
+    return;
+}
+
 if (args.Length > 0 && string.Equals(args[0], "duplicados", StringComparison.OrdinalIgnoreCase))
 {
     await ComandoDuplicados.ExecutarAsync(app.Services);
