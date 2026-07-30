@@ -77,6 +77,77 @@ public class MesaController : Controller
         .Where(c => c.Responsavel != null && c.Responsavel != "")
         .Select(c => c.Responsavel!).Distinct().OrderBy(r => r).ToListAsync();
 
+    /// <summary>
+    /// Auditoria da qualidade do matching: distribuição de scores, calibração por
+    /// profundidade da tese e concentração por comprador. Serve para responder "a IA está
+    /// funcionando?" com dado, não com impressão.
+    /// </summary>
+    public async Task<IActionResult> Qualidade(CancellationToken ct)
+    {
+        var vm = new QualidadeVm
+        {
+            TotalPares = await _db.SinergiasComprador.CountAsync(ct),
+            PareAvaliados = await _db.SinergiasComprador.Avaliadas().CountAsync(ct),
+            AguardandoAvaliacao = await _db.SinergiasComprador.NaoAvaliadas().CountAsync(ct)
+        };
+
+        (string Rotulo, int Min, int Max)[] faixas =
+        {
+            ("90-100 · excelente", 90, 100), ("80-89 · quente", 80, 89),
+            ("60-79 · morno", 60, 79),       ("40-59 · fraco", 40, 59),
+            ("1-39 · descartado", 1, 39)
+        };
+        foreach (var f in faixas)
+        {
+            var n = await _db.SinergiasComprador.CountAsync(s => s.Score >= f.Min && s.Score <= f.Max, ct);
+            vm.Distribuicao.Add(new FaixaScore
+            {
+                Rotulo = f.Rotulo,
+                Qtd = n,
+                Pct = vm.PareAvaliados == 0 ? 0 : 100.0 * n / vm.PareAvaliados
+            });
+        }
+
+        // Uma varredura só dos pares avaliados, com o tamanho da tese do comprador junto.
+        var pares = await _db.SinergiasComprador.Avaliadas()
+            .Select(s => new { s.Score, s.CompradorId, Nome = s.Comprador!.Nome, Tam = s.Comprador.Tese.Length })
+            .ToListAsync(ct);
+
+        (string Rotulo, int Min, int Max)[] bandas =
+        {
+            ("Sem tese (perfil do site)", 0, 19), ("Rasa · 20-99", 20, 99),
+            ("Média · 100-299", 100, 299),        ("Detalhada · 300-999", 300, 999),
+            ("Profunda · 1000+", 1000, int.MaxValue)
+        };
+        foreach (var b in bandas)
+        {
+            var doGrupo = pares.Where(p => p.Tam >= b.Min && p.Tam <= b.Max).ToList();
+            if (doGrupo.Count == 0) continue;
+            vm.PorProfundidadeTese.Add(new FaixaTese
+            {
+                Rotulo = b.Rotulo,
+                Compradores = doGrupo.Select(p => p.CompradorId).Distinct().Count(),
+                Pares = doGrupo.Count,
+                ScoreMedio = doGrupo.Average(p => p.Score),
+                PctQuentes = 100.0 * doGrupo.Count(p => p.Score >= 80) / doGrupo.Count
+            });
+        }
+
+        vm.Concentracao = pares.GroupBy(p => p.CompradorId)
+            .Select(g => new ConcentracaoComprador
+            {
+                Nome = g.First().Nome,
+                TamanhoTese = g.First().Tam,
+                Quentes = g.Count(p => p.Score >= 80),
+                ScoreMedio = g.Average(p => p.Score)
+            })
+            .Where(c => c.Quentes > 0)
+            .OrderByDescending(c => c.Quentes).ThenByDescending(c => c.ScoreMedio)
+            .Take(12).ToList();
+
+        return View(vm);
+    }
+
     /// <summary>Vista em quadro (Kanban): uma coluna por status, arrastar-e-soltar move o match.</summary>
     public async Task<IActionResult> Kanban(int? scoreMin, string? busca, string? resp)
     {

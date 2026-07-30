@@ -506,12 +506,18 @@ public class GeminiClassificador : IClassificadorIA
         sb.AppendLine("Pontue usando ESTA RUBRICA (subnotas independentes):");
         sb.AppendLine("- setor (0-40): aderência da atividade do alvo aos setores/segmentos da tese.");
         sb.AppendLine("- porte (0-25): compatibilidade do porte/ticket do alvo com a faixa buscada. Se a tese não especifica faixa, máximo 15.");
-        sb.AppendLine("- modelo (0-20): fit do modelo de negócio (recorrência, B2B/B2C, serviços vs produto, contratos).");
+        sb.AppendLine("- modelo (0-20): fit do modelo de negócio (recorrência, B2B/B2C, serviços vs produto, contratos). Se a tese não descreve o modelo buscado, máximo 10.");
         sb.AppendLine("- geografia (0-15): fit geográfico. Se a tese não restringe geografia, dê 10.");
         sb.AppendLine("score = setor + porte + modelo + geografia.");
         sb.AppendLine("Regras obrigatórias:");
         sb.AppendLine("- RED FLAG: se o alvo viola uma exclusão explícita da tese (ex.: 'não olham produto', 'sem muitos PJs'), o score final é no MÁXIMO 20 e o racional cita a violação.");
         sb.AppendLine("- DADOS FALTANTES: não presuma a favor — reduza a subnota correspondente e cite a lacuna no racional.");
+        // Medido em 30/07: teses rasas produziam score médio 8,3 pontos MAIOR e 2,6x mais
+        // "quentes" que teses detalhadas. A causa era aritmética — com a tese só citando o
+        // setor, o teto era 40+15+20+10 = 85, ou seja, quente automático sem nenhuma
+        // evidência além do setor. O teto abaixo faz "quente" exigir evidência em mais de
+        // uma dimensão, e o racional avisa o time de qual tese precisa ser aprofundada.
+        sb.AppendLine("- TESE POBRE: se a tese (e o perfil) só permitem julgar o SETOR, sem nada sobre porte, modelo ou geografia, o score final é no MÁXIMO 65 e o racional começa com 'Tese pouco detalhada:'. Aderência de setor sozinha não é oportunidade quente — é ponto de partida.");
         sb.AppendLine("- NÃO invente informações; porte/faturamento do alvo são ESTIMADOS (capital social é proxy).");
         sb.AppendLine("Calibração (use a escala inteira — a maioria dos pares reais fica entre 30 e 70):");
         sb.AppendLine("- ~90 = fit raro: setor exato da tese + porte dentro da faixa + modelo buscado (ex.: SaaS B2B recorrente para consolidador de software na faixa certa).");

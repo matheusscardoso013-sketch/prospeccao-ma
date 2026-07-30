@@ -1,0 +1,126 @@
+@model ProspeccaoMA.Web.Models.QualidadeVm
+@{
+    ViewData["Title"] = "Qualidade do matching";
+    var faixas = Model.PorProfundidadeTese;
+    // A hipótese cai se as teses rasas NÃO pontuarem mais que as profundas.
+    var rasa = faixas.FirstOrDefault(f => f.Rotulo.StartsWith("Rasa"));
+    var profunda = faixas.LastOrDefault(f => f.Rotulo.StartsWith("Profunda") || f.Rotulo.StartsWith("Detalhada"));
+}
+
+<div class="lead-wrap">
+    <div class="lead-head">
+        <div>
+            <div class="px-ey">Auditoria</div>
+            <h1 class="px-h1">Qualidade do matching</h1>
+            <div class="px-sub">
+                A IA está calibrada? Aqui o veredito vem do dado, não da impressão.
+                @Model.PareAvaliados.ToString("N0") par(es) avaliado(s) de @Model.TotalPares.ToString("N0").
+            </div>
+        </div>
+        <div class="view-toggle">
+            <a asp-controller="Mesa" asp-action="Index">Tabela</a>
+            <a asp-controller="Mesa" asp-action="Kanban">Quadro</a>
+            <a class="on" asp-controller="Mesa" asp-action="Qualidade">Qualidade</a>
+        </div>
+    </div>
+
+    @if (Model.AguardandoAvaliacao > 0)
+    {
+        <div class="px-aviso">
+            <strong>@Model.AguardandoAvaliacao.ToString("N0") pares aguardando avaliação da IA</strong>
+            — fora de todos os números desta tela. A cota gratuita diária não cobre todos os
+            cruzamentos; a fila é atacada por potencial, os mais promissores primeiro.
+        </div>
+    }
+
+    <div class="px-sect" style="margin-top:30px">Calibração por profundidade da tese</div>
+    <div class="px-sub" style="margin:-10px 0 16px">
+        Tese detalhada dá à IA critérios concretos para <em>reprovar</em>. A suspeita é que
+        tese rasa a deixe generosa — se for verdade, as primeiras linhas pontuam MAIS que as últimas.
+    </div>
+
+    <div class="mesa-panel" style="margin-bottom:6px"><table class="mtable">
+        <thead>
+            <tr>
+                <th>Profundidade da tese</th>
+                <th class="q-num">Compradores</th>
+                <th class="q-num">Pares</th>
+                <th class="q-num">Score médio</th>
+                <th class="q-num">% quentes (80+)</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var f in faixas)
+            {
+                <tr>
+                    <td><strong>@f.Rotulo</strong></td>
+                    <td class="q-num">@f.Compradores</td>
+                    <td class="q-num">@f.Pares</td>
+                    <td class="q-num" style="font-weight:600">@f.ScoreMedio.ToString("0.0")</td>
+                    <td class="q-num">@f.PctQuentes.ToString("0.#")%</td>
+                </tr>
+            }
+        </tbody>
+    </table></div>
+
+    @if (rasa is not null && profunda is not null)
+    {
+        var dif = rasa.ScoreMedio - profunda.ScoreMedio;
+        <div class="px-aviso" style="border-left-color:@(dif > 5 ? "var(--score-lo)" : "var(--teal)")">
+            @if (dif > 5)
+            {
+                <strong>Hipótese confirmada.</strong>
+                <text>
+                    Teses rasas pontuam @dif.ToString("0.0") pontos a mais, em média, que as
+                    detalhadas — o inverso do esperado. Sem critério concreto para reprovar, a IA
+                    preenche a lacuna com otimismo, e isso infla os "quentes" que o time trabalha.
+                </text>
+            }
+            else
+            {
+                <strong>Hipótese não confirmada.</strong>
+                <text>
+                    A diferença entre teses rasas e detalhadas é de @dif.ToString("0.0") ponto(s) —
+                    dentro do ruído. A profundidade da tese não está distorcendo o score.
+                </text>
+            }
+        </div>
+    }
+
+    <div class="px-sect" style="margin-top:34px">Distribuição de scores</div>
+    <div class="mesa-panel" style="margin-bottom:6px"><table class="mtable">
+        <thead><tr><th>Faixa</th><th class="q-num">Pares</th><th class="q-num">% dos avaliados</th></tr></thead>
+        <tbody>
+            @foreach (var d in Model.Distribuicao)
+            {
+                <tr>
+                    <td>@d.Rotulo</td>
+                    <td class="q-num">@d.Qtd</td>
+                    <td class="q-num">@d.Pct.ToString("0.#")%</td>
+                </tr>
+            }
+        </tbody>
+    </table></div>
+
+    <div class="px-sect" style="margin-top:34px">Quem mais gera oportunidades quentes</div>
+    <div class="px-sub" style="margin:-10px 0 16px">
+        Um comprador concentrando muitos quentes com tese curta é o sinal mais direto de
+        tese genérica casando com tudo.
+    </div>
+    <div class="mesa-panel" style="margin-bottom:6px"><table class="mtable">
+        <thead>
+            <tr><th>Comprador</th><th class="q-num">Quentes</th><th class="q-num">Tese (caracteres)</th><th class="q-num">Score médio</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var c in Model.Concentracao)
+            {
+                <tr>
+                    <td>@c.Nome</td>
+                    <td class="q-num">@c.Quentes</td>
+                    <td class="q-num" style="color:@(c.TamanhoTese < 100 ? "var(--score-lo)" : "inherit")">@c.TamanhoTese</td>
+                    <td class="q-num">@c.ScoreMedio.ToString("0.0")</td>
+                </tr>
+            }
+        </tbody>
+    </table></div>
+</div>
