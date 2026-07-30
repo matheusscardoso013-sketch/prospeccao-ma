@@ -159,14 +159,14 @@ public class NotificadorEmail : INotificadorEmail
 
             var html = new StringBuilder();
             html.Append("<div style='font-family:Segoe UI,Arial,sans-serif;color:#1c2533;max-width:640px'>");
-            html.Append("<h2 style='color:#0E3A56'>🔥 Match quente na mesa</h2>");
+            html.Append("<h2 style='color:#0E3A56'>Oportunidade prioritária</h2>");
             html.Append($"<p><strong>{lead.RazaoSocial}</strong> × <strong>{comprador.Nome}</strong> — sinergia <strong>{score}/100</strong>" +
                         $"{(string.IsNullOrWhiteSpace(comprador.Responsavel) ? "" : $"<br/>Responsável: {comprador.Responsavel}")}</p>");
             html.Append($"<p style='color:#6b7686;font-size:13px'>{Recortar(racional, 300)}</p>");
             html.Append($"<p><a href='https://prospeccao-ma.onrender.com/Lead/Compradores/{lead.Id}' style='background:#0E3A56;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none'>Abrir a ficha do alvo</a></p>");
             html.Append("</div>");
 
-            if (await EnviarAsync($"🔥 Match {score}/100: {lead.RazaoSocial} × {comprador.Nome}", html.ToString(), ct))
+            if (await EnviarAsync($"Sinergia {score}/100: {lead.RazaoSocial} × {comprador.Nome}", html.ToString(), ct))
                 _log.LogInformation("Alerta de match quente enviado ({Lead} × {Comprador}, {Score}).", lead.RazaoSocial, comprador.Nome, score);
         }
         catch (Exception ex)
@@ -183,7 +183,7 @@ public class NotificadorEmail : INotificadorEmail
 
         if (leads.Count > 0)
         {
-            sb.Append("<h3>🆕 Leads do dia</h3><ul>");
+            sb.Append("<h3>Leads do dia</h3><ul>");
             foreach (var s in leads)
                 sb.Append($"<li><strong>{s.Lead?.RazaoSocial}</strong> — score {s.Score}/100<br/><span style='color:#6b7686;font-size:13px'>{Recortar(s.Racional, 180)}</span></li>");
             sb.Append("</ul>");
@@ -191,7 +191,7 @@ public class NotificadorEmail : INotificadorEmail
 
         if (pares.Count > 0)
         {
-            sb.Append("<h3>🎯 Melhores matches do dia (alvo × comprador)</h3><ul>");
+            sb.Append("<h3>Melhores aderências do dia (alvo × comprador)</h3><ul>");
             foreach (var p in pares)
                 sb.Append($"<li><strong>{p.Lead?.RazaoSocial}</strong> × <strong>{p.Comprador?.Nome}</strong> — sinergia {p.Score}/100" +
                           $"{(string.IsNullOrWhiteSpace(p.Comprador?.Responsavel) ? "" : $" · resp.: {p.Comprador!.Responsavel}")}" +
