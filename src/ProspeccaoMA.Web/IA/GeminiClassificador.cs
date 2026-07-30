@@ -1,6 +1,5 @@
 using System.Text;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using ProspeccaoMA.Web.Models;
 
 namespace ProspeccaoMA.Web.IA;
@@ -37,7 +36,7 @@ public class GeminiOptions
 /// candidato e instrui explicitamente a não inventar nada. A resposta é exigida em JSON
 /// estrito {"score":0-100,"racional":"..."} e o parsing é protegido por try/catch.
 /// </summary>
-public partial class GeminiClassificador : IClassificadorIA
+public class GeminiClassificador : IClassificadorIA
 {
     private readonly HttpClient _http;
     private readonly ILogger<GeminiClassificador> _log;
@@ -45,8 +44,33 @@ public partial class GeminiClassificador : IClassificadorIA
 
     private static readonly JsonSerializerOptions JsonInsensitive = new() { PropertyNameCaseInsensitive = true };
 
-    [GeneratedRegex(@"\{.*\}", RegexOptions.Singleline)]
-    private static partial Regex BlocoJson();
+    /// <summary>
+    /// Recorta o PRIMEIRO objeto JSON balanceado do texto. O modelo às vezes cola lixo
+    /// depois do objeto fechado (visto com FCamara e Unbox Capital: <c>...}ura","cultura":null}</c>)
+    /// e o regex ganancioso <c>\{.*\}</c> que havia aqui ia até a ÚLTIMA chave, levando o lixo
+    /// junto e quebrando o parse — o mesmo comprador falhava em toda rodada, queimando cota
+    /// para sempre. Ignora chaves dentro de strings e sequências escapadas.
+    /// </summary>
+    internal static string RecortarJson(string texto)
+    {
+        var ini = texto.IndexOf('{');
+        if (ini < 0) return texto;
+
+        int profundidade = 0;
+        bool emString = false, escapado = false;
+        for (var i = ini; i < texto.Length; i++)
+        {
+            var ch = texto[i];
+            if (escapado) { escapado = false; continue; }
+            if (emString && ch == '\\') { escapado = true; continue; }
+            if (ch == '"') { emString = !emString; continue; }
+            if (emString) continue;
+
+            if (ch == '{') profundidade++;
+            else if (ch == '}' && --profundidade == 0) return texto[ini..(i + 1)];
+        }
+        return texto[ini..]; // nunca fechou — deixa o JsonDocument reclamar
+    }
 
     public GeminiClassificador(HttpClient http, ILogger<GeminiClassificador> log, IConfiguration cfg)
     {
@@ -313,8 +337,7 @@ public partial class GeminiClassificador : IClassificadorIA
         try
         {
             var bruto = texto.Trim();
-            var m = BlocoJson().Match(bruto);
-            if (m.Success) bruto = m.Value;
+            bruto = RecortarJson(bruto);
 
             using var doc = JsonDocument.Parse(bruto);
             if (!doc.RootElement.TryGetProperty("ids", out var arr) || arr.ValueKind != JsonValueKind.Array)
@@ -396,8 +419,7 @@ public partial class GeminiClassificador : IClassificadorIA
         try
         {
             var bruto = texto.Trim();
-            var m = BlocoJson().Match(bruto);
-            if (m.Success) bruto = m.Value;
+            bruto = RecortarJson(bruto);
             using var doc = JsonDocument.Parse(bruto);
             var r = doc.RootElement;
 
@@ -433,8 +455,7 @@ public partial class GeminiClassificador : IClassificadorIA
         try
         {
             var bruto = texto.Trim();
-            var m = BlocoJson().Match(bruto);
-            if (m.Success) bruto = m.Value;
+            bruto = RecortarJson(bruto);
             using var doc = JsonDocument.Parse(bruto);
             var resumo = LerTexto(doc.RootElement, "resumo");
             return string.IsNullOrWhiteSpace(resumo) || resumo.Length < 30 ? null : resumo;
@@ -621,8 +642,7 @@ public partial class GeminiClassificador : IClassificadorIA
 
         var bruto = texto.Trim();
         // Caso o modelo envolva o JSON em ```json ... ``` ou texto extra.
-        var m = BlocoJson().Match(bruto);
-        if (m.Success) bruto = m.Value;
+        bruto = RecortarJson(bruto);
 
         try
         {
