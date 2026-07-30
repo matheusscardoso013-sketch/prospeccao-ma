@@ -65,7 +65,7 @@ public class DrenoDadoRico : IDrenoDadoRico
         if (_maxTeses == 0 || GeminiClassificador.GeracaoSuspensa) return 0;
 
         var pendentes = await _db.Compradores
-            .Where(c => c.Ativo && c.Tese.Length >= 20 && c.CriteriosExtraidosEm == null)
+            .Where(c => c.Ativo && c.Tese.Length >= Util.Teses.MinimoUtil && c.Tese != "0.0" && c.Tese != "0" && c.CriteriosExtraidosEm == null)
             .OrderBy(c => c.Id)
             .Take(_maxTeses)
             .ToListAsync(ct);
@@ -88,7 +88,7 @@ public class DrenoDadoRico : IDrenoDadoRico
         }
 
         var restam = await _db.Compradores
-            .CountAsync(c => c.Ativo && c.Tese.Length >= 20 && c.CriteriosExtraidosEm == null, ct);
+            .CountAsync(c => c.Ativo && c.Tese.Length >= Util.Teses.MinimoUtil && c.Tese != "0.0" && c.Tese != "0" && c.CriteriosExtraidosEm == null, ct);
         _log.LogInformation("Dreno de teses: {N} estruturada(s), {Restam} na fila.", feitos, restam);
         return feitos;
     }

@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using ProspeccaoMA.Web.Data;
 using ProspeccaoMA.Web.IA;
 using ProspeccaoMA.Web.Models;
+using ProspeccaoMA.Web.Util;
 
 namespace ProspeccaoMA.Web.Matching;
 
@@ -63,10 +64,11 @@ public class MotorSinergia : IMotorSinergia
 
     public async Task<int> CruzarLeadAsync(Lead lead, CancellationToken ct = default)
     {
-        // Sem tese não há contra o que avaliar — fica fora do confronto (e aparece no
-        // filtro "⚠ Sem tese" da aba Compradores para o time correr atrás da informação).
+        // Sem nada que descreva o comprador não há contra o que avaliar. Vale a tese OU o
+        // perfil extraído do site oficial — ver Util.Teses. Quem não tem nenhum dos dois
+        // aparece no filtro "fora do cruzamento" da aba Compradores.
         var compradores = await _db.Compradores
-            .Where(c => c.Ativo && c.Tese.Length >= 20)
+            .Where(c => c.Ativo).Cruzaveis()
             .ToListAsync(ct);
 
         // Cascata de triagem: 1) similaridade vetorial (embeddings — determinística, cota

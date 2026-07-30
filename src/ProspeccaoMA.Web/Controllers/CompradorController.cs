@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ProspeccaoMA.Web.Data;
 using ProspeccaoMA.Web.Models;
+using ProspeccaoMA.Web.Util;
 
 namespace ProspeccaoMA.Web.Controllers;
 
@@ -35,7 +36,7 @@ public class CompradorController : Controller
         var query = _db.Compradores.Include(c => c.Sinergias).Where(c => c.Ativo);
 
         if (semTese)
-            query = query.Where(c => c.Tese.Length < TamanhoMinimoTese);
+            query = query.ForaDoCruzamento();
         if (!string.IsNullOrWhiteSpace(resp))
             query = query.Where(c => c.Responsavel == resp);
         if (!string.IsNullOrWhiteSpace(tipo))
@@ -56,7 +57,7 @@ public class CompradorController : Controller
         ViewData["Tipo"] = tipo;
         ViewData["SemTese"] = semTese;
         ViewData["Total"] = await _db.Compradores.CountAsync(c => c.Ativo);
-        ViewData["TotalSemTese"] = await _db.Compradores.CountAsync(c => c.Ativo && c.Tese.Length < TamanhoMinimoTese);
+        ViewData["TotalSemTese"] = await _db.Compradores.Where(c => c.Ativo).ForaDoCruzamento().CountAsync();
         ViewData["AValidar"] = await _db.Compradores.CountAsync(c => c.Ativo && c.CriteriosExtraidosEm != null && !c.CriteriosValidados);
         ViewData["Responsaveis"] = await _db.Compradores
             .Where(c => c.Ativo && c.Responsavel != null && c.Responsavel != "")
@@ -99,10 +100,13 @@ public class CompradorController : Controller
         return RedirectToAction(nameof(Revisao));
     }
 
-    /// <summary>0 = tese + critérios estruturados ("pronto"); 1 = só tese em texto; 2 = sem tese.</summary>
+    /// <summary>Ordem de completude do cadastro: 0 = tese + critérios estruturados ("pronto");
+    /// 1 = só tese em texto; 2 = sem tese, mas cruzável pelo perfil do site; 3 = fora do
+    /// cruzamento (sem tese e sem perfil).</summary>
     public static int GrupoCompletude(Comprador c)
     {
-        if (string.IsNullOrWhiteSpace(c.Tese) || c.Tese.Length < TamanhoMinimoTese) return 2;
+        if (!Util.Teses.EhCruzavel(c)) return 3;
+        if (!Util.Teses.TemTeseUtil(c)) return 2; // entra pelo perfil do site
         var temCriterios = c.FaturamentoMinAlvo is not null || c.FaturamentoMaxAlvo is not null
             || c.MargemEbitdaMinima is not null || !string.IsNullOrWhiteSpace(c.ModeloNegocioAlvo)
             || !string.IsNullOrWhiteSpace(c.Exclusoes) || !string.IsNullOrWhiteSpace(c.GeografiaAlvo);

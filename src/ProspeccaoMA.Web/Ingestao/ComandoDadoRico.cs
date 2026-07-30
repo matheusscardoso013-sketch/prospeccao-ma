@@ -26,7 +26,7 @@ public static partial class ComandoDadoRico
         var ia = escopo.ServiceProvider.GetRequiredService<IClassificadorIA>();
 
         var pendentes = await db.Compradores
-            .Where(c => c.Ativo && c.Tese.Length >= 20 && c.CriteriosExtraidosEm == null)
+            .Where(c => c.Ativo && c.Tese.Length >= Util.Teses.MinimoUtil && c.Tese != "0.0" && c.Tese != "0" && c.CriteriosExtraidosEm == null)
             .OrderBy(c => c.Id)
             .Take(max)
             .ToListAsync();
