@@ -121,6 +121,12 @@ if (args.Length > 0 && string.Equals(args[0], "fila", StringComparison.OrdinalIg
     return;
 }
 
+if (args.Length > 0 && string.Equals(args[0], "espelhos", StringComparison.OrdinalIgnoreCase))
+{
+    await ComandoEspelhos.ExecutarAsync(app.Services, args);
+    return;
+}
+
 if (args.Length > 0 && string.Equals(args[0], "recalibrar", StringComparison.OrdinalIgnoreCase))
 {
     await ComandoRecalibrar.ExecutarAsync(app.Services, args);

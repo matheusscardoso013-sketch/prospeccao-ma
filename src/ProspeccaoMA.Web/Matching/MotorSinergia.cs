@@ -110,6 +110,18 @@ public class MotorSinergia : IMotorSinergia
         foreach (var comprador in shortlist)
         {
             if (jaFeitos.Contains(comprador.Id)) continue;
+
+            // A mesma empresa às vezes está cadastrada dos DOIS lados (alvo e compradora).
+            // O par dela consigo mesma pontua alto — e com razão, ela combina consigo — mas é
+            // uma falsa oportunidade que ocupa vaga na Mesa e queima cota. Visto em 30/07:
+            // 15 pares assim, dois deles "quentes" (Magazord 90, Twins Software 95).
+            if (Util.NomeEmpresa.MesmaEmpresa(lead.RazaoSocial, comprador.Nome, comprador.RazaoSocial))
+            {
+                _log.LogInformation("Alvo {Nome} é a própria compradora {Comprador} — par ignorado.",
+                    lead.RazaoSocial, comprador.Nome);
+                continue;
+            }
+
             ct.ThrowIfCancellationRequested();
             // Cota morta: parar de criar pares fadados ao score 0 — o lead volta na próxima esteira.
             if (IA.GeminiClassificador.GeracaoSuspensa) break;
