@@ -17,6 +17,12 @@ public static class ComandoQualidade
         using var escopo = sp.CreateScope();
         var db = escopo.ServiceProvider.GetRequiredService<AppDbContext>();
 
+        if (args.Any(a => a.Equals("--exemplos", StringComparison.OrdinalIgnoreCase)))
+        {
+            await ExemplosAsync(db);
+            return;
+        }
+
         var filtro = args.Length >= 2 ? string.Join(' ', args[1..]) : null;
         if (filtro is not null) { await DetalharCompradorAsync(db, filtro); return; }
 
@@ -99,6 +105,57 @@ public static class ComandoQualidade
                 Console.WriteLine($"      setor {s.ScoreSetor}/40 · porte {s.ScorePorte}/25 · modelo {s.ScoreModelo}/20 · geo {s.ScoreGeo}/15");
             Console.WriteLine($"      {Curto(s.Racional, 240)}");
         }
+    }
+
+    /// <summary>
+    /// Evidência de que o motor DISCRIMINA, não só aprova. Um avaliador que só dá nota alta
+    /// não está avaliando — o que prova competência é recusar com motivo específico e dar
+    /// notas diferentes para o mesmo alvo contra compradores diferentes.
+    /// </summary>
+    private static async Task ExemplosAsync(AppDbContext db)
+    {
+        Console.WriteLine("=== RECUSAS BEM FUNDAMENTADAS (score 20-49) ===\n");
+        var recusas = await db.SinergiasComprador
+            .Include(s => s.Lead).Include(s => s.Comprador)
+            .Where(s => s.Score >= 20 && s.Score <= 49 && s.Racional.Length > 120)
+            .OrderByDescending(s => s.GeradoEm)
+            .Take(8).ToListAsync();
+        foreach (var s in recusas)
+        {
+            Console.WriteLine($"[{s.Score}] {s.Lead?.RazaoSocial}  x  {s.Comprador?.Nome}");
+            if (s.ScoreSetor != null)
+                Console.WriteLine($"      setor {s.ScoreSetor}/40 | porte {s.ScorePorte}/25 | modelo {s.ScoreModelo}/20 | geo {s.ScoreGeo}/15");
+            Console.WriteLine($"      {Curto(s.Racional, 420)}\n");
+        }
+
+        Console.WriteLine("\n=== MESMO ALVO, COMPRADORES DIFERENTES (o motor separa?) ===\n");
+        var comMuitos = await db.SinergiasComprador
+            .Where(s => s.Score > 0)
+            .GroupBy(s => s.LeadId)
+            .Where(g => g.Count() >= 4)
+            .Select(g => new { LeadId = g.Key, Amplitude = g.Max(x => x.Score) - g.Min(x => x.Score) })
+            .OrderByDescending(x => x.Amplitude)
+            .Take(3).ToListAsync();
+
+        foreach (var c in comMuitos)
+        {
+            var pares = await db.SinergiasComprador
+                .Include(s => s.Lead).Include(s => s.Comprador)
+                .Where(s => s.LeadId == c.LeadId && s.Score > 0)
+                .OrderByDescending(s => s.Score).ToListAsync();
+            Console.WriteLine($"--- {pares[0].Lead?.RazaoSocial} (amplitude {c.Amplitude} pontos) ---");
+            foreach (var s in pares)
+                Console.WriteLine($"  [{s.Score,3}] {s.Comprador?.Nome}\n        {Curto(s.Racional, 220)}");
+            Console.WriteLine();
+        }
+
+        Console.WriteLine("\n=== ELIMINADOS POR ARITMETICA, SEM GASTAR IA (score 10) ===\n");
+        var duros = await db.SinergiasComprador
+            .Include(s => s.Lead).Include(s => s.Comprador)
+            .Where(s => s.Score == 10)
+            .Take(5).ToListAsync();
+        foreach (var s in duros)
+            Console.WriteLine($"  {s.Lead?.RazaoSocial} x {s.Comprador?.Nome}\n      {Curto(s.Racional, 260)}\n");
     }
 
     private static async Task DetalharCompradorAsync(AppDbContext db, string filtro)
