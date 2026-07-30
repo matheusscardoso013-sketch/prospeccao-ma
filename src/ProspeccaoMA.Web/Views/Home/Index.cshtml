@@ -37,6 +37,16 @@
         </div>
     </div>
 
+    @if (Model.AguardandoAvaliacao > 0)
+    {
+        <div class="px-aviso">
+            <strong>@Model.AguardandoAvaliacao.ToString("N0") pares aguardando avaliação da IA.</strong>
+            A cota gratuita diária não cobre todos os cruzamentos, então eles entram na fila e são
+            avaliados aos poucos. Não estão contados nos números acima — só vira oportunidade
+            depois que a IA dá o veredito.
+        </div>
+    }
+
     <div class="px-rule"></div>
 
     <div class="px-sect">

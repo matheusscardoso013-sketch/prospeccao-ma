@@ -12,6 +12,10 @@ public class PainelVm
     public int EmNegociacao { get; set; }
     public int AlvosNaBase { get; set; }
 
+    /// <summary>Pares que a IA ainda não conseguiu avaliar (cota do free tier). Não são
+    /// oportunidades — ficam fora dos KPIs e do funil, mas aparecem como aviso honesto.</summary>
+    public int AguardandoAvaliacao { get; set; }
+
     /// <summary>Etapas do funil na ordem do pipeline, com a contagem de cada uma.</summary>
     public List<EtapaFunil> Funil { get; set; } = new();
 

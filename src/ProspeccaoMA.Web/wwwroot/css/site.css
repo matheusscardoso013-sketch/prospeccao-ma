@@ -182,6 +182,10 @@ tbody tr:last-child td{border-bottom:none}
 .px-kpi .n{font-family:var(--serif);font-size:32px;font-weight:500;color:var(--vb-navy);line-height:1.15;margin-top:6px;font-variant-numeric:tabular-nums}
 .px-kpi .d{font-size:11px;color:var(--muted);margin-top:3px}
 .px-rule{height:1px;background:var(--line);margin:26px 0}
+/* Fila da IA: informativo, nunca alarmante — não é erro, é orçamento de cota. */
+.px-aviso{margin-top:22px;padding:13px 16px;border-left:2px solid var(--bronze);
+          background:rgba(169,123,31,.05);font-size:12.5px;line-height:1.6;color:var(--muted)}
+.px-aviso strong{color:var(--vb-navy);font-weight:600}
 .px-sect{font-size:11px;text-transform:uppercase;letter-spacing:.16em;color:var(--muted);
          display:flex;justify-content:space-between;align-items:baseline;margin-bottom:20px}
 .px-sect a{font-size:11.5px;letter-spacing:.02em;text-transform:none;color:var(--vb-azul);font-weight:600}

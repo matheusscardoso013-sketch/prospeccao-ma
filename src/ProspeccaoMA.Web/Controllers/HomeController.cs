@@ -26,7 +26,8 @@ public class HomeController : Controller
         var hora = Fuso.Agora.Hour;
 
         // Contagens do pipeline (uma varredura), reaproveitadas nos KPIs e no funil.
-        var porStatus = (await _db.SinergiasComprador
+        // Só pares AVALIADOS: score 0 é fila da IA, não oportunidade (ver Util.Sinergias).
+        var porStatus = (await _db.SinergiasComprador.Avaliadas()
                 .GroupBy(s => s.Status)
                 .Select(g => new { g.Key, N = g.Count() })
                 .ToListAsync())
@@ -38,10 +39,12 @@ public class HomeController : Controller
             Saudacao = hora < 12 ? "Bom dia" : hora < 18 ? "Boa tarde" : "Boa noite",
             DataExtenso = Fuso.Agora.ToString("dddd, d 'de' MMMM"),
             AlvosNaBase = await _db.Leads.CountAsync(),
-            MatchesNovosHoje = await _db.SinergiasComprador.CountAsync(s => s.GeradoEm >= inicioHoje),
+            MatchesNovosHoje = await _db.SinergiasComprador.Avaliadas()
+                .CountAsync(s => s.GeradoEm >= inicioHoje),
             OportunidadesQuentes = await _db.SinergiasComprador
                 .CountAsync(s => s.Score >= 80 && s.Status != StatusSinergia.Descartado),
             EmNegociacao = Cont(StatusSinergia.EmNegociacao),
+            AguardandoAvaliacao = await _db.SinergiasComprador.NaoAvaliadas().CountAsync(),
         };
 
         // Funil: só as etapas ativas do pipeline (sem Descartado), na ordem.

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ProspeccaoMA.Web.Data;
 using ProspeccaoMA.Web.Models;
+using ProspeccaoMA.Web.Util;
 
 namespace ProspeccaoMA.Web.Controllers;
 
@@ -53,14 +54,16 @@ public class MesaController : Controller
             .ToListAsync();
 
         // KPIs do pipeline (respeitam o recorte por responsável, quando escolhido).
+        // Só pares AVALIADOS: os de score 0 são fila da IA, não oportunidade (ver Util.Sinergias).
         var qKpi = _db.SinergiasComprador.AsQueryable();
         if (!string.IsNullOrWhiteSpace(resp))
             qKpi = qKpi.Where(s => s.Comprador!.Responsavel == resp);
-        var contagens = await qKpi
+        var contagens = await qKpi.Avaliadas()
             .GroupBy(s => s.Status)
             .Select(g => new { Status = g.Key, N = g.Count() })
             .ToListAsync();
         ViewData["Kpis"] = contagens.ToDictionary(x => x.Status, x => x.N);
+        ViewData["Aguardando"] = await qKpi.NaoAvaliadas().CountAsync();
 
         ViewData["Status"] = status;
         ViewData["ScoreMin"] = scoreMin;

@@ -119,6 +119,20 @@ public class MotorSinergia : IMotorSinergia
             else
             {
                 var r = await PontuarAsync(lead, comprador, ct);
+
+                // A IA não conseguiu avaliar (cota estourada, erro de rede). NÃO gravamos o
+                // par: um registro com score 0 vira dívida permanente — ele conta como "já
+                // cruzado", então o lead nunca mais volta, e só sai da fila pelo
+                // reprocessamento (poucos por dia). Foi assim que 1.133 pares ficaram
+                // pendurados desde 15/06, ocupando 82,5% da Mesa. Sem gravar, o lead
+                // simplesmente volta na próxima passada, quando houver cota.
+                if (r.Score == 0)
+                {
+                    _log.LogWarning("Lead {Nome} × {Comprador}: IA indisponível — par não gravado, " +
+                                    "volta na próxima rodada.", lead.RazaoSocial, comprador.Nome);
+                    break; // a cota não se recupera no meio do laço; poupa as tentativas seguintes
+                }
+
                 AplicarResultado(sinergia, r);
             }
 

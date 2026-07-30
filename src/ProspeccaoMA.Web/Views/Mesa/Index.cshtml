@@ -30,6 +30,15 @@
         <div class="px-kpi"><div class="l">Descartados</div><div class="n">@K(StatusSinergia.Descartado)</div></div>
     </div>
 
+    @if ((int)(ViewData["Aguardando"] ?? 0) > 0)
+    {
+        <div class="px-aviso">
+            <strong>@(((int)ViewData["Aguardando"]!).ToString("N0")) pares aguardando avaliação da IA</strong>
+            — fora dos números acima. A cota gratuita diária não cobre todos os cruzamentos;
+            eles são avaliados aos poucos e entram na Mesa quando recebem score.
+        </div>
+    }
+
     <form method="get" asp-controller="Mesa" asp-action="Index" class="lf">
         <div class="field">
             <label>Status</label>
