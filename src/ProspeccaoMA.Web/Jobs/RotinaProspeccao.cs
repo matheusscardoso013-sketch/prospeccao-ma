@@ -25,6 +25,7 @@ public class RotinaProspeccao
     private readonly IConectorBrasilApi _brasilApi;
     private readonly IMotorSinergia _motor;
     private readonly INotificadorEmail _email;
+    private readonly Ingestao.IDrenoDadoRico _dreno;
     private readonly ILogger<RotinaProspeccao> _log;
     private readonly int _leadsPorDia;
     private readonly int _curadosPorDia;
@@ -33,13 +34,15 @@ public class RotinaProspeccao
     private const string FonteReceita = Lead.OrigemReceita;
 
     public RotinaProspeccao(AppDbContext db, IClassificadorIA ia, IConectorBrasilApi brasilApi,
-        IMotorSinergia motor, INotificadorEmail email, ILogger<RotinaProspeccao> log, IConfiguration cfg)
+        IMotorSinergia motor, INotificadorEmail email, Ingestao.IDrenoDadoRico dreno,
+        ILogger<RotinaProspeccao> log, IConfiguration cfg)
     {
         _db = db;
         _ia = ia;
         _brasilApi = brasilApi;
         _motor = motor;
         _email = email;
+        _dreno = dreno;
         _log = log;
         _leadsPorDia = Math.Max(1, cfg.GetValue("Prospeccao:LeadsPorDia", 3));
         _curadosPorDia = Math.Max(0, cfg.GetValue("Prospeccao:AlvosCuradosPorDia", 10));
@@ -115,6 +118,14 @@ public class RotinaProspeccao
 
             // Auto-cura: reavalia um punhado de pontuações que falharam (rate limit transitório).
             await ReprocessarFalhasInternoAsync(_reprocessarPorDia, ct);
+
+            // Enriquecimento do dado (teses + perfis) com a cota que sobrou. Antes isso vinha de
+            // uma tarefa agendada na máquina do usuário — que parou de funcionar quando o
+            // Smart App Control bloqueou binários locais. Agora mora aqui, onde a plataforma
+            // já vive, e não depende de máquina nenhuma nossa.
+            var (tesesOk, perfisOk) = await _dreno.DrenarAsync(ct);
+            if (tesesOk + perfisOk > 0)
+                _log.LogInformation("Dado rico: {T} tese(s) e {P} perfil(is) enriquecidos nesta rodada.", tesesOk, perfisOk);
 
             // Resumo diário por e-mail (leads do dia + melhores matches). Nunca derruba a rotina.
             await _email.EnviarResumoDiarioAsync(ct);

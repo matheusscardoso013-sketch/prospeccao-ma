@@ -92,6 +92,7 @@ builder.Services.AddHttpClient("email");
 builder.Services.AddScoped<ProspeccaoMA.Web.Notificacoes.INotificadorEmail, ProspeccaoMA.Web.Notificacoes.NotificadorEmail>();
 
 // Rotina de prospecção (compartilhada) + agendador diário às 12h.
+builder.Services.AddScoped<ProspeccaoMA.Web.Ingestao.IDrenoDadoRico, ProspeccaoMA.Web.Ingestao.DrenoDadoRico>();
 builder.Services.AddScoped<RotinaProspeccao>();
 builder.Services.AddHostedService<JobProspeccaoService>();
 

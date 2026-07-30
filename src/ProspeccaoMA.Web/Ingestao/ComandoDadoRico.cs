@@ -44,28 +44,7 @@ public static partial class ComandoDadoRico
             var r = await ia.ExtrairCriteriosTeseAsync(c);
             if (r is null) { falhas++; Console.WriteLine($"  FALHA  {c.Nome}"); continue; }
 
-            var extraidos = new List<string>();
-            void Se<T>(T? atual, T? novo, Action aplicar, string rotulo)
-            {
-                var vazio = atual is null || (atual is string s && string.IsNullOrWhiteSpace(s));
-                if (vazio && novo is not null && !(novo is string ns && string.IsNullOrWhiteSpace(ns)))
-                {
-                    aplicar();
-                    extraidos.Add(rotulo);
-                }
-            }
-
-            Se(c.FaturamentoMinAlvo, r.FaturamentoMin, () => c.FaturamentoMinAlvo = r.FaturamentoMin, $"fat.min {r.FaturamentoMin:C0}");
-            Se(c.FaturamentoMaxAlvo, r.FaturamentoMax, () => c.FaturamentoMaxAlvo = r.FaturamentoMax, $"fat.max {r.FaturamentoMax:C0}");
-            Se(c.MargemEbitdaMinima, r.MargemEbitdaMinima, () => c.MargemEbitdaMinima = r.MargemEbitdaMinima, $"margem {r.MargemEbitdaMinima}%");
-            Se(c.TipoOperacao, r.TipoOperacao, () => c.TipoOperacao = r.TipoOperacao, $"op {r.TipoOperacao}");
-            Se(c.GeografiaAlvo, r.Geografia, () => c.GeografiaAlvo = r.Geografia, $"geo {r.Geografia}");
-            Se(c.ModeloNegocioAlvo, r.ModeloNegocio, () => c.ModeloNegocioAlvo = r.ModeloNegocio, "modelo");
-            Se(c.Exclusoes, r.Exclusoes, () => c.Exclusoes = r.Exclusoes, "exclusões");
-            Se(c.Cultura, r.Cultura, () => c.Cultura = r.Cultura, "cultura");
-
-            c.CriteriosExtraidosEm = DateTime.UtcNow;
-            c.CriteriosValidados = false;
+            var extraidos = AplicarCriterios(c, r);
 
             if (extraidos.Count > 0) { ok++; Console.WriteLine($"  OK     {c.Nome}: {string.Join("; ", extraidos)}"); }
             else { semNada++; Console.WriteLine($"  VAZIO  {c.Nome}: tese não explicita critérios"); }
@@ -76,6 +55,47 @@ public static partial class ComandoDadoRico
         if (!gravar) Console.WriteLine("Dry-run: nada foi gravado (use --gravar).");
         Console.WriteLine($"Resultado: {ok} com critérios, {semNada} sem critérios explícitos, {falhas} falha(s).");
     }
+
+    /// <summary>
+    /// Aplica na entidade os critérios que a IA extraiu, SÓ onde o campo está vazio (nada
+    /// preenchido à mão ou vindo de reunião é sobrescrito), e marca a extração como
+    /// pendente de validação pelo time. Devolve os rótulos do que foi preenchido.
+    /// Compartilhado entre o comando de console e o dreno automático da rodada diária.
+    /// </summary>
+    internal static List<string> AplicarCriterios(Comprador c, CriteriosTese r)
+    {
+        var extraidos = new List<string>();
+        void Se<T>(T? atual, T? novo, Action aplicar, string rotulo)
+        {
+            var vazio = atual is null || (atual is string s && string.IsNullOrWhiteSpace(s));
+            if (vazio && novo is not null && !(novo is string ns && string.IsNullOrWhiteSpace(ns)))
+            {
+                aplicar();
+                extraidos.Add(rotulo);
+            }
+        }
+
+        Se(c.FaturamentoMinAlvo, r.FaturamentoMin, () => c.FaturamentoMinAlvo = r.FaturamentoMin, $"fat.min {r.FaturamentoMin:C0}");
+        Se(c.FaturamentoMaxAlvo, r.FaturamentoMax, () => c.FaturamentoMaxAlvo = r.FaturamentoMax, $"fat.max {r.FaturamentoMax:C0}");
+        Se(c.MargemEbitdaMinima, r.MargemEbitdaMinima, () => c.MargemEbitdaMinima = r.MargemEbitdaMinima, $"margem {r.MargemEbitdaMinima}%");
+        Se(c.TipoOperacao, r.TipoOperacao, () => c.TipoOperacao = r.TipoOperacao, $"op {r.TipoOperacao}");
+        Se(c.GeografiaAlvo, r.Geografia, () => c.GeografiaAlvo = r.Geografia, $"geo {r.Geografia}");
+        Se(c.ModeloNegocioAlvo, r.ModeloNegocio, () => c.ModeloNegocioAlvo = r.ModeloNegocio, "modelo");
+        Se(c.Exclusoes, r.Exclusoes, () => c.Exclusoes = r.Exclusoes, "exclusões");
+        Se(c.Cultura, r.Cultura, () => c.Cultura = r.Cultura, "cultura");
+
+        c.CriteriosExtraidosEm = DateTime.UtcNow;
+        c.CriteriosValidados = false;
+        return extraidos;
+    }
+
+    /// <summary>Cliente HTTP para ler sites (compartilhado com o dreno automático).</summary>
+    internal static HttpClient NovoNavegador() =>
+        new(new HttpClientHandler { AllowAutoRedirect = true, MaxAutomaticRedirections = 4 })
+        {
+            Timeout = TimeSpan.FromSeconds(15),
+            DefaultRequestHeaders = { { "User-Agent", "Mozilla/5.0 (compatible; ValoreBot/1.0)" } }
+        };
 
     public static async Task EnriquecerPerfisAsync(IServiceProvider sp, string[] args)
     {
@@ -178,23 +198,27 @@ public static partial class ComandoDadoRico
         Console.WriteLine($"Resultado: {ok} embedding(s) gerado(s), {falhas} falha(s).");
     }
 
-    private static async Task<(string? Perfil, string Motivo)> PerfilDoSiteAsync(
-        HttpClient http, IClassificadorIA ia, string nome, string site)
+    internal static async Task<(string? Perfil, string Motivo)> PerfilDoSiteAsync(
+        HttpClient http, IClassificadorIA ia, string nome, string site, CancellationToken ct = default)
     {
         string texto;
         try
         {
             var url = site.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? site : $"https://{site}";
-            var html = await http.GetStringAsync(url);
+            var html = await http.GetStringAsync(url, ct);
             texto = ExtrairTextoVisivel(html);
             if (texto.Length < 200) return (null, "texto do site insuficiente");
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            return (null, "site não respondeu a tempo"); // timeout do HttpClient, não cancelamento nosso
         }
         catch (Exception ex)
         {
             return (null, $"site inacessível ({ex.GetType().Name})");
         }
 
-        var resumo = await ia.ResumirPerfilSiteAsync(nome, texto);
+        var resumo = await ia.ResumirPerfilSiteAsync(nome, texto, ct);
         return resumo is null ? (null, "IA não conseguiu resumir") : (resumo, "ok");
     }
 
