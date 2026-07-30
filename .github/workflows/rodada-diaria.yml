@@ -1,0 +1,58 @@
+name: Vigia da rodada diária
+
+# Rede de segurança rodando na infraestrutura do GitHub — independente da máquina de
+# qualquer pessoa e do cron-job.org. Como funciona:
+#
+#   1. Acorda a plataforma (o free tier do Render hiberna após ~15 min ocioso).
+#   2. Ao subir, o JobProspeccaoService confere sozinho se a rodada do dia saiu e a
+#      recupera se não saiu. Este workflow NÃO dispara a rodada — quem decide é o app,
+#      senão rodaríamos duas vezes no mesmo dia e queimaríamos cota de IA à toa.
+#   3. Confere /Jobs/Saude e falha se o dia continuar sem rodada.
+#
+# Job vermelho = o GitHub manda e-mail. É o alarme que faltava quando a plataforma
+# passou 9 dias parada (19/07→28/07) sem ninguém perceber.
+
+on:
+  schedule:
+    # 15:40 UTC = 12:40 em Brasília — depois do horário da rodada (12h), com folga para
+    # ela terminar (~7 min). Cron do GitHub é sempre UTC e pode atrasar em horário de
+    # pico; para uma rede de segurança, tudo bem.
+    - cron: "40 15 * * *"
+  workflow_dispatch: # permite rodar na mão pela aba Actions
+
+jobs:
+  vigiar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Acordar a plataforma
+        # O primeiro acesso após hibernação pode levar ~1 min; insistimos por até 5.
+        run: |
+          for tentativa in $(seq 1 10); do
+            codigo=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 60 \
+              https://prospeccao-ma.onrender.com/Jobs/Saude || echo "000")
+            echo "tentativa $tentativa: HTTP $codigo"
+            case "$codigo" in
+              2*) echo "Plataforma no ar."; exit 0 ;;
+            esac
+            sleep 30
+          done
+          echo "::error::A plataforma não respondeu em 5 minutos."
+          exit 1
+
+      - name: Dar tempo para a recuperação automática
+        # Acordado, o app dispara a rodada perdida em segundos — mas ela leva ~7 min.
+        run: sleep 600
+
+      - name: Conferir se a rodada do dia saiu
+        run: |
+          saude=$(curl -sS --max-time 60 https://prospeccao-ma.onrender.com/Jobs/Saude)
+          echo "$saude"
+          case "$saude" in
+            *'"rodouHoje":true'*)
+              echo "OK: a rodada de hoje saiu." ;;
+            *'"emAndamento":true'*)
+              echo "A rodada está em andamento — sem alarme." ;;
+            *)
+              echo "::error::Sem rodada hoje e nada em andamento. Ver /Execucoes na plataforma."
+              exit 1 ;;
+          esac

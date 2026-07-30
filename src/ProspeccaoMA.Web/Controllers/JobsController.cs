@@ -24,6 +24,39 @@ public class JobsController : Controller
         _log = log;
     }
 
+    /// <summary>
+    /// Sinal de vida da rotina, para um vigia externo (GitHub Actions) conferir sem token:
+    /// diz apenas SE a rodada de hoje saiu e quando foi a última — nenhum dado de negócio.
+    /// Chamar isto já acorda o app, e ao acordar o JobProspeccaoService recupera o dia
+    /// perdido sozinho; o vigia só precisa checar de novo e gritar se continuar sem rodada.
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> Saude(CancellationToken ct)
+    {
+        using var escopo = _escopos.CreateScope();
+        var db = escopo.ServiceProvider.GetRequiredService<Data.AppDbContext>();
+
+        var desdeMeiaNoite = Util.Fuso.InicioHojeUtc();
+        var hoje = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions
+            .ToListAsync(db.ExecucoesJob.Where(e => e.IniciadoEm >= desdeMeiaNoite)
+                .Select(e => new { e.Status, e.IniciadoEm }), ct);
+        var ultima = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions
+            .FirstOrDefaultAsync(db.ExecucoesJob
+                .Where(e => e.Status == Models.StatusExecucao.Sucesso)
+                .OrderByDescending(e => e.IniciadoEm)
+                .Select(e => new { e.IniciadoEm, e.LeadsGerados }), ct);
+
+        return Json(new
+        {
+            rodouHoje = hoje.Any(e => e.Status == Models.StatusExecucao.Sucesso),
+            emAndamento = hoje.Any(e => e.Status == Models.StatusExecucao.EmAndamento),
+            tentativasHoje = hoje.Count,
+            ultimaEm = ultima is null ? null : Util.Fuso.Brasil(ultima.IniciadoEm).ToString("yyyy-MM-dd HH:mm"),
+            ultimaLeads = ultima?.LeadsGerados,
+            agora = Util.Fuso.Agora.ToString("yyyy-MM-dd HH:mm")
+        });
+    }
+
     [HttpGet]
     [HttpPost]
     public IActionResult Disparar(string? token, string? modo = null)

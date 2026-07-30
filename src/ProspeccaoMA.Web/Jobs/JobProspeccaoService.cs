@@ -1,16 +1,39 @@
+using Microsoft.EntityFrameworkCore;
+using ProspeccaoMA.Web.Data;
+using ProspeccaoMA.Web.Models;
+using ProspeccaoMA.Web.Util;
+
 namespace ProspeccaoMA.Web.Jobs;
 
 /// <summary>
-/// Hosted Service que dispara a rotina de prospecção todo dia no horário configurado
-/// (padrão 12h, spec seção 4). Calcula o tempo até a próxima execução e aguarda; após
-/// rodar, agenda o próximo dia. A RotinaProspeccao é resolvida em um escopo próprio
-/// porque o BackgroundService é singleton e o DbContext é scoped.
+/// Agendador da rotina diária (padrão 12h, spec seção 4) com RECUPERAÇÃO DE DIA PERDIDO.
+///
+/// Por que não basta "dormir até as 12h": no free tier do Render o app hiberna após ~15 min
+/// ocioso. Se ele acorda às 13h, a versão antiga deste serviço agendava para as 12h de
+/// AMANHÃ — e se hibernasse de novo antes disso, o dia inteiro se perdia em silêncio. Foi
+/// assim que a plataforma ficou 9 dias parada (19/07→28/07) sem ninguém perceber: o gatilho
+/// externo falhou e não havia nada dentro do app para cobrir.
+///
+/// Agora, a cada volta do laço (inclusive na PARTIDA, ou seja, em todo despertar) o serviço
+/// pergunta ao banco se a rodada de hoje já saiu. Se passou do horário e não saiu, roda na
+/// hora. Assim qualquer coisa que acorde o app — o cron externo, o keep-alive, alguém do
+/// time abrindo o painel — também conserta o dia. A rede não depende de nenhuma máquina
+/// específica: mora na própria plataforma.
 /// </summary>
 public class JobProspeccaoService : BackgroundService
 {
     private readonly IServiceScopeFactory _escopos;
     private readonly ILogger<JobProspeccaoService> _log;
     private readonly int _hora;
+
+    /// <summary>Teto da espera: mesmo faltando muito para as 12h, o serviço reavalia de tempos
+    /// em tempos. Sem isso, um app que ficasse acordado desde antes do horário só olharia o
+    /// relógio uma vez.</summary>
+    private static readonly TimeSpan EsperaMaxima = TimeSpan.FromMinutes(15);
+
+    /// <summary>Tentativas por dia antes de desistir: um dia com falha real (cota estourada,
+    /// por exemplo) não deve virar laço infinito queimando o que sobrou da cota.</summary>
+    private const int MaxTentativasPorDia = 3;
 
     public JobProspeccaoService(IServiceScopeFactory escopos, ILogger<JobProspeccaoService> log, IConfiguration cfg)
     {
@@ -21,12 +44,14 @@ public class JobProspeccaoService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _log.LogInformation("JobProspeccao ativo. Execução diária às {Hora}h.", _hora);
+        _log.LogInformation("JobProspeccao ativo. Execução diária às {Hora}h (com recuperação de dia perdido).", _hora);
 
         while (!stoppingToken.IsCancellationRequested)
         {
-            var espera = TempoAteProximaExecucao();
-            _log.LogInformation("Próxima prospecção em {Espera} (às {Hora}h).", espera, _hora);
+            await RecuperarDiaPerdidoAsync(stoppingToken);
+
+            var ateOHorario = TempoAteProximaExecucao();
+            var espera = ateOHorario < EsperaMaxima ? ateOHorario : EsperaMaxima;
 
             try
             {
@@ -37,7 +62,52 @@ public class JobProspeccaoService : BackgroundService
                 break; // aplicação encerrando
             }
 
-            await RodarUmaVezAsync(stoppingToken);
+            // Chegou a hora exata: roda. Fora disso, o laço volta e a recuperação decide.
+            if (espera == ateOHorario)
+                await RodarUmaVezAsync(stoppingToken);
+        }
+    }
+
+    /// <summary>
+    /// Coração da rede de segurança: se já passou do horário de hoje e nenhuma rodada saiu
+    /// com sucesso, executa agora. Consulta o banco (não a memória do processo) justamente
+    /// porque o processo morre a cada hibernação — o histórico é a única fonte confiável.
+    /// </summary>
+    private async Task RecuperarDiaPerdidoAsync(CancellationToken ct)
+    {
+        try
+        {
+            if (Fuso.Agora.Hour < _hora) return; // ainda não deu a hora
+
+            using var escopo = _escopos.CreateScope();
+            var db = escopo.ServiceProvider.GetRequiredService<AppDbContext>();
+            var desdeMeiaNoite = Fuso.InicioHojeUtc();
+
+            var doDia = await db.ExecucoesJob
+                .Where(e => e.IniciadoEm >= desdeMeiaNoite)
+                .Select(e => e.Status)
+                .ToListAsync(ct);
+
+            if (doDia.Any(s => s == StatusExecucao.Sucesso)) return;      // o dia está feito
+            if (doDia.Any(s => s == StatusExecucao.EmAndamento)) return;  // já tem uma rodando
+            if (doDia.Count >= MaxTentativasPorDia)
+            {
+                _log.LogWarning("Rodada de hoje falhou {N}x — não vou insistir mais hoje.", doDia.Count);
+                return;
+            }
+
+            _log.LogWarning("Rodada de hoje ainda não saiu (já são {Hora}h) — recuperando agora. " +
+                            "Tentativas anteriores hoje: {N}.", Fuso.Agora.Hour, doDia.Count);
+            await RodarUmaVezAsync(ct);
+        }
+        catch (OperationCanceledException)
+        {
+            // encerrando — silencioso
+        }
+        catch (Exception ex)
+        {
+            // A recuperação nunca pode derrubar o serviço: sem ela o app ainda roda no horário.
+            _log.LogError(ex, "Falha ao verificar/recuperar a rodada do dia.");
         }
     }
 
@@ -62,22 +132,9 @@ public class JobProspeccaoService : BackgroundService
 
     private TimeSpan TempoAteProximaExecucao()
     {
-        // Horário de Brasília (o container do Render roda em UTC).
-        var tz = FusoBrasil();
-        var agora = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, tz);
-        var proxima = new DateTimeOffset(agora.Year, agora.Month, agora.Day, _hora, 0, 0, agora.Offset);
-        if (proxima <= agora)
-            proxima = proxima.AddDays(1);
+        var agora = Fuso.Agora;
+        var proxima = agora.Date.AddHours(_hora);
+        if (proxima <= agora) proxima = proxima.AddDays(1);
         return proxima - agora;
-    }
-
-    private static TimeZoneInfo FusoBrasil()
-    {
-        foreach (var id in new[] { "America/Sao_Paulo", "E. South America Standard Time" })
-        {
-            try { return TimeZoneInfo.FindSystemTimeZoneById(id); }
-            catch { /* tenta o próximo id */ }
-        }
-        return TimeZoneInfo.Utc;
     }
 }
