@@ -37,7 +37,9 @@ public static class ComandoRecalibrar
 
         var alvos = await db.SinergiasComprador
             .Include(s => s.Lead).Include(s => s.Comprador)
-            .Where(s => s.Score >= 80 && s.Comprador!.Tese.Length < TeseRasaAte)
+            // Descartado já saiu da Mesa (ex.: empresa espelhada) — re-pontuar seria cota jogada fora.
+            .Where(s => s.Score >= 80 && s.Comprador!.Tese.Length < TeseRasaAte
+                     && s.Status != Models.StatusSinergia.Descartado)
             .OrderByDescending(s => s.Score)
             .Take(max)
             .ToListAsync();
