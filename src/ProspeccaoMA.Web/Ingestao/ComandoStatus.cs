@@ -48,6 +48,19 @@ public static class ComandoStatus
         Console.WriteLine($"  Faltam extrair: {faltamCriterios}   |   última extração: " +
                           (ultimaExtracao is null ? "nunca" : $"{Fuso.Brasil(ultimaExtracao.Value):dd/MM/yyyy HH:mm}"));
 
+        // O poço secou? Lead sem nenhum par nunca foi confrontado com a base de compradores —
+        // é matéria-prima ainda intocada. Se esse número for baixo, a esteira precisa de
+        // leads novos; se for alto, o gargalo é vazão, não falta de empresa.
+        Console.WriteLine("\n-- Cobertura da base (quanto ainda há para prospectar) --");
+        var cruzados = await db.SinergiasComprador.Select(s => s.LeadId).Distinct().CountAsync();
+        var totalLeads = await db.Leads.CountAsync();
+        var receitaCruzados = await db.Leads
+            .CountAsync(l => l.Origem == Lead.OrigemReceita && l.Scores.Count > 0);
+        Console.WriteLine($"  Alvos já cruzados com compradores: {cruzados}/{totalLeads} " +
+                          $"({(totalLeads == 0 ? 0 : 100.0 * cruzados / totalLeads):0.#}%)");
+        Console.WriteLine($"  NUNCA cruzados (estoque intocado): {totalLeads - cruzados}");
+        Console.WriteLine($"  Empresas da Receita já pontuadas na esteira: {receitaCruzados}");
+
         Console.WriteLine("\n-- Funil da mesa --");
         var funil = await db.SinergiasComprador
             .GroupBy(s => s.Status)

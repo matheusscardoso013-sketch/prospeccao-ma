@@ -62,9 +62,11 @@ public class JobProspeccaoService : BackgroundService
                 break; // aplicação encerrando
             }
 
-            // Chegou a hora exata: roda. Fora disso, o laço volta e a recuperação decide.
+            // Chegou a hora exata: roda — mas passando pela MESMA verificação da recuperação.
+            // Sem isso, uma rodada disparada mais cedo (manual ou pelo cron externo) seria
+            // repetida às 12h, gastando a cota do dia duas vezes no mesmo trabalho.
             if (espera == ateOHorario)
-                await RodarUmaVezAsync(stoppingToken);
+                await RecuperarDiaPerdidoAsync(stoppingToken);
         }
     }
 
@@ -78,6 +80,7 @@ public class JobProspeccaoService : BackgroundService
         try
         {
             if (Fuso.Agora.Hour < _hora) return; // ainda não deu a hora
+            // (chamado também pelo timer das 12h — ver ExecuteAsync)
 
             using var escopo = _escopos.CreateScope();
             var db = escopo.ServiceProvider.GetRequiredService<AppDbContext>();

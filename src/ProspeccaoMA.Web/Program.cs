@@ -121,6 +121,12 @@ if (args.Length > 0 && string.Equals(args[0], "fila", StringComparison.OrdinalIg
     return;
 }
 
+if (args.Length > 0 && string.Equals(args[0], "modelos", StringComparison.OrdinalIgnoreCase))
+{
+    await ComandoModelos.ExecutarAsync(app.Services, app.Configuration);
+    return;
+}
+
 if (args.Length > 0 && string.Equals(args[0], "espelhos", StringComparison.OrdinalIgnoreCase))
 {
     await ComandoEspelhos.ExecutarAsync(app.Services, args);
