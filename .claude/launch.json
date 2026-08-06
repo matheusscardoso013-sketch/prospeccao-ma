@@ -6,6 +6,12 @@
       "runtimeExecutable": "C:\\Program Files\\dotnet\\dotnet.exe",
       "runtimeArgs": ["run", "--project", "src/ProspeccaoMA.Web", "--urls", "http://localhost:5080"],
       "port": 5080
+    },
+    {
+      "name": "relatorio-ma",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "5099", "--directory", "relatorio-ma-2026-h1"],
+      "port": 5099
     }
   ]
 }

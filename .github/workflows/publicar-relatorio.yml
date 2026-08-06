@@ -1,0 +1,75 @@
+name: Publicar M&A Deals Report
+
+# Publica a pasta relatorio-ma-2026-h1/ no GitHub Pages.
+# A landing page é HTML estático autocontido (sem build, sem dependência), então
+# o job só empacota a pasta e entrega ao Pages.
+#
+# ANTES DO PRIMEIRO USO, uma vez só, no GitHub:
+#   Settings → Pages → Build and deployment → Source: "GitHub Actions"
+# Sem isso o deploy falha com "Pages site not found".
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "relatorio-ma-2026-h1/**"
+      - ".github/workflows/publicar-relatorio.yml"
+  workflow_dispatch:
+
+# Permissões que a action de Pages exige.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Um deploy por vez; não cancela o que está no meio para não publicar pela metade.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Conferir que os arquivos esperados estão lá
+        # Falha cedo e com mensagem clara em vez de publicar uma página quebrada
+        # ou um PDF ausente — o PDF é o material que a página promete entregar.
+        run: |
+          cd relatorio-ma-2026-h1
+          faltando=""
+          for f in index.html relatorio.html Valore-MA-Deals-Report-2026-H1.pdf; do
+            [ -f "$f" ] || faltando="$faltando $f"
+          done
+          if [ -n "$faltando" ]; then
+            echo "::error::Arquivos ausentes:$faltando"
+            exit 1
+          fi
+          echo "OK — index.html, relatorio.html e o PDF presentes."
+          ls -lh
+
+      - name: Avisar se o formulário ainda não captura
+        # Não bloqueia o deploy: a página entrega o PDF por download direto mesmo
+        # sem ENDPOINT. Mas registra no log que nenhum lead está sendo gravado.
+        run: |
+          if grep -q 'var ENDPOINT = null' relatorio-ma-2026-h1/index.html; then
+            echo "::warning::ENDPOINT não configurado — a página entrega o PDF, mas NÃO grava leads."
+          else
+            echo "ENDPOINT configurado."
+          fi
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: relatorio-ma-2026-h1
+
+      - id: deploy
+        uses: actions/deploy-pages@v4
+
+      - name: Endereço publicado
+        run: echo "No ar em ${{ steps.deploy.outputs.page_url }}"

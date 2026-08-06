@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>M&amp;A Deals Report Brasil — 1º semestre de 2026 | Valore Brasil</title>
+<meta name="description" content="Panorama das fusões e aquisições no Brasil no primeiro semestre de 2026: 593 transações, R$ 166,8 bilhões e 27 operações comentadas com racional estratégico.">
+<style>
+  :root{
+    --ciano:#29A9E0; --azul:#16608F; --navy:#0E3A56; --ouro:#D9A400;
+    --tinta:#12242f; --tinta2:#3d4f5e; --tinta3:#6b7f8d;
+    --linha:#dfe8ef; --linha2:#eef4f8; --fundo:#ffffff; --caixa:#f6fafc;
+    /* rampa ordinal validada */
+    --r1:#4FA8D8; --r2:#1C7099; --r3:#0E3A56;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--fundo); color:var(--tinta);
+    font-family:"Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;
+    font-size:15px; line-height:1.62; font-feature-settings:"kern" 1;
+  }
+  .doc{max-width:820px;margin:0 auto;padding:0 28px 80px}
+
+  /* ─── capa ─────────────────────────────────────────────── */
+  .capa{padding:64px 0 40px;border-bottom:3px solid var(--navy);margin-bottom:44px}
+  .logo{display:flex;align-items:baseline;gap:7px;margin-bottom:52px}
+  .logo .v{font-size:27px;font-weight:800;color:var(--ciano);letter-spacing:-1px}
+  .logo .b{display:flex;align-items:center;gap:6px}
+  .logo .tri{width:0;height:0;border-top:7px solid transparent;border-bottom:7px solid transparent;border-left:11px solid var(--ouro)}
+  .logo .bt{font-size:14px;font-weight:700;color:var(--navy);letter-spacing:2.5px;text-transform:uppercase}
+  .kicker{font-size:12px;font-weight:700;letter-spacing:2.4px;text-transform:uppercase;color:var(--ciano);margin-bottom:14px}
+  .capa h1{font-size:40px;line-height:1.13;margin:0 0 18px;font-weight:800;letter-spacing:-1.1px;color:var(--navy)}
+  .capa .sub{font-size:18px;color:var(--tinta2);margin:0 0 32px;max-width:60ch}
+  .capa .meta{font-size:13px;color:var(--tinta3)}
+  .capa .meta strong{color:var(--tinta2)}
+
+  /* ─── tipografia ───────────────────────────────────────── */
+  h2{font-size:12px;font-weight:700;letter-spacing:2.2px;text-transform:uppercase;color:var(--ciano);margin:0 0 8px}
+  h3{font-size:26px;line-height:1.22;font-weight:800;letter-spacing:-0.6px;color:var(--navy);margin:0 0 18px}
+  h4{font-size:17px;font-weight:700;color:var(--navy);margin:30px 0 10px}
+  p{margin:0 0 15px}
+  a{color:var(--azul)}
+  section{margin-bottom:52px}
+  .lead{font-size:17px;color:var(--tinta2)}
+  ul{margin:0 0 16px;padding-left:20px}
+  li{margin-bottom:8px}
+  .bloco-num{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:var(--navy);color:#fff;font-size:13px;font-weight:700;margin-right:9px;vertical-align:2px}
+
+  /* ─── destaques ────────────────────────────────────────── */
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--linha);border:1px solid var(--linha);margin:0 0 34px}
+  .kpi{background:var(--fundo);padding:18px 16px}
+  .kpi .n{font-size:28px;font-weight:800;color:var(--navy);letter-spacing:-1px;line-height:1.1;display:block}
+  .kpi .l{font-size:11.5px;color:var(--tinta3);line-height:1.35;margin-top:5px;display:block}
+  .kpi .d{font-size:11.5px;font-weight:700;margin-top:6px;display:block}
+  .kpi .d.neg{color:#b4472c} .kpi .d.pos{color:#1a7a52}
+
+  .callout{border-left:4px solid var(--ouro);background:var(--caixa);padding:18px 22px;margin:26px 0;font-size:15.5px}
+  .callout p:last-child{margin-bottom:0}
+  .callout .t{font-size:11.5px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;color:var(--tinta3);margin-bottom:7px}
+  .metodo{border:1px solid var(--linha);background:var(--caixa);padding:20px 22px;margin:26px 0;font-size:14px;color:var(--tinta2)}
+  .metodo p:last-child{margin-bottom:0}
+  .metodo strong{color:var(--navy)}
+
+  .tese{border-top:3px solid var(--navy);border-bottom:1px solid var(--linha);padding:24px 0;margin:34px 0}
+  .tese q{display:block;font-size:22px;line-height:1.38;font-weight:700;color:var(--navy);letter-spacing:-0.4px;quotes:"“" "”"}
+  .tese .quem{font-size:12.5px;color:var(--tinta3);margin-top:12px}
+
+  /* ─── figuras / gráficos ───────────────────────────────── */
+  figure{margin:30px 0;padding:0}
+  figcaption{font-size:12.5px;color:var(--tinta3);margin-top:10px;line-height:1.5}
+  figcaption b{color:var(--tinta2);font-weight:600}
+  .fig-t{font-size:15px;font-weight:700;color:var(--navy);margin-bottom:3px}
+  .fig-s{font-size:12.5px;color:var(--tinta3);margin-bottom:14px}
+  svg{display:block;max-width:100%;height:auto;overflow:visible}
+  .legend{display:flex;flex-wrap:wrap;gap:16px;margin:0 0 12px;font-size:12.5px;color:var(--tinta2)}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .sw{width:11px;height:11px;border-radius:2px;display:inline-block}
+
+  /* ─── tabelas ──────────────────────────────────────────── */
+  .tw{overflow-x:auto;margin:24px 0}
+  table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:560px}
+  th{text-align:left;font-size:11px;letter-spacing:1.3px;text-transform:uppercase;color:var(--tinta3);
+     border-bottom:2px solid var(--navy);padding:0 10px 8px;font-weight:700;white-space:nowrap}
+  td{padding:11px 10px;border-bottom:1px solid var(--linha2);vertical-align:top}
+  tbody tr:hover{background:var(--caixa)}
+  td.n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+  .nd{color:var(--tinta3)}
+  .tag{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;
+       padding:2px 7px;border-radius:3px;white-space:nowrap}
+  .tag.int{background:#e3f4fc;color:#0d5478}
+  .tag.nac{background:#e3f5ef;color:#146b4c}
+  .tag.ia{background:#fdf3d8;color:#6b5000}
+
+  /* ─── deal comentado ───────────────────────────────────── */
+  .deal{border-top:1px solid var(--linha);padding:20px 0}
+  .deal:last-child{border-bottom:1px solid var(--linha)}
+  .deal .h{display:flex;justify-content:space-between;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:5px}
+  .deal .nome{font-size:16.5px;font-weight:700;color:var(--navy)}
+  .deal .nome em{font-style:normal;color:var(--tinta3);font-weight:600}
+  .deal .val{font-size:15px;font-weight:800;color:var(--azul);white-space:nowrap;font-variant-numeric:tabular-nums}
+  .deal .val.nd{color:var(--tinta3);font-weight:600;font-size:13px}
+  .deal .setor{font-size:12px;color:var(--tinta3);margin-bottom:9px;letter-spacing:.2px}
+  .deal .rac{font-size:14.5px;color:var(--tinta2);margin:0}
+  .deal .fonte{font-size:11.5px;color:var(--tinta3);margin-top:8px}
+
+  .fontes{font-size:13px;color:var(--tinta2)}
+  .fontes li{margin-bottom:6px}
+
+  /* ─── rodapé / CTA ─────────────────────────────────────── */
+  .cta{border-top:3px solid var(--navy);margin-top:56px;padding-top:32px}
+  .cta h3{font-size:22px}
+  .cta .canais{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin-top:22px;font-size:14px}
+  .cta .canais div strong{display:block;color:var(--navy);font-size:12px;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:4px}
+  .disc{font-size:11.5px;color:var(--tinta3);line-height:1.55;border-top:1px solid var(--linha);margin-top:32px;padding-top:16px}
+
+  @media (max-width:680px){
+    .doc{padding:0 18px 60px}
+    .capa h1{font-size:30px}
+    .kpis{grid-template-columns:repeat(2,1fr)}
+    .cta .canais{grid-template-columns:1fr}
+    .tese q{font-size:19px}
+  }
+
+  /* ─── impressão / PDF ──────────────────────────────────── */
+  @page{size:A4;margin:16mm 14mm}
+  @media print{
+    body{font-size:10.5pt}
+    .doc{max-width:none;padding:0}
+    .capa{padding-top:0;page-break-after:always;border-bottom:none}
+    .capa h1{font-size:30pt}
+    section{page-break-inside:avoid}
+    .deal,figure,table,.tese,.metodo,.callout{page-break-inside:avoid}
+    h3{page-break-after:avoid}
+    tbody tr:hover{background:none}
+    a{color:var(--navy);text-decoration:none}
+    .no-print{display:none}
+  }
+</style>
+</head>
+<body>
+<div class="doc">
+
+<!-- ══════════════════ CAPA ══════════════════ -->
+<header class="capa">
+  <div class="logo">
+    <span class="v">valore</span>
+    <span class="b"><span class="tri"></span><span class="bt">Brasil</span></span>
+  </div>
+  <div class="kicker">M&amp;A Deals Report · Brasil</div>
+  <h1>O semestre em que o mercado trocou volume por seletividade</h1>
+  <p class="sub">Fusões e aquisições no Brasil no 1º semestre de 2026: 593 transações, R$ 166,8 bilhões e 27 operações comentadas com o racional estratégico por trás de cada uma.</p>
+  <p class="meta">
+    Período analisado: <strong>1º de janeiro a 30 de junho de 2026</strong><br>
+    Publicação: <strong>agosto de 2026</strong> &nbsp;·&nbsp; Valore Brasil — assessoria em M&amp;A desde 2009
+  </p>
+</header>
+
+<!-- ══════════════════ SUMÁRIO EXECUTIVO ══════════════════ -->
+<section>
+  <h2>Sumário executivo</h2>
+  <h3>Menos negócios, mais dinheiro por negócio</h3>
+
+  <div class="kpis">
+    <div class="kpi">
+      <span class="n">593</span>
+      <span class="l">transações no Brasil no 1º semestre</span>
+      <span class="d neg">−35% vs. 1S25</span>
+    </div>
+    <div class="kpi">
+      <span class="n">R$ 166,8 bi</span>
+      <span class="l">capital mobilizado</span>
+      <span class="d pos">+3% vs. 1S25</span>
+    </div>
+    <div class="kpi">
+      <span class="n">26%</span>
+      <span class="l">das operações com comprador estrangeiro</span>
+      <span class="d">155 transações</span>
+    </div>
+    <div class="kpi">
+      <span class="n">27</span>
+      <span class="l">operações comentadas neste relatório</span>
+      <span class="d">com fonte pública</span>
+    </div>
+  </div>
+
+  <p class="lead">O primeiro semestre de 2026 encerrou com uma divergência que define o momento: <strong>o número de transações caiu cerca de 35%</strong> na comparação anual, enquanto o <strong>capital mobilizado subiu 3%</strong>, para R$ 166,8 bilhões. Menos negócios, cada um maior.</p>
+
+  <p>Não é um mercado parado — é um mercado que subiu a régua. Com juro básico em patamar elevado ao longo de todo o período, o custo de capital do comprador encareceu, e o efeito prático foi duplo: o filtro de entrada ficou mais rígido e o preço passou a ser negociado em estrutura, não apenas em múltiplo. Earn-outs longos, compra de carteira em vez de sociedade e aquisição de tecnologia em vez da empresa inteira deixaram de ser exceção.</p>
+
+  <p>Três movimentos organizam o semestre:</p>
+  <ul>
+    <li><strong>Concentração em ativos grandes e regulados.</strong> As dez maiores operações somam mais de R$ 52 bilhões, puxadas por mineração, energia, saneamento e infraestrutura — ativos de receita previsível, que sustentam avaliação mesmo com desconto de taxa.</li>
+    <li><strong>O comprador estrangeiro sustentou o valor.</strong> Foram 155 aquisições de empresas brasileiras por compradores de fora, R$ 58,7 bilhões — os Estados Unidos lideram, com 64 operações.</li>
+    <li><strong>Tecnologia segue o setor mais ativo em volume, mas com critério novo.</strong> São 104 transações em Internet, Software &amp; IT Services. No recorte de tecnologia, o número caiu para 87 operações, contra 131 no mesmo período de 2025 — e a inteligência artificial passou de funcionalidade a critério central de compra.</li>
+  </ul>
+
+  <div class="tese">
+    <q>Software genérico perde valor. O que captura prêmio é o vertical com dado proprietário e IA aplicada ao processo do cliente.</q>
+    <p class="quem">Leitura consolidada do semestre — desenvolvida no Bloco 3 e retomada na análise da Valore, ao final.</p>
+  </div>
+</section>
+
+<!-- ══════════════════ METODOLOGIA ══════════════════ -->
+<section>
+  <h2>Metodologia e limites</h2>
+  <h3>O que este relatório é — e o que não é</h3>
+
+  <div class="metodo">
+    <p><strong>Os números de mercado</strong> (593 transações, R$ 166,8 bilhões, cortes por setor, private equity, venture capital e cross-border) vêm do relatório trimestral 2Q26 da <strong>TTR Data</strong> sobre o mercado transacional brasileiro. O recorte de tecnologia (87 operações) vem do levantamento da <strong>Questum</strong>, divulgado via Startups.com.br. O ranking das dez maiores operações vem do <strong>Brazil Transactions Insights – Summer 2026</strong>, da <strong>Kroll</strong>.</p>
+    <p><strong>As 27 transações comentadas</strong> são uma amostra curada, não o universo completo das 593. O critério de entrada foi um só: existência, partes e — quando divulgado — valor confirmados em fonte pública citável, que acompanha cada operação na base ao final. <strong>Valor não divulgado é registrado como “n/d” e nunca estimado.</strong></p>
+    <p><strong>Três operações foram descartadas na checagem</strong> e ficam registradas para transparência: a compra da Pixeon pela Vela LatAm (transação de 2025, fora da janela); a venda da Odata Brasil por R$ 10,9 bilhões (valor presente em agregador secundário, ausente do ranking da Kroll, sem confirmação suficiente); e uma alegada aquisição bilionária de startup brasileira de IA pelo Google (fonte única de baixa confiabilidade, sem confirmação independente).</p>
+    <p>Onde um número foi derivado em vez de publicado — como o volume do 1º semestre de 2025, reconstruído a partir da variação percentual divulgada — isso está sinalizado no gráfico.</p>
+  </div>
+</section>
+
+<!-- ══════════════════ BLOCO 1 ══════════════════ -->
+<section>
+  <h2><span class="bloco-num">1</span> Panorama</h2>
+  <h3>Volume e valor descolaram</h3>
+
+  <p>A leitura mais útil do semestre está na comparação entre duas séries que normalmente andam juntas e desta vez andaram em direções opostas. O volume recuou com força; o valor agregado não acompanhou a queda.</p>
+
+  <figure>
+    <div class="fig-t">Volume de transações no Brasil</div>
+    <div class="fig-s">1º semestre · número de operações</div>
+    <svg viewBox="0 0 700 130" role="img" aria-label="Volume de transações: cerca de 912 no primeiro semestre de 2025 e 593 no primeiro semestre de 2026.">
+      <line x1="118" y1="14" x2="118" y2="112" stroke="#dfe8ef" stroke-width="1"/>
+      <!-- 1S25 ≈ 912 → 474px -->
+      <text x="108" y="42" text-anchor="end" font-size="13" fill="#6b7f8d">1S 2025</text>
+      <rect x="118" y="26" width="474" height="26" rx="4" fill="#4FA8D8"/>
+      <text x="604" y="44" font-size="14" font-weight="700" fill="#3d4f5e">≈ 912</text>
+      <!-- 1S26 = 593 → 308px -->
+      <text x="108" y="90" text-anchor="end" font-size="13" fill="#6b7f8d">1S 2026</text>
+      <rect x="118" y="74" width="308" height="26" rx="4" fill="#0E3A56"/>
+      <text x="438" y="92" font-size="14" font-weight="700" fill="#0E3A56">593</text>
+      <text x="118" y="124" font-size="12" fill="#6b7f8d">Queda de 35%</text>
+    </svg>
+    <figcaption><b>Fonte:</b> TTR Data, relatório trimestral 2Q26. O total de 2026 é o número publicado; o de 2025 é <b>derivado</b> da variação de −35% informada pela fonte, e por isso aparece como aproximação.</figcaption>
+  </figure>
+
+  <figure>
+    <div class="fig-t">Capital mobilizado</div>
+    <div class="fig-s">1º semestre · R$ bilhões</div>
+    <svg viewBox="0 0 700 130" role="img" aria-label="Capital mobilizado: cerca de R$ 161,9 bilhões no primeiro semestre de 2025 e R$ 166,8 bilhões no primeiro semestre de 2026.">
+      <line x1="118" y1="14" x2="118" y2="112" stroke="#dfe8ef" stroke-width="1"/>
+      <text x="108" y="42" text-anchor="end" font-size="13" fill="#6b7f8d">1S 2025</text>
+      <rect x="118" y="26" width="467" height="26" rx="4" fill="#4FA8D8"/>
+      <text x="597" y="44" font-size="14" font-weight="700" fill="#3d4f5e">≈ 161,9</text>
+      <text x="108" y="90" text-anchor="end" font-size="13" fill="#6b7f8d">1S 2026</text>
+      <rect x="118" y="74" width="482" height="26" rx="4" fill="#0E3A56"/>
+      <text x="612" y="92" font-size="14" font-weight="700" fill="#0E3A56">166,8</text>
+      <text x="118" y="124" font-size="12" fill="#6b7f8d">Alta de 3%</text>
+    </svg>
+    <figcaption><b>Fonte:</b> TTR Data, 2Q26. Valor de 2026 publicado; 2025 <b>derivado</b> da variação de +3%. Apenas 45% das transações do semestre tiveram valor divulgado — o agregado real é necessariamente maior que o observável.</figcaption>
+  </figure>
+
+  <div class="callout">
+    <div class="t">Por que isso importa para quem vende</div>
+    <p>Num mercado que faz menos negócios porém maiores, a empresa média não perde valor por ser média — perde por não ser encontrada. Quando o comprador reduz o número de teses que persegue, ele não fica menos ativo: fica mais exigente sobre o que entra na pauta. Ser encontrado, com informação organizada, passa a valer tanto quanto o desempenho do último exercício.</p>
+  </div>
+</section>
+
+<!-- ══════════════════ BLOCO 2 ══════════════════ -->
+<section>
+  <h2><span class="bloco-num">2</span> Onde está o capital</h2>
+  <h3>Private equity dobrou de tamanho; venture capital ficou de lado</h3>
+
+  <p>Separando o mercado por tipo de capital, a distribuição do semestre é reveladora. O private equity fez poucas operações e moveu muito dinheiro. O venture capital fez muitas rodadas e moveu pouco. A aquisição de ativos — comprar operação, carteira ou unidade em vez de participação societária — se firmou como estrutura preferida em volume.</p>
+
+  <figure>
+    <div class="fig-t">Capital mobilizado por tipo de investidor</div>
+    <div class="fig-s">1º semestre de 2026 · R$ bilhões · número de operações ao lado</div>
+    <svg viewBox="0 0 700 162" role="img" aria-label="Private equity: 33,1 bilhões em 41 operações. Aquisição de ativos: 22,9 bilhões em 151 operações. Venture capital: 6,4 bilhões em 106 rodadas.">
+      <line x1="168" y1="12" x2="168" y2="152" stroke="#dfe8ef" stroke-width="1"/>
+      <!-- escala: 520px / 36 = 14.44 -->
+      <text x="158" y="36" text-anchor="end" font-size="13" fill="#6b7f8d">Private equity</text>
+      <rect x="168" y="20" width="478" height="24" rx="4" fill="#0E3A56"/>
+      <text x="176" y="37" font-size="13" font-weight="700" fill="#ffffff">R$ 33,1 bi</text>
+      <text x="656" y="37" font-size="12" fill="#6b7f8d">41 ops.</text>
+
+      <text x="158" y="88" text-anchor="end" font-size="13" fill="#6b7f8d">Aquisição de ativos</text>
+      <rect x="168" y="72" width="331" height="24" rx="4" fill="#1C7099"/>
+      <text x="176" y="89" font-size="13" font-weight="700" fill="#ffffff">R$ 22,9 bi</text>
+      <text x="509" y="89" font-size="12" fill="#6b7f8d">151 ops.</text>
+
+      <text x="158" y="140" text-anchor="end" font-size="13" fill="#6b7f8d">Venture capital</text>
+      <rect x="168" y="124" width="92" height="24" rx="4" fill="#4FA8D8"/>
+      <text x="270" y="141" font-size="13" font-weight="700" fill="#3d4f5e">R$ 6,4 bi</text>
+      <text x="340" y="141" font-size="12" fill="#6b7f8d">106 rodadas</text>
+    </svg>
+    <figcaption><b>Fonte:</b> TTR Data, 2Q26. O private equity mobilizou <b>105% mais capital</b> que no mesmo período de 2025 com apenas 41 operações; o venture capital cresceu 3% em valor; a aquisição de ativos caiu 11% em volume.</figcaption>
+  </figure>
+
+  <h4>O comprador estrangeiro segurou o valor</h4>
+  <p>Foram <strong>155 aquisições de empresas brasileiras por compradores de fora</strong>, movimentando R$ 58,7 bilhões — pouco mais de um terço de todo o capital do semestre. Os Estados Unidos concentram 64 dessas operações. Na direção oposta, empresas brasileiras compraram pouco no exterior: oito aquisições nos EUA e quatro no México. Fundos de private equity e venture capital estrangeiros aumentaram em 16% seus investimentos no Brasil.</p>
+  <p>O contraste com a região reforça a leitura: a América Latina registrou 1.062 operações no semestre, com queda de 30% em volume e de 6% em valor. O Brasil caiu mais em número de negócios, mas foi o único a crescer em capital — sinal de que a seletividade aqui veio acompanhada de cheques maiores, não de fuga.</p>
+
+  <figure>
+    <div class="fig-t">Origem do comprador nas 27 operações comentadas</div>
+    <div class="fig-s">amostra documentada neste relatório · número de operações</div>
+    <div class="legend">
+      <span><i class="sw" style="background:#16608F"></i> Comprador internacional</span>
+      <span><i class="sw" style="background:#29A9E0"></i> Comprador nacional</span>
+    </div>
+    <svg viewBox="0 0 700 100" role="img" aria-label="Na amostra de 27 operações comentadas, 15 têm comprador internacional e 12 comprador nacional.">
+      <line x1="128" y1="10" x2="128" y2="86" stroke="#dfe8ef" stroke-width="1"/>
+      <!-- escala 520/16 = 32.5 -->
+      <text x="118" y="32" text-anchor="end" font-size="13" fill="#6b7f8d">Internacional</text>
+      <rect x="128" y="16" width="488" height="24" rx="4" fill="#16608F"/>
+      <text x="136" y="33" font-size="13" font-weight="700" fill="#ffffff">15 operações</text>
+      <text x="118" y="76" text-anchor="end" font-size="13" fill="#6b7f8d">Nacional</text>
+      <rect x="128" y="60" width="390" height="24" rx="4" fill="#29A9E0"/>
+      <text x="136" y="77" font-size="13" font-weight="700" fill="#0E3A56">12 operações</text>
+    </svg>
+    <figcaption>Base própria deste relatório. <b>Atenção à leitura:</b> esta proporção descreve a amostra curada, que privilegia operações de maior repercussão e por isso é mais internacional que o mercado. No universo completo, compradores estrangeiros respondem por 26% das transações (155 de 593). A nacionalidade do comprador da Tupperware Latin America não foi detalhada na fonte e está classificada como internacional por exclusão.</figcaption>
+  </figure>
+</section>
+
+<!-- ══════════════════ BLOCO 3 ══════════════════ -->
+<section>
+  <h2><span class="bloco-num">3</span> Inteligência artificial</h2>
+  <h3>De funcionalidade a critério de compra</h3>
+
+  <p>Em 2024 e 2025, IA aparecia nos processos como argumento de venda: um módulo, uma automação, um assistente. Em 2026 ela mudou de posição na mesa. Passou a determinar <em>o que</em> o comprador quer adquirir — e, com isso, mudou também a estrutura das operações.</p>
+
+  <p>Quatro operações da nossa base mostram esse deslocamento, e cada uma revela um formato diferente:</p>
+
+  <div class="deal">
+    <div class="h"><span class="nome">Serasa Experian <em>compra</em> idwall</span><span class="val">≈ R$ 430 mi</span></div>
+    <div class="setor">Antifraude e verificação de identidade · maio de 2026 · <span class="tag ia">dado proprietário</span></div>
+    <p class="rac">A maior das quatro, e a mais instrutiva. O que a Serasa comprou não foi um produto: foi uma base de verificação de identidade com biometria, reconhecimento facial e leitura de documentos, que se conecta diretamente à sua operação de crédito. Capacidade que o comprador levaria anos para construir e que, plugada na base existente, vale mais dentro do adquirente que isolada. Aprovada pelo Cade sem restrições — é a 17ª aquisição da Serasa em seis anos.</p>
+  </div>
+
+  <div class="deal">
+    <div class="h"><span class="nome">Elo <em>compra a tecnologia da</em> Chatbank</span><span class="val nd">valor não divulgado</span></div>
+    <div class="setor">IA generativa · <span class="tag ia">aquisição de tecnologia</span></div>
+    <p class="rac">A operação foi sobre a tecnologia, não sobre a empresa. Quando o ativo desejado é o modelo e a engenharia que o sustenta, a transação deixa de ser compra de participação e vira aquisição de intangível ou licenciamento. Para o empresário, isso tem consequência direta: parte do valor da sua companhia pode ser vendida separadamente do negócio — e precisa ser precificada como tal.</p>
+  </div>
+
+  <div class="deal">
+    <div class="h"><span class="nome">Teachy <em>compra</em> Nero.AI</span><span class="val nd">valor não divulgado</span></div>
+    <div class="setor">Edtech e IA · <span class="tag ia">acqui-hire</span></div>
+    <p class="rac">Operação centrada no time técnico e na propriedade intelectual. O valor está em pessoas e código, não em receita recorrente — o formato clássico de <em>acqui-hire</em>, em que a tese de compra é capacidade de execução. Estruturas assim tendem a concentrar o pagamento em retenção, o que altera profundamente a negociação para o vendedor.</p>
+  </div>
+
+  <div class="deal">
+    <div class="h"><span class="nome">Freedom <em>compra</em> Nalk</span><span class="val nd">valor não divulgado</span></div>
+    <div class="setor">IA aplicada a dados de marketing e vendas · fevereiro de 2026 · <span class="tag ia">consolidação precoce</span></div>
+    <p class="rac">A Freedom havia captado R$ 14,5 milhões em rodada liderada pela Bertha Capital e já fez sua primeira aquisição. É o sinal de que o M&amp;A começou a acontecer muito mais cedo na cadeia: quem acabou de levantar capital já está comprando, e a consolidação de IA não espera a maturidade do setor.</p>
+  </div>
+
+  <div class="callout">
+    <div class="t">A consequência prática</div>
+    <p>Quando IA vira critério, a pergunta do comprador muda de “o que seu software faz?” para <strong>“que dado você tem que eu não consigo comprar em outro lugar, e como ele entra no processo do meu cliente?”</strong>. Empresas com dado proprietário e integração profunda no fluxo operacional do cliente sustentam prêmio. Empresas cuja diferenciação era a interface competem por preço — e, no limite, se tornam candidatas a compra de tecnologia em vez de compra de empresa.</p>
+  </div>
+</section>
+
+<!-- ══════════════════ BLOCO 4 ══════════════════ -->
+<section>
+  <h2><span class="bloco-num">4</span> Transações comentadas</h2>
+  <h3>As dez maiores operações do semestre</h3>
+
+  <p>Juntas, somam mais de R$ 52 bilhões. O padrão é nítido: recursos naturais, energia, saneamento e infraestrutura — ativos de capital intensivo, receita previsível e, em vários casos, regulação definida. Exatamente o perfil que resiste a um custo de capital elevado.</p>
+
+  <div class="tw">
+    <table>
+      <thead>
+        <tr><th>Comprador</th><th>Alvo</th><th>Setor</th><th class="n">Valor</th><th>Origem</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>USA Rare Earth</td><td>Serra Verde</td><td>Mineração — terras raras</td><td class="n">R$ 14,0 bi</td><td><span class="tag int">Internacional</span></td></tr>
+        <tr><td>Mercuria</td><td>Raízen (ativos na Argentina)</td><td>Energia — trading</td><td class="n">R$ 7,1 bi</td><td><span class="tag int">Internacional</span></td></tr>
+        <tr><td>Equatorial Energia</td><td>Copasa (30%)</td><td>Saneamento</td><td class="n">R$ 5,6 bi</td><td><span class="tag nac">Nacional</span></td></tr>
+        <tr><td>Amaggi</td><td>FS Bioenergia (40%)</td><td>Bioenergia — etanol de milho</td><td class="n">R$ 5,0 bi</td><td><span class="tag nac">Nacional</span></td></tr>
+        <tr><td>Macquarie Asset Mgmt.</td><td>IHS Towers (Brasil e Colômbia)</td><td>Infraestrutura — torres</td><td class="n">R$ 4,9 bi</td><td><span class="tag int">Internacional</span></td></tr>
+        <tr><td>Chalco e Rio Tinto</td><td>CBA (controle)</td><td>Metalurgia — alumínio</td><td class="n">R$ 4,7 bi</td><td><span class="tag int">Internacional</span></td></tr>
+        <tr><td>EMS</td><td>Medley (Sanofi)</td><td>Farmacêutico — genéricos</td><td class="n">R$ 3,2 bi</td><td><span class="tag nac">Nacional</span></td></tr>
+        <tr><td>Aena</td><td>Concessionária do Galeão</td><td>Infraestrutura — aeroportos</td><td class="n">R$ 2,9 bi</td><td><span class="tag int">Internacional</span></td></tr>
+        <tr><td>Claro</td><td>Desktop (73%)</td><td>Telecom — fibra</td><td class="n">R$ 2,4 bi</td><td><span class="tag int">Internacional</span></td></tr>
+        <tr><td>Brava Energia</td><td>Petronas — 50% em dois campos</td><td>Óleo e gás</td><td class="n">R$ 2,4 bi</td><td><span class="tag nac">Nacional</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p style="font-size:12.5px;color:#6b7f8d">Fonte: Kroll, <em>Brazil Transactions Insights – Summer 2026</em>. Valores conforme divulgados.</p>
+
+  <h4>Três leituras nas grandes operações</h4>
+  <p><strong>Terras raras entraram no mapa.</strong> A maior transação do semestre — USA Rare Earth e Serra Verde, R$ 14 bilhões — não se explica por múltiplo de EBITDA. Explica-se por acesso a uma cadeia de minerais críticos fora da China. Quando a tese é geopolítica, o preço deixa de ser função do resultado corrente.</p>
+  <p><strong>Integração vertical voltou.</strong> A Amaggi, que origina grão, comprou 40% de uma produtora de etanol de milho. Quem já controla o insumo passa a capturar a margem da transformação. O mesmo raciocínio explica a Equatorial entrando em saneamento: aplicar competência operacional comprovada a um ativo regulado de receita previsível.</p>
+  <p><strong>Multinacional em revisão de portfólio é oportunidade para grupo nacional.</strong> A EMS comprou a Medley da Sanofi; a operação latino-americana da Tupperware foi descolada e vendida à parte. Quando a matriz global reorganiza o portfólio, ativos maduros e rentáveis ficam disponíveis — e o comprador local, que entende o canal, tende a levar vantagem.</p>
+
+  <h3 style="margin-top:44px">O mercado médio: onde o semestre foi mais instrutivo</h3>
+  <p>As operações abaixo de R$ 1 bilhão dizem mais sobre o que aconteceu com a empresa brasileira típica do que as manchetes bilionárias. São elas que mostram as estruturas em uso.</p>
+
+  <div class="deal">
+    <div class="h"><span class="nome">Ânima Educação <em>compra</em> FMU</span><span class="val">R$ 410 mi</span></div>
+    <div class="setor">Ensino superior · R$ 240 mi na parcela inicial e segunda parcela variável até 2029</div>
+    <p class="rac">A estrutura é a lição. Menos de 60% do preço saiu na assinatura; o restante ficou atrelado a desempenho por até três anos. Num setor sob pressão de margem, o earn-out longo deixou de ser detalhe contratual e virou o mecanismo pelo qual comprador e vendedor dividem o risco de execução. Quem vai vender em 2026 precisa entender que “quanto vale” e “quanto entra no bolso, e quando” são duas perguntas diferentes.</p>
+  </div>
+
+  <div class="deal">
+    <div class="h"><span class="nome">Visma <em>compra</em> MaisMei</span><span class="val nd">valor não divulgado</span></div>
+    <div class="setor">Software de compliance fiscal para MEI · 10 de fevereiro de 2026 · 3,7 milhões de clientes</div>
+    <p class="rac">A norueguesa Visma comprou a maior plataforma privada do segmento MEI no Brasil e a encaixou numa esteira com a Conta Azul, adquirida em agosto de 2025. O comprador está montando a jornada completa do pequeno negócio — do MEI ao ERP — por aquisição, não por desenvolvimento. Para o empresário de software, isso significa que o valor da sua empresa pode estar menos no seu produto isolado e mais na posição que ela ocupa na esteira de alguém.</p>
+  </div>
+
+  <div class="deal">
+    <div class="h"><span class="nome">Visma <em>compra</em> Dootax <em>e</em> Pag Util Brasil</span><span class="val nd">valores não divulgados</span></div>
+    <div class="setor">Software tributário e trilha de pagamentos</div>
+    <p class="rac">Duas operações com a mesma tese: posicionamento antecipado para a reforma tributária. O comprador adquiriu capacidade de apuração e recolhimento <em>antes</em> de a mudança regulatória criar a demanda em escala. Mudança de regra é gatilho de M&amp;A — e quem se move antes paga menos.</p>
+  </div>
+
+  <div class="deal">
+    <div class="h"><span class="nome">iFood <em>compra 100% da</em> Get In</span><span class="val nd">valor não divulgado</span></div>
+    <div class="setor">Reservas e gestão de filas para bares e restaurantes · 29 de abril de 2026</div>
+    <p class="rac">Movimento do delivery para o salão físico, reforçando o iFood para Comer Fora com reserva de mesa, fila online e cashback. A justificativa declarada é mercado subpenetrado: menos da metade dos restaurantes brasileiros oferece reserva, e uma parcela ainda menor usa sistema digital. Piloto em Campinas e Curitiba. Quando o comprador tem distribuição e falta produto, ele compra produto — e paga por encaixe, não por escala.</p>
+  </div>
+
+  <div class="deal">
+    <div class="h"><span class="nome">Unifique <em>compra</em> iSuper Telecomunicações</span><span class="val">R$ 37,9 mi</span></div>
+    <div class="setor">ISP / fibra · março de 2026 · cerca de 24 mil assinantes</div>
+    <p class="rac">Entrada no Paraná por meio de subsidiária criada para isso. O preço implícito fica em torno de R$ 1,6 mil por assinante — referência concreta de múltiplo para o provedor regional que pensa em vender. Em setores de consolidação, o múltiplo relevante muitas vezes não é de EBITDA, e sim por unidade de cliente.</p>
+  </div>
+
+  <div class="deal">
+    <div class="h"><span class="nome">Unifique <em>compra</em> G9 Telecomunicações</span><span class="val">R$ 6,3 mi</span></div>
+    <div class="setor">ISP / fibra · maio de 2026 · cerca de 2.900 assinantes em Pomerode (SC)</div>
+    <p class="rac">Aqui o comprador levou apenas a carteira de clientes, não a sociedade. Estrutura que reduz passivo herdado e encurta a diligência — atraente para o comprador, mas que deixa com o vendedor a empresa vazia e suas obrigações. É uma das negociações em que a assessoria de quem vende pesa mais que o preço de capa.</p>
+  </div>
+
+  <div class="deal">
+    <div class="h"><span class="nome">Vela LatAm (Constellation) <em>compra</em> Onegreen, Alfasig, Alpino Tecnologia <em>e</em> ERP Praeter</span><span class="val nd">valores não divulgados</span></div>
+    <div class="setor">Software vertical — licenciamento ambiental e documentos fiscais eletrônicos · quatro operações no semestre</div>
+    <p class="rac">O braço latino-americano da canadense Constellation Software fez quatro compras no período e chegou a 26 operações na região. O padrão é conhecido e vale estudar: adquirir o líder de um nicho pequeno e defensável, manter a operação e agrupá-la em cluster temático — a Onegreen foi integrada à Ius Natura, já do grupo, e as três de software fiscal formaram um bloco só. Para o dono de software de nicho, esse comprador não busca crescimento acelerado: busca receita recorrente previsível e baixa rotatividade de clientes. Isso muda o que precisa ser demonstrado na venda.</p>
+  </div>
+
+  <div class="deal">
+    <div class="h"><span class="nome">Selbetti <em>compra</em> Zecode</span><span class="val nd">valor não divulgado</span></div>
+    <div class="setor">Automação e coleta de dados · empresa com mais de 25 anos de operação</div>
+    <p class="rac">Balanças, impressoras térmicas, leitores e coletores de dados. Não é um ativo de crescimento acelerado: é base instalada e relacionamento longo com cliente. Vale como contraponto ao discurso de que só cresce quem é digital-nativo — companhias industriais maduras seguem sendo compradas por aquilo que efetivamente têm.</p>
+  </div>
+
+  <figure>
+    <div class="fig-t">Setores das 27 operações comentadas</div>
+    <div class="fig-s">amostra documentada · número de operações</div>
+    <svg viewBox="0 0 700 172" role="img" aria-label="Tecnologia 13 operações, nove setores com uma operação cada somando 9, telecom 3, infraestrutura 2.">
+      <line x1="188" y1="10" x2="188" y2="166" stroke="#dfe8ef" stroke-width="1"/>
+      <!-- escala 480/14 = 34.3 -->
+      <text x="178" y="30" text-anchor="end" font-size="13" fill="#6b7f8d">Tecnologia</text>
+      <rect x="188" y="15" width="446" height="23" rx="4" fill="#16608F"/>
+      <text x="196" y="31" font-size="13" font-weight="700" fill="#ffffff">13</text>
+
+      <text x="178" y="72" text-anchor="end" font-size="13" fill="#6b7f8d">Outros 9 setores</text>
+      <rect x="188" y="57" width="309" height="23" rx="4" fill="#16608F"/>
+      <text x="196" y="73" font-size="13" font-weight="700" fill="#ffffff">9</text>
+      <text x="507" y="73" font-size="11.5" fill="#6b7f8d">1 operação cada</text>
+
+      <text x="178" y="114" text-anchor="end" font-size="13" fill="#6b7f8d">Telecom</text>
+      <rect x="188" y="99" width="103" height="23" rx="4" fill="#16608F"/>
+      <text x="301" y="115" font-size="13" font-weight="700" fill="#3d4f5e">3</text>
+
+      <text x="178" y="156" text-anchor="end" font-size="13" fill="#6b7f8d">Infraestrutura</text>
+      <rect x="188" y="141" width="69" height="23" rx="4" fill="#16608F"/>
+      <text x="267" y="157" font-size="13" font-weight="700" fill="#3d4f5e">2</text>
+    </svg>
+    <figcaption>Os nove setores com uma operação cada são mineração, energia, saneamento, bioenergia, metalurgia, farmacêutico, óleo e gás, educação e bens de consumo. Base própria. No mercado completo, <b>Internet, Software &amp; IT Services</b> lidera com 104 transações, seguido por <b>Real Estate</b>, com 48 (TTR Data, 2Q26).</figcaption>
+  </figure>
+</section>
+
+<!-- ══════════════════ BLOCO 5 ══════════════════ -->
+<section>
+  <h2><span class="bloco-num">5</span> A leitura da Valore</h2>
+  <h3>O que este semestre exige de quem pensa em vender</h3>
+
+  <p>Assessoramos M&amp;A desde 2009 e atuamos por princípio em um só lado de cada transação. É dessa posição — a de quem senta ao lado do vendedor — que fazemos a leitura a seguir.</p>
+
+  <h4>1. O mercado não esfriou; ele ficou mais criterioso</h4>
+  <p>Queda de 35% no volume com alta de 3% em valor não descreve retração: descreve triagem. Havia R$ 166,8 bilhões disponíveis para quem passou pelo filtro. A pergunta relevante para o empresário deixou de ser “o mercado está bom?” e passou a ser <strong>“minha empresa está no conjunto que passa pelo filtro?”</strong> — e isso é, em boa medida, construível.</p>
+
+  <h4>2. Preço virou estrutura</h4>
+  <p>O semestre mostrou earn-out de três anos (Ânima–FMU), compra de carteira em vez de sociedade (Unifique–G9) e compra de tecnologia em vez de empresa (Elo–Chatbank). Nenhuma dessas operações se resume a um múltiplo. Com custo de capital alto, o comprador protege o caixa de entrada e transfere risco para o vendedor — legitimamente. Quem negocia sem entender a estrutura pode celebrar um valor de manchete e receber bem menos. <strong>O múltiplo abre a conversa; a estrutura define o resultado.</strong></p>
+
+  <h4>3. Dado proprietário é o ativo que sustenta prêmio</h4>
+  <p>A idwall não foi comprada pelo software, e sim pela base de verificação de identidade. A MaisMei não foi comprada pelo aplicativo, e sim por 3,7 milhões de clientes MEI. Vale para muito além de tecnologia: a Zecode foi comprada por base instalada; a iSuper, por 24 mil assinantes. <strong>Pergunte-se o que sua empresa tem que o comprador não consegue construir nem comprar de outro.</strong> Essa resposta é o seu prêmio — e ela precisa estar documentada antes da primeira conversa, não improvisada durante a diligência.</p>
+
+  <h4>4. O comprador certo vale mais que o comprador maior</h4>
+  <p>Compradores recorrentes dominaram o semestre: Unifique com quatro operações, Vela LatAm com quatro, Selbetti e Visma com três cada. Cada um tem tese declarada e critérios explícitos — a Vela LatAm quer recorrência previsível em nicho defensável; a Unifique quer assinantes em geografia contígua; a Visma quer peças da esteira do pequeno negócio antes da reforma tributária. <strong>A mesma empresa vale valores diferentes para compradores diferentes</strong>, porque cada um está resolvendo um problema distinto. Mapear quem tem a tese que a sua companhia responde é o passo que mais move preço — e é justamente o que não se faz por indicação de conhecido.</p>
+
+  <h4>5. Multinacional em revisão de portfólio abre janela</h4>
+  <p>Medley saindo da Sanofi, Tupperware descolando a América Latina, Raízen vendendo ativo argentino. Grupos globais estão enxugando portfólio, e isso cria dois movimentos simultâneos: ativos maduros disponíveis para o comprador nacional, e compradores estrangeiros ativos comprando no Brasil — 155 operações, R$ 58,7 bilhões, com os EUA à frente. Para a empresa média brasileira bem posicionada, o universo de compradores é hoje maior do que o de dois anos atrás, ainda que o número total de negócios seja menor.</p>
+
+  <div class="callout">
+    <div class="t">Em uma frase</div>
+    <p>Num mercado que faz menos negócios e maiores, o empresário perde valor por três razões, nenhuma delas relacionada ao desempenho da empresa: <strong>não ser encontrado pelo comprador cuja tese ele responde, não ter o dado proprietário documentado e negociar múltiplo quando a decisão está na estrutura.</strong></p>
+  </div>
+</section>
+
+<!-- ══════════════════ BLOCO 6 ══════════════════ -->
+<section>
+  <h2><span class="bloco-num">6</span> Base de transações</h2>
+  <h3>As 27 operações, com fonte</h3>
+  <p>Amostra curada de operações anunciadas publicamente entre janeiro e junho de 2026. Não é o universo completo das 593 transações do semestre — é o conjunto verificável. Cada linha tem fonte pública identificada, listada na seção seguinte.</p>
+
+  <div class="tw">
+    <table>
+      <thead>
+        <tr><th>#</th><th>Comprador</th><th>Alvo</th><th>Setor</th><th class="n">Valor</th><th>Perfil</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>1</td><td>USA Rare Earth</td><td>Serra Verde</td><td>Mineração</td><td class="n">R$ 14,0 bi</td><td><span class="tag int">Internacional</span></td></tr>
+        <tr><td>2</td><td>Mercuria</td><td>Raízen — ativos Argentina</td><td>Energia</td><td class="n">R$ 7,1 bi</td><td><span class="tag int">Internacional</span></td></tr>
+        <tr><td>3</td><td>Equatorial Energia</td><td>Copasa (30%)</td><td>Saneamento</td><td class="n">R$ 5,6 bi</td><td><span class="tag nac">Nacional</span></td></tr>
+        <tr><td>4</td><td>Amaggi</td><td>FS Bioenergia (40%)</td><td>Bioenergia</td><td class="n">R$ 5,0 bi</td><td><span class="tag nac">Nacional</span></td></tr>
+        <tr><td>5</td><td>Macquarie Asset Mgmt.</td><td>IHS Towers — Brasil e Colômbia</td><td>Infraestrutura</td><td class="n">R$ 4,9 bi</td><td><span class="tag int">PE internacional</span></td></tr>
+        <tr><td>6</td><td>Chalco e Rio Tinto</td><td>CBA — controle</td><td>Metalurgia</td><td class="n">R$ 4,7 bi</td><td><span class="tag int">Internacional</span></td></tr>
+        <tr><td>7</td><td>EMS</td><td>Medley (Sanofi)</td><td>Farmacêutico</td><td class="n">R$ 3,2 bi</td><td><span class="tag nac">Nacional</span></td></tr>
+        <tr><td>8</td><td>Aena</td><td>Concessionária do Galeão</td><td>Infraestrutura</td><td class="n">R$ 2,9 bi</td><td><span class="tag int">Internacional</span></td></tr>
+        <tr><td>9</td><td>Claro</td><td>Desktop (73%)</td><td>Telecom</td><td class="n">R$ 2,4 bi</td><td><span class="tag int">Internacional</span></td></tr>
+        <tr><td>10</td><td>Brava Energia</td><td>Petronas — 50% em dois campos</td><td>Óleo e gás</td><td class="n">R$ 2,4 bi</td><td><span class="tag nac">Nacional</span></td></tr>
+        <tr><td>11</td><td>Serasa Experian</td><td>idwall</td><td>Tecnologia — antifraude</td><td class="n">≈ R$ 430 mi</td><td><span class="tag int">Internacional</span> <span class="tag ia">IA</span></td></tr>
+        <tr><td>12</td><td>Ânima Educação</td><td>FMU</td><td>Educação</td><td class="n">R$ 410 mi</td><td><span class="tag nac">Nacional</span></td></tr>
+        <tr><td>13</td><td>BeFra</td><td>Tupperware Latin America</td><td>Bens de consumo</td><td class="n">US$ 250 mi</td><td><span class="tag int">Internacional</span></td></tr>
+        <tr><td>14</td><td>Visma</td><td>MaisMei</td><td>Tecnologia — compliance MEI</td><td class="n nd">n/d</td><td><span class="tag int">Internacional</span></td></tr>
+        <tr><td>15</td><td>Visma</td><td>Dootax</td><td>Tecnologia — software tributário</td><td class="n nd">n/d</td><td><span class="tag int">Internacional</span></td></tr>
+        <tr><td>16</td><td>Visma</td><td>Pag Util Brasil</td><td>Tecnologia — pagamentos</td><td class="n nd">n/d</td><td><span class="tag int">Internacional</span></td></tr>
+        <tr><td>17</td><td>iFood</td><td>Get In (100%)</td><td>Tecnologia — foodtech</td><td class="n nd">n/d</td><td><span class="tag nac">Nacional</span></td></tr>
+        <tr><td>18</td><td>Unifique</td><td>iSuper Telecomunicações</td><td>Telecom — ISP</td><td class="n">R$ 37,9 mi</td><td><span class="tag nac">Nacional</span></td></tr>
+        <tr><td>19</td><td>Unifique</td><td>G9 Telecomunicações</td><td>Telecom — ISP</td><td class="n">R$ 6,3 mi</td><td><span class="tag nac">Nacional</span></td></tr>
+        <tr><td>20</td><td>Vela LatAm (Constellation)</td><td>Onegreen</td><td>Tecnologia — software vertical</td><td class="n nd">n/d</td><td><span class="tag int">Internacional</span></td></tr>
+        <tr><td>21</td><td>Vela LatAm (Constellation)</td><td>Alfasig</td><td>Tecnologia — software fiscal</td><td class="n nd">n/d</td><td><span class="tag int">Internacional</span></td></tr>
+        <tr><td>22</td><td>Vela LatAm (Constellation)</td><td>Alpino Tecnologia</td><td>Tecnologia — software fiscal</td><td class="n nd">n/d</td><td><span class="tag int">Internacional</span></td></tr>
+        <tr><td>23</td><td>Vela LatAm (Constellation)</td><td>ERP Praeter</td><td>Tecnologia — ERP fiscal</td><td class="n nd">n/d</td><td><span class="tag int">Internacional</span></td></tr>
+        <tr><td>24</td><td>Selbetti</td><td>Zecode</td><td>Tecnologia — automação</td><td class="n nd">n/d</td><td><span class="tag nac">Nacional</span></td></tr>
+        <tr><td>25</td><td>Elo</td><td>Tecnologia da Chatbank</td><td>Tecnologia — IA generativa</td><td class="n nd">n/d</td><td><span class="tag nac">Nacional</span> <span class="tag ia">IA</span></td></tr>
+        <tr><td>26</td><td>Teachy</td><td>Nero.AI</td><td>Tecnologia — edtech e IA</td><td class="n nd">n/d</td><td><span class="tag nac">Nacional</span> <span class="tag ia">IA</span></td></tr>
+        <tr><td>27</td><td>Freedom</td><td>Nalk</td><td>Tecnologia — IA aplicada</td><td class="n nd">n/d</td><td><span class="tag nac">Nacional</span> <span class="tag ia">IA</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p style="font-size:12.5px;color:#6b7f8d">“n/d” indica valor não divulgado pelas partes. Doze das 27 operações não tiveram valor revelado — proporção coerente com o mercado, em que apenas 45% das transações do semestre divulgaram valor.</p>
+</section>
+
+<!-- ══════════════════ FONTES ══════════════════ -->
+<section>
+  <h2>Fontes</h2>
+  <h3>Onde cada número foi verificado</h3>
+  <div class="fontes">
+    <p><strong>Dados agregados de mercado</strong></p>
+    <ul>
+      <li>TTR Data — <em>Relatório trimestral sobre o mercado transacional brasileiro, 2Q26</em>: volume, valor, cortes setoriais, private equity, venture capital, aquisição de ativos e cross-border. <a href="https://blog.ttrdata.com/relatorio-trimestral-sobre-o-mercado-transacional-brasileiro-2q26/">blog.ttrdata.com</a></li>
+      <li>Kroll — <em>Brazil Transactions Insights – Summer 2026</em>, via Money Report: ranking das dez maiores operações. <a href="https://www.moneyreport.com.br/negocios/dez-negocios-bilionarios-que-marcaram-o-brasil-ate-aqui-em-2026/">moneyreport.com.br</a></li>
+      <li>Questum — <em>M&amp;A Deals Report 2026 H1</em>, via Startups.com.br: recorte de tecnologia (87 operações) e compradores recorrentes. <a href="https://startups.com.br/exclusivo/com-regua-mais-alta-mas-caem-no-1o-semestre-de-2026/">startups.com.br</a></li>
+      <li>Migalhas e Jornal do Comércio: confirmação independente dos agregados do semestre.</li>
+    </ul>
+    <p><strong>Operações individuais</strong></p>
+    <ul>
+      <li>Serasa Experian / idwall — Finsiders Brasil, Bloomberg Línea, Startups.com.br; aprovação do Cade via CNN Brasil. Valor reportado entre R$ 400 mi e R$ 450 mi conforme a fonte; adotamos ≈ R$ 430 mi.</li>
+      <li>iFood / Get In — Bloomberg Línea, InfoMoney, CNN Brasil.</li>
+      <li>Visma / MaisMei — Visma Newsroom e NSC Total. Visma / Dootax e Pag Util Brasil — Finsiders Brasil.</li>
+      <li>Unifique / iSuper — TELETIME News e Minha Operadora. Unifique / G9 — TELETIME News.</li>
+      <li>Vela LatAm / Onegreen, Alfasig, Alpino Tecnologia e ERP Praeter — comunicados da Vela LatAm, InfoMoney e Startups.com.br.</li>
+      <li>Selbetti / Zecode — Startups.com.br.</li>
+      <li>Elo / Chatbank e Teachy / Nero.AI — Questum, via Startups.com.br.</li>
+      <li>Freedom / Nalk — Exame.</li>
+      <li>Ânima Educação / FMU — Visno Invest.</li>
+      <li>BeFra / Tupperware Latin America — TTR Data, 2Q26.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ══════════════════ CTA ══════════════════ -->
+<section class="cta">
+  <h2>Sobre a Valore Brasil</h2>
+  <h3>Assessoria em M&amp;A para empresários e grupos familiares</h3>
+  <p>Boutique independente fundada em 2009, com mais de R$ 4 bilhões em transações assessoradas e mais de mil projetos de M&amp;A. Atuamos por princípio em <strong>um só lado de cada transação</strong> — vendedor ou comprador, nunca os dois ao mesmo tempo. Quando estamos do lado de quem vende, o único objetivo é maximizar o valor que o empresário recebe.</p>
+  <p>Sell-side, buy-side, valuation, fusões, joint ventures, conflitos societários e gestão baseada em valor.</p>
+
+  <div class="canais">
+    <div><strong>E-mail</strong> valorebrasil@valorebrasil.com.br</div>
+    <div><strong>WhatsApp</strong> +55 11 97514-1603</div>
+    <div><strong>Site</strong> valorebrasil.com.br</div>
+    <div><strong>Escritórios</strong> São Paulo · Campinas · Ribeirão Preto · Goiânia</div>
+  </div>
+
+  <p class="disc"><strong>Aviso.</strong> Este relatório tem caráter informativo e reúne dados de mercado de fontes públicas identificadas ao longo do documento, compilados em 6 de agosto de 2026. Não constitui recomendação de investimento, oferta de compra ou venda de participação, nem aconselhamento jurídico, contábil ou tributário. Valores de transação refletem o que foi divulgado publicamente pelas partes ou apurado pelas fontes citadas e podem ser revistos. Operações sem valor divulgado estão marcadas como “n/d” e não foram estimadas. A amostra de 27 operações comentadas não representa o universo completo do mercado no período. © 2026 Valore Brasil.</p>
+</section>
+
+</div>
+</body>
+</html>
