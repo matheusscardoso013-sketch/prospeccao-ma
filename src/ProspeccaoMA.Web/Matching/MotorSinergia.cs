@@ -41,6 +41,7 @@ public class MotorSinergia : IMotorSinergia
     private readonly bool _usarEmbeddings;
     private readonly bool _doisEstagios;
     private readonly int _limiarSegundoEstagio;
+    private readonly int _alertaImediatoMinimo;
 
     public MotorSinergia(AppDbContext db, IClassificadorIA ia, Notificacoes.INotificadorEmail email,
         ILogger<MotorSinergia> log, IConfiguration cfg)
@@ -54,6 +55,7 @@ public class MotorSinergia : IMotorSinergia
         _usarEmbeddings = cfg.GetValue("Sinergia:UsarEmbeddings", true);
         _doisEstagios = cfg.GetValue("Sinergia:DoisEstagios", false);
         _limiarSegundoEstagio = cfg.GetValue("Sinergia:LimiarSegundoEstagio", 70);
+        _alertaImediatoMinimo = cfg.GetValue("Email:AlertaImediatoMinimo", 0);
     }
 
     public async Task<int> CruzarLeadAsync(int leadId, CancellationToken ct = default)
@@ -303,7 +305,13 @@ public class MotorSinergia : IMotorSinergia
             }
         }
 
-        if (r.Score >= 80)
+        // Alerta imediato: DESLIGADO por padrão (Email:AlertaImediatoMinimo = 0).
+        // Ele fazia sentido quando match quente era raro. Com 12 leads/dia viraram ~14 por
+        // rodada — e como TODOS nascem na mesma rodada do meio-dia, cada alerta antecipa em
+        // minutos um resumo diário que já os cobre. Resultado: 14 e-mails para entregar o
+        // conteúdo de 1. O resumo agora destaca as prioritárias no topo; quem quiser o
+        // aviso na hora de volta, é só configurar um mínimo alto (ex.: 95).
+        if (_alertaImediatoMinimo > 0 && r.Score >= _alertaImediatoMinimo)
             await _email.EnviarMatchQuenteAsync(lead, comprador, r.Score, r.Racional, ct);
 
         return r;

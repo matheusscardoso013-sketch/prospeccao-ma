@@ -115,7 +115,9 @@ public class NotificadorEmail : INotificadorEmail
                 return;
             }
 
-            var hoje = DateTime.UtcNow.Date;
+            // Dia de BRASÍLIA, não dia UTC: a rodada é ao meio-dia daqui, e o carimbo no
+            // banco é UTC — comparar com UtcNow.Date jogaria o fim do dia para o dia seguinte.
+            var hoje = Fuso.InicioHojeUtc();
 
             var leadsHoje = await _db.LeadScores
                 .Include(s => s.Lead)
@@ -128,7 +130,7 @@ public class NotificadorEmail : INotificadorEmail
                 .Include(s => s.Lead).Include(s => s.Comprador)
                 .Where(s => s.GeradoEm >= hoje && s.Score >= 50)
                 .OrderByDescending(s => s.Score)
-                .Take(15)
+                .Take(20)
                 .ToListAsync(ct);
 
             if (leadsHoje.Count == 0 && paresHoje.Count == 0)
@@ -138,7 +140,11 @@ public class NotificadorEmail : INotificadorEmail
             }
 
             var html = MontarHtml(leadsHoje, paresHoje);
-            var assunto = $"Valore Brasil — {Fuso.Brasil(DateTime.UtcNow):dd/MM}: {leadsHoje.Count} lead(s) novo(s), {paresHoje.Count} match(es)";
+            // O que exige ação vai no assunto: prioritárias primeiro, o resto como contexto.
+            var quentes = paresHoje.Count(p => p.Score >= 80);
+            var assunto = quentes > 0
+                ? $"Valore Brasil — {Fuso.Agora:dd/MM}: {quentes} oportunidade(s) prioritária(s), {leadsHoje.Count} lead(s) novo(s)"
+                : $"Valore Brasil — {Fuso.Agora:dd/MM}: {leadsHoje.Count} lead(s) novo(s), {paresHoje.Count} aderência(s)";
 
             if (await EnviarAsync(assunto, html, ct))
                 _log.LogInformation("E-mail diário enviado para {Para}.", para);
@@ -189,15 +195,24 @@ public class NotificadorEmail : INotificadorEmail
             sb.Append("</ul>");
         }
 
-        if (pares.Count > 0)
+        // Prioritárias separadas do resto: este é o ÚNICO e-mail do dia (o alerta por match
+        // foi desligado — com 12 leads/dia virava uma enxurrada), então o que exige ação
+        // precisa estar no topo, não diluído numa lista única.
+        void Secao(string titulo, string cor, List<SinergiaComprador> itens)
         {
-            sb.Append("<h3>Melhores aderências do dia (alvo × comprador)</h3><ul>");
-            foreach (var p in pares)
-                sb.Append($"<li><strong>{p.Lead?.RazaoSocial}</strong> × <strong>{p.Comprador?.Nome}</strong> — sinergia {p.Score}/100" +
+            if (itens.Count == 0) return;
+            sb.Append($"<h3 style='color:{cor}'>{titulo}</h3><ul>");
+            foreach (var p in itens)
+                sb.Append($"<li style='margin-bottom:9px'><strong>{p.Lead?.RazaoSocial}</strong> × <strong>{p.Comprador?.Nome}</strong> — sinergia {p.Score}/100" +
                           $"{(string.IsNullOrWhiteSpace(p.Comprador?.Responsavel) ? "" : $" · resp.: {p.Comprador!.Responsavel}")}" +
                           $"<br/><span style='color:#6b7686;font-size:13px'>{Recortar(p.Racional, 160)}</span></li>");
             sb.Append("</ul>");
         }
+
+        var prioritarias = pares.Where(p => p.Score >= 80).ToList();
+        var demais = pares.Where(p => p.Score < 80).ToList();
+        Secao($"Oportunidades prioritárias ({prioritarias.Count})", "#0e7c68", prioritarias);
+        Secao("Demais aderências do dia", "#0E3A56", demais);
 
         sb.Append("<p><a href='https://prospeccao-ma.onrender.com/Mesa' style='background:#29A9E0;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none'>Abrir a Mesa de operações</a></p>");
         sb.Append("</div>");
