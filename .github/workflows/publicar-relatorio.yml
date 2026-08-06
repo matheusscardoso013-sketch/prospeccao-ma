@@ -40,7 +40,7 @@ jobs:
         # Falha cedo e com mensagem clara em vez de publicar uma página quebrada
         # ou um PDF ausente — o PDF é o material que a página promete entregar.
         run: |
-          cd relatorio-ma-2026-h1
+          cd relatorio-ma-2026-h1/site
           faltando=""
           for f in index.html relatorio.html Valore-MA-Deals-Report-2026-H1.pdf; do
             [ -f "$f" ] || faltando="$faltando $f"
@@ -56,7 +56,7 @@ jobs:
         # Não bloqueia o deploy: a página entrega o PDF por download direto mesmo
         # sem ENDPOINT. Mas registra no log que nenhum lead está sendo gravado.
         run: |
-          if grep -q 'var ENDPOINT = null' relatorio-ma-2026-h1/index.html; then
+          if grep -q 'var ENDPOINT = null' relatorio-ma-2026-h1/site/index.html; then
             echo "::warning::ENDPOINT não configurado — a página entrega o PDF, mas NÃO grava leads."
           else
             echo "ENDPOINT configurado."
@@ -66,7 +66,7 @@ jobs:
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: relatorio-ma-2026-h1
+          path: relatorio-ma-2026-h1/site
 
       - id: deploy
         uses: actions/deploy-pages@v4

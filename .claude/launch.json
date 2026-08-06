@@ -10,7 +10,7 @@
     {
       "name": "relatorio-ma",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "5099", "--directory", "relatorio-ma-2026-h1"],
+      "runtimeArgs": ["-m", "http.server", "5099", "--directory", "relatorio-ma-2026-h1/site"],
       "port": 5099
     }
   ]
