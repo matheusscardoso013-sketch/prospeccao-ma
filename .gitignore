@@ -16,6 +16,8 @@ secrets.json
 # Dados volumosos / amostras / zips (não versionar)
 amostra-receita/
 *.zip
+# Pacote de upload da LP: gerado a partir de relatorio-ma-2026-h1/site/
+relatorio-ma-2026-h1/site-*.zip
 
 # OS
 Thumbs.db

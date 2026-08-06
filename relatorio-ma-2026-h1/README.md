@@ -22,24 +22,44 @@ README descreve pendências internas e não deve ficar acessível em `/README.md
 
 Sem dependência externa: nada de CDN, fonte remota ou framework. É HTML estático.
 
-## Pôr no ar (host estático)
+## Pôr no ar — Render Static Site (recomendado)
 
-Escolhido: host estático dedicado, para desvincular o material comercial do
-repositório da plataforma.
+Mesma conta e mesmo repositório da plataforma, sem cadastro novo.
 
-**Cloudflare Pages** ou **Netlify** — os dois aceitam arrastar a pasta:
+**Por que static site e não web service:** no plano gratuito o Render hiberna um
+*web service* após 15 min sem tráfego — é por isso que a plataforma depende dos
+pings do GitHub Actions. *Static sites* não hibernam, são servidos por CDN. Para
+uma página de captação isso não é detalhe: um empresário que espera um minuto pelo
+carregamento fecha a aba.
 
-1. Crie a conta no serviço (essa parte é sua — não crio contas).
-2. Novo projeto → opção de **deploy manual / drag-and-drop**.
-3. Arraste a pasta **`site/`** (não a pasta de cima).
-4. O serviço devolve um endereço provisório (`algo.pages.dev` ou `algo.netlify.app`).
-5. **Custom domain** → `lp.valorebrasil.com.br`, e crie o CNAME correspondente no
-   DNS da Valore apontando para o endereço que o serviço indicar.
+No painel do Render → **New + → Static Site** → conecte este repositório:
 
-Alternativa versionada: existe `.github/workflows/publicar-relatorio.yml`, que
-publica `site/` no GitHub Pages a cada push na `main`. Exige ligar
-`Settings → Pages → Source: GitHub Actions` uma vez. Só vale a pena se você quiser
-o material no mesmo repositório da plataforma.
+| Campo | Valor |
+|---|---|
+| **Branch** | `main` |
+| **Build Command** | *(deixe vazio — não há build)* |
+| **Publish Directory** | `relatorio-ma-2026-h1/site` |
+
+Depois, **Settings → Custom Domain** → `lp.valorebrasil.com.br`, e crie no DNS da
+Valore o CNAME que o Render indicar.
+
+Existe também `render.yaml` na raiz do repositório com esse serviço declarado,
+incluindo os cabeçalhos. Se preferir criar via **Blueprint**, o Render lê esse
+arquivo. O Blueprint só cria os serviços declarados nele — a plataforma, criada
+manualmente, não é afetada.
+
+> **Cabeçalhos:** o Render **não** lê `site/_headers` (isso é convenção de Netlify e
+> Cloudflare). No Render eles vêm do `render.yaml`. As duas listas são equivalentes;
+> se editar uma, edite a outra.
+
+### Alternativas
+
+- **Netlify / Cloudflare Pages** — arraste a pasta `site/` (ou o zip) em
+  `app.netlify.com/drop`. Aqui o `_headers` funciona e o `render.yaml` é ignorado.
+- **GitHub Pages** — `.github/workflows/publicar-relatorio.yml` publica `site/` a
+  cada push na `main`. Exige ligar `Settings → Pages → Source: GitHub Actions` uma
+  vez. O endereço fica sob a conta pessoal dona do repositório, o que não é ideal
+  para material da Valore.
 
 ## Pendências antes de divulgar
 

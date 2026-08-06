@@ -1,4 +1,8 @@
-Cabeçalhos aplicados pelo host estático (Netlify e Cloudflare Pages leem este arquivo).
+Cabeçalhos para Netlify e Cloudflare Pages, que leem este arquivo.
+
+ATENÇÃO: o Render NÃO lê _headers. No Render os cabeçalhos vêm do render.yaml,
+na raiz do repositório, onde estas mesmas regras estão declaradas. Se editar um,
+edite o outro.
 
 /*
   X-Content-Type-Options: nosniff

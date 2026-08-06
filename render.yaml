@@ -1,0 +1,43 @@
+# Blueprint do Render — apenas o site estático do M&A Deals Report.
+#
+# A plataforma (prospeccao-ma) NÃO está declarada aqui de propósito: ela foi criada
+# manualmente no painel e continua gerenciada de lá. Um Blueprint só cria/atualiza os
+# serviços que ele declara; não mexe nem remove serviços criados à mão.
+#
+# Por que static site e não web service: no plano gratuito o Render hiberna um web
+# service após 15 min sem tráfego — é por isso que a plataforma precisa dos pings do
+# GitHub Actions. Static sites não hibernam, são servidos por CDN. Para uma página de
+# captação isso é obrigatório: um empresário que espera 1 minuto pelo carregamento
+# fecha a aba.
+
+services:
+  - type: web
+    runtime: static
+    name: valore-ma-deals-report
+    branch: main
+
+    # Sem build: é HTML estático puro, sem dependência nem framework.
+    buildCommand: ""
+    staticPublishPath: relatorio-ma-2026-h1/site
+
+    # Previews de PR não fazem sentido para material de marketing.
+    pullRequestPreviewsEnabled: false
+
+    headers:
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+      - path: /*
+        name: X-Frame-Options
+        value: SAMEORIGIN
+      - path: /*
+        name: Permissions-Policy
+        value: geolocation=(), microphone=(), camera=()
+
+      # Faz o botão baixar o PDF em vez de abrir no leitor do navegador.
+      - path: /Valore-MA-Deals-Report-2026-H1.pdf
+        name: Content-Disposition
+        value: attachment; filename="Valore-MA-Deals-Report-2026-H1.pdf"
