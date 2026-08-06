@@ -87,6 +87,58 @@
         </div>
     }
 
+    <div class="px-sect" style="margin-top:34px">Desempenho por modelo da rotação</div>
+    <div class="px-sub" style="margin:-10px 0 16px">
+        A cota gratuita é por modelo, então a plataforma reveza 8 deles. Aqui dá para ver se
+        algum destoa — score muito fora da faixa dos outros, racional curto demais ou
+        subscores ausentes indicam um modelo que deveria sair da rotação.
+    </div>
+    @if (Model.PorModelo.Count == 0)
+    {
+        <div class="px-aviso">
+            Nenhum par carimbado ainda. O registro do modelo começou agora — a primeira
+            rodada já preenche.
+        </div>
+    }
+    else
+    {
+        var media = Model.PorModelo.Sum(m => m.ScoreMedio * m.Pares) / Math.Max(1, Model.PorModelo.Sum(m => m.Pares));
+        <div class="mesa-panel" style="margin-bottom:6px"><table class="mtable">
+            <thead>
+                <tr>
+                    <th>Modelo</th>
+                    <th class="q-num">Pares</th>
+                    <th class="q-num">Score médio</th>
+                    <th class="q-num">% quentes</th>
+                    <th class="q-num">Racional (chars)</th>
+                    <th class="q-num">Com subscores</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var m in Model.PorModelo)
+                {
+                    // Destaca quem foge mais de 10 pontos da média ponderada, ou não segue a rubrica.
+                    var suspeito = Math.Abs(m.ScoreMedio - media) > 10 || m.PctComSubscores < 80 || m.RacionalMedio < 90;
+                    <tr>
+                        <td><strong>@m.Modelo</strong></td>
+                        <td class="q-num">@m.Pares</td>
+                        <td class="q-num" style="font-weight:600;color:@(suspeito ? "var(--score-lo)" : "inherit")">@m.ScoreMedio.ToString("0.0")</td>
+                        <td class="q-num">@m.PctQuentes.ToString("0.#")%</td>
+                        <td class="q-num" style="color:@(m.RacionalMedio < 90 ? "var(--score-lo)" : "inherit")">@m.RacionalMedio</td>
+                        <td class="q-num" style="color:@(m.PctComSubscores < 80 ? "var(--score-lo)" : "inherit")">@m.PctComSubscores.ToString("0")%</td>
+                    </tr>
+                }
+            </tbody>
+        </table></div>
+        @if (Model.SemModeloRegistrado > 0)
+        {
+            <div class="px-sub" style="margin-top:8px">
+                @Model.SemModeloRegistrado.ToString("N0") par(es) avaliados antes do registro do
+                modelo — ficam fora desta tabela.
+            </div>
+        }
+    }
+
     <div class="px-sect" style="margin-top:34px">Distribuição de scores</div>
     <div class="mesa-panel" style="margin-bottom:6px"><table class="mtable">
         <thead><tr><th>Faixa</th><th class="q-num">Pares</th><th class="q-num">% dos avaliados</th></tr></thead>

@@ -133,6 +133,27 @@ public class MesaController : Controller
             });
         }
 
+        // Desempenho por modelo da rotação. Só olha o que foi carimbado (pares antigos, de
+        // antes do carimbo, ficam de fora e aparecem contados à parte).
+        var comModelo = await _db.SinergiasComprador.Avaliadas()
+            .Where(s => s.ModeloIA != null)
+            .Select(s => new { s.ModeloIA, s.Score, Tam = s.Racional.Length, TemSub = s.ScoreSetor != null })
+            .ToListAsync(ct);
+
+        vm.SemModeloRegistrado = vm.PareAvaliados - comModelo.Count;
+        vm.PorModelo = comModelo.GroupBy(x => x.ModeloIA!)
+            .Select(g => new DesempenhoModelo
+            {
+                Modelo = g.Key,
+                Pares = g.Count(),
+                ScoreMedio = g.Average(x => x.Score),
+                PctQuentes = 100.0 * g.Count(x => x.Score >= 80) / g.Count(),
+                RacionalMedio = (int)g.Average(x => x.Tam),
+                PctComSubscores = 100.0 * g.Count(x => x.TemSub) / g.Count()
+            })
+            .OrderByDescending(m => m.Pares)
+            .ToList();
+
         vm.Concentracao = pares.GroupBy(p => p.CompradorId)
             .Select(g => new ConcentracaoComprador
             {

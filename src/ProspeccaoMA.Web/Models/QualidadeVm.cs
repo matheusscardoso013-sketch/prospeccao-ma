@@ -14,6 +14,24 @@ public class QualidadeVm
     public List<FaixaScore> Distribuicao { get; set; } = new();
     public List<FaixaTese> PorProfundidadeTese { get; set; } = new();
     public List<ConcentracaoComprador> Concentracao { get; set; } = new();
+    public List<DesempenhoModelo> PorModelo { get; set; } = new();
+    public int SemModeloRegistrado { get; set; }
+}
+
+/// <summary>
+/// Um modelo por linha. A rotação intercala 8 modelos gratuitos e, sem separar, um deles
+/// poderia estar avaliando mal escondido atrás da média dos outros. Sinais de problema:
+/// score médio muito fora da faixa dos demais, racional curto demais (respostas rasas) ou
+/// subscores ausentes (não seguiu a rubrica).
+/// </summary>
+public class DesempenhoModelo
+{
+    public string Modelo { get; set; } = "";
+    public int Pares { get; set; }
+    public double ScoreMedio { get; set; }
+    public double PctQuentes { get; set; }
+    public int RacionalMedio { get; set; }
+    public double PctComSubscores { get; set; }
 }
 
 public class FaixaScore

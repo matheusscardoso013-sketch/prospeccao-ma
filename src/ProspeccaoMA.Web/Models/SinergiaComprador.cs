@@ -47,6 +47,11 @@ public class SinergiaComprador
 
     public string Racional { get; set; } = string.Empty;
 
+    /// <summary>Qual modelo da rotação produziu este score. A rotação intercala vários
+    /// modelos gratuitos (cada um com cota própria); sem este carimbo só dá para auditar a
+    /// média, e um modelo fraco ficaria escondido atrás dos bons. Ver /Mesa/Qualidade.</summary>
+    public string? ModeloIA { get; set; }
+
     public DateTime GeradoEm { get; set; } = DateTime.UtcNow;
 
     /// <summary>Estágio no pipeline de trabalho (Novo → Abordado → Reunião → Em negociação / Descartado).</summary>

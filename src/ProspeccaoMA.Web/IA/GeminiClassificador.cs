@@ -105,10 +105,10 @@ public class GeminiClassificador : IClassificadorIA
         // falharem (cota), devolvemos falha e o chamador mantém o resultado do primeiro estágio.
         if (preciso)
         {
-            var texto = await ChamarComRotacaoAsync(prompt, $"preciso~{idLog}", ModelosPrecisosEfetivos(), ct);
+            var (texto, modelo) = await ChamarComRotacaoAsync(prompt, $"preciso~{idLog}", ModelosPrecisosEfetivos(), ct);
             return texto is null
                 ? new ResultadoClassificacao(0, "IA indisponível no momento (limite de uso); tente novamente.")
-                : ParsearResultado(texto, idLog);
+                : ParsearResultado(texto, idLog) with { ModeloIA = modelo };
         }
 
         return await ChamarAsync(prompt, idLog, ct);
@@ -181,10 +181,10 @@ public class GeminiClassificador : IClassificadorIA
     /// <summary>Chamada genérica ao Gemini (score+racional) com parsing defensivo. Nunca lança.</summary>
     private async Task<ResultadoClassificacao> ChamarAsync(string prompt, string idLog, CancellationToken ct)
     {
-        var texto = await ChamarTextoAsync(prompt, idLog, ct);
+        var (texto, modelo) = await ChamarComRotacaoAsync(prompt, idLog, ModelosEfetivos(), ct);
         if (texto is null)
             return new ResultadoClassificacao(0, "IA indisponível no momento (limite de uso); tente novamente.");
-        return ParsearResultado(texto, idLog);
+        return ParsearResultado(texto, idLog) with { ModeloIA = modelo };
     }
 
     // Cooldown por modelo: quando um modelo esgota (429), fica suspenso por um tempo e a
@@ -221,20 +221,20 @@ public class GeminiClassificador : IClassificadorIA
     }
 
     /// <summary>Chamada bruta ao Gemini (rotação dos modelos normais).</summary>
-    private Task<string?> ChamarTextoAsync(string prompt, string idLog, CancellationToken ct)
-        => ChamarComRotacaoAsync(prompt, idLog, ModelosEfetivos(), ct);
+    private async Task<string?> ChamarTextoAsync(string prompt, string idLog, CancellationToken ct)
+        => (await ChamarComRotacaoAsync(prompt, idLog, ModelosEfetivos(), ct)).Texto;
 
     /// <summary>ROTAÇÃO DE MODELOS: tenta cada modelo da lista na ordem, pulando os em
     /// cooldown; o primeiro que responder vence. Modelo que esgota (429) entra em cooldown e
     /// a rotação segue. Se todos morrerem, aciona o freio global. Cada modelo tem cota
     /// gratuita própria — a soma multiplica a capacidade diária. Compartilha o cooldown e o
     /// freio entre a rotação normal e a "precisa" (é a mesma chave/cota do projeto).</summary>
-    private async Task<string?> ChamarComRotacaoAsync(string prompt, string idLog, string[] modelos, CancellationToken ct)
+    private async Task<(string? Texto, string? Modelo)> ChamarComRotacaoAsync(string prompt, string idLog, string[] modelos, CancellationToken ct)
     {
         if (GeracaoSuspensa)
         {
             _log.LogDebug("Geração suspensa pelo freio de cota — chamada pulada ({Id})", idLog);
-            return null;
+            return (null, null);
         }
 
         foreach (var modelo in modelos)
@@ -247,7 +247,7 @@ public class GeminiClassificador : IClassificadorIA
             {
                 _finais429Seguidos = 0;
                 _modeloSuspensoAte.TryRemove(modelo, out _);
-                return texto;
+                return (texto, modelo);
             }
             _modeloSuspensoAte[modelo] = DateTime.UtcNow.AddMinutes(CooldownModeloMin);
             _log.LogInformation("Modelo {Modelo} indisponível ({Id}) — suspenso {Min}min; tentando o próximo",
@@ -261,7 +261,7 @@ public class GeminiClassificador : IClassificadorIA
             _geracaoSuspensaAte = DateTime.UtcNow.AddMinutes(45);
             _log.LogWarning("FREIO DE COTA: todos os {N} modelo(s) esgotados — geração suspensa por 45 min.", modelos.Length);
         }
-        return null;
+        return (null, null);
     }
 
     /// <summary>Tenta um modelo específico com retry/backoff (429/5xx). Null se esgotar

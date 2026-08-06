@@ -4,8 +4,12 @@ namespace ProspeccaoMA.Web.IA;
 
 /// <summary>Saída da IA para um candidato: nota de sinergia, racional e (quando a rubrica
 /// estruturada respondeu) as subnotas — setor 0-40, porte 0-25, modelo 0-20, geo 0-15.</summary>
+/// <summary>ModeloIA = qual modelo da rotação produziu este veredito. Guardado para
+/// auditar cada modelo separadamente: a rotação intercala vários, e sem esse carimbo só
+/// dá para afirmar que a MÉDIA está boa — não que nenhum deles está puxando para baixo.</summary>
 public record ResultadoClassificacao(int Score, string Racional,
-    int? Setor = null, int? Porte = null, int? Modelo = null, int? Geo = null);
+    int? Setor = null, int? Porte = null, int? Modelo = null, int? Geo = null,
+    string? ModeloIA = null);
 
 /// <summary>
 /// Abstração do motor de qualificação. A IA NUNCA descobre/inventa empresas — recebe

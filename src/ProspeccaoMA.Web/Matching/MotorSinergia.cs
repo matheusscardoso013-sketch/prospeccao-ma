@@ -179,6 +179,7 @@ public class MotorSinergia : IMotorSinergia
         s.ScoreModelo = r.Modelo;
         s.ScoreGeo = r.Geo;
         s.Racional = r.Racional;
+        s.ModeloIA = r.ModeloIA ?? s.ModeloIA; // filtro duro não passa por IA — preserva o anterior
         s.GeradoEm = DateTime.UtcNow;
 
         if (r.Score is > 0 and < 40 && s.Status == StatusSinergia.Novo)
