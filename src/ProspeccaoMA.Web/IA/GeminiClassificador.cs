@@ -106,9 +106,13 @@ public class GeminiClassificador : IClassificadorIA
         if (preciso)
         {
             var (texto, modelo) = await ChamarComRotacaoAsync(prompt, $"preciso~{idLog}", ModelosPrecisosEfetivos(), ct);
+            // Marca o 2º estágio no carimbo: ele SÓ recebe finalistas (score >= limiar), então
+            // sua média é naturalmente alta. Misturar com o 1º estágio na auditoria por modelo
+            // faria o modelo forte parecer "generoso demais" quando na verdade ele vê outra
+            // amostra — comparar os dois grupos juntos é comparar coisas diferentes.
             return texto is null
                 ? new ResultadoClassificacao(0, "IA indisponível no momento (limite de uso); tente novamente.")
-                : ParsearResultado(texto, idLog) with { ModeloIA = modelo };
+                : ParsearResultado(texto, idLog) with { ModeloIA = modelo is null ? null : $"{modelo} (2º)" };
         }
 
         return await ChamarAsync(prompt, idLog, ct);

@@ -44,6 +44,28 @@ public static class ComandoQualidade
             Console.WriteLine($"  {f.Rotulo,-22} {n,5}  {new string('#', (int)Math.Round(pct / 2))} {pct:0.#}%");
         }
 
+        Console.WriteLine("\n-- Desempenho por modelo da rotação --");
+        var porModelo = await db.SinergiasComprador
+            .Where(s => s.Score > 0 && s.ModeloIA != null)
+            .Select(s => new { s.ModeloIA, s.Score, Tam = s.Racional.Length, TemSub = s.ScoreSetor != null })
+            .ToListAsync();
+        if (porModelo.Count == 0) Console.WriteLine("  (nenhum par carimbado ainda)");
+        else
+        {
+            var mediaGeral = porModelo.Average(x => x.Score);
+            Console.WriteLine($"  {"modelo",-32} {"pares",5} {"score",6} {"quentes",8} {"racional",9} {"c/ rubrica",11}");
+            foreach (var g in porModelo.GroupBy(x => x.ModeloIA!).OrderByDescending(g => g.Count()))
+            {
+                var media = g.Average(x => x.Score);
+                var alerta = Math.Abs(media - mediaGeral) > 10 || g.Average(x => x.Tam) < 90
+                          || 100.0 * g.Count(x => x.TemSub) / g.Count() < 80;
+                Console.WriteLine($"  {(alerta ? "!" : " ")}{g.Key,-31} {g.Count(),5} {media,6:0.0} " +
+                                  $"{100.0 * g.Count(x => x.Score >= 80) / g.Count(),7:0.#}% {g.Average(x => x.Tam),9:0} " +
+                                  $"{100.0 * g.Count(x => x.TemSub) / g.Count(),10:0}%");
+            }
+            Console.WriteLine($"  (média geral {mediaGeral:0.0} — '!' marca quem foge >10 pontos, escreve <90 chars ou ignora a rubrica)");
+        }
+
         Console.WriteLine("\n-- Subscores preenchidos (rubrica da Onda 1) --");
         var comSub = await db.SinergiasComprador.CountAsync(s => s.ScoreSetor != null);
         Console.WriteLine($"  {comSub}/{total} pares com breakdown setor/porte/modelo/geo");
