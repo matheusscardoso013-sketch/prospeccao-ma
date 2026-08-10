@@ -127,6 +127,12 @@ if (args.Length > 0 && string.Equals(args[0], "modelos", StringComparison.Ordina
     return;
 }
 
+if (args.Length > 0 && string.Equals(args[0], "recorte", StringComparison.OrdinalIgnoreCase))
+{
+    await ComandoRecorte.ExecutarAsync(app.Services, args);
+    return;
+}
+
 if (args.Length > 0 && string.Equals(args[0], "espelhos", StringComparison.OrdinalIgnoreCase))
 {
     await ComandoEspelhos.ExecutarAsync(app.Services, args);

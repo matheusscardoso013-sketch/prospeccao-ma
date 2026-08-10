@@ -11,7 +11,8 @@ public interface IImportadorReceita
 {
     Task<ResultadoImportacaoReceita> ImportarRecorteAsync(
         string pasta, IReadOnlyCollection<string> cnaes, IReadOnlyCollection<string> ufs,
-        bool gravar, decimal? capMin = null, decimal? capMax = null, CancellationToken ct = default);
+        bool gravar, decimal? capMin = null, decimal? capMax = null,
+        IReadOnlyCollection<string>? portes = null, CancellationToken ct = default);
 }
 
 /// <summary>
@@ -37,7 +38,8 @@ public class ImportadorReceita : IImportadorReceita
 
     public async Task<ResultadoImportacaoReceita> ImportarRecorteAsync(
         string pasta, IReadOnlyCollection<string> cnaes, IReadOnlyCollection<string> ufs,
-        bool gravar, decimal? capMin = null, decimal? capMax = null, CancellationToken ct = default)
+        bool gravar, decimal? capMin = null, decimal? capMax = null,
+        IReadOnlyCollection<string>? portes = null, CancellationToken ct = default)
     {
         if (!Directory.Exists(pasta))
             throw new DirectoryNotFoundException($"Pasta não encontrada: {pasta}");
@@ -145,6 +147,26 @@ public class ImportadorReceita : IImportadorReceita
             }
         }
 
+        // PORTE DECLARADO PELA RECEITA — o corte mais confiável que existe para o piso do
+        // middle market. Os códigos seguem os limites legais de faturamento:
+        //   01 = microempresa            (até R$ 360 mil/ano)
+        //   03 = empresa de pequeno porte (até R$ 4,8 milhões/ano)
+        //   05 = demais                   (ACIMA de R$ 4,8 milhões/ano)
+        // Pedir porte 05 é pedir faturamento acima de R$ 4,8 mi sem depender de proxy —
+        // é a propria empresa que declara. O TETO continua vindo do capital social, que é
+        // proxy fraco, mas é o único número de tamanho que a base pública traz.
+        if (portes is { Count: > 0 })
+        {
+            var codigos = portes.Select(x => x.Trim().PadLeft(2, '0')).ToHashSet();
+            var antesP = selecionados.Count;
+            selecionados = selecionados
+                .Where(kv => dadosEmpresa.TryGetValue(kv.Key[..8], out var d)
+                          && codigos.Contains(d.porte.PadLeft(2, '0')))
+                .ToDictionary(kv => kv.Key, kv => kv.Value);
+            _log.LogInformation("Filtro de porte [{Portes}]: {Antes} → {Depois}",
+                string.Join(",", codigos), antesP, selecionados.Count);
+        }
+
         // Filtro de capital (middle market): mantém o pool enxuto no Neon. Se a faixa for
         // informada, só entram empresas com capital REAL dentro dela (sem join confiável fica fora).
         if (capMin is not null || capMax is not null)
@@ -160,6 +182,21 @@ public class ImportadorReceita : IImportadorReceita
 
         if (!gravar)
         {
+            // Distribuição por capital social do recorte selecionado. Ler os 71 milhões de
+            // linhas leva minutos, então o dry-run entrega de uma vez o que é preciso para
+            // calibrar a faixa — em vez de exigir uma passada por hipótese testada.
+            (string Rotulo, decimal Min, decimal Max)[] faixas =
+            {
+                ("até R$ 100 mil", 0, 100_000), ("R$ 100-500 mil", 100_000, 500_000),
+                ("R$ 500 mil-1 mi", 500_000, 1_000_000), ("R$ 1-5 mi", 1_000_000, 5_000_000),
+                ("R$ 5-20 mi", 5_000_000, 20_000_000), ("R$ 20-50 mi", 20_000_000, 50_000_000),
+                ("acima de R$ 50 mi", 50_000_000, decimal.MaxValue)
+            };
+            Console.WriteLine("\n  Distribuição por capital social do recorte:");
+            foreach (var f in faixas)
+                Console.WriteLine($"    {f.Rotulo,-20} {selecionados.Values.Count(l => l.CapitalSocial > f.Min && l.CapitalSocial <= f.Max),8}");
+            Console.WriteLine();
+
             _log.LogInformation("Dry-run: {N} lead(s) seriam gravados (nada foi escrito).", selecionados.Count);
             return new ResultadoImportacaoReceita(linhasEstab, selecionados.Count, 0, 0, false);
         }
