@@ -29,6 +29,32 @@ public static class ComandoStatus
         }
         if (rodadas.Count == 0) Console.WriteLine("  (nenhuma rodada registrada)");
 
+        // O recorte que decide QUEM entra na esteira. Sem isso à vista, é fácil olhar só a
+        // qualidade do match e não perceber que o problema está em quem foi escolhido.
+        Console.WriteLine("\n-- Configuração da esteira (quem entra) --");
+        var configs = await db.Configuracoes.Where(c => c.Ativo).ToListAsync();
+        foreach (var c in configs)
+            Console.WriteLine($"  [{c.Id}] UFs: {(string.IsNullOrWhiteSpace(c.Ufs) ? "todas" : c.Ufs)} | CNAEs: {(string.IsNullOrWhiteSpace(c.Cnaes) ? "todos" : Curto(c.Cnaes, 60))}\n" +
+                              $"        capital: {(c.CapitalMin is null ? "sem piso" : c.CapitalMin.Value.ToString("C0"))} " +
+                              $"a {(c.CapitalMax is null ? "SEM TETO" : c.CapitalMax.Value.ToString("C0"))}");
+        if (configs.Count == 0) Console.WriteLine("  (nenhuma configuração ativa)");
+
+        var faixas = new (string Rotulo, decimal Min, decimal Max)[]
+        {
+            ("até R$ 1 mi", 0, 1_000_000), ("R$ 1-10 mi", 1_000_000, 10_000_000),
+            ("R$ 10-50 mi", 10_000_000, 50_000_000), ("R$ 50-200 mi", 50_000_000, 200_000_000),
+            ("acima de R$ 200 mi", 200_000_000, decimal.MaxValue)
+        };
+        Console.WriteLine($"  {"faixa de capital social",-22} {"na base",8} {"prospectadas",13}");
+        foreach (var f in faixas)
+        {
+            var naBase = await db.Leads.CountAsync(l => l.Origem == Lead.OrigemReceita
+                && l.CapitalSocial > f.Min && l.CapitalSocial <= f.Max);
+            var comScore = await db.Leads.CountAsync(l => l.Scores.Count > 0
+                && l.CapitalSocial > f.Min && l.CapitalSocial <= f.Max);
+            Console.WriteLine($"    {f.Rotulo,-20} {naBase,8} {comScore,13}");
+        }
+
         Console.WriteLine("\n-- Base --");
         var leadsReceita = await db.Leads.CountAsync(l => l.Origem == Lead.OrigemReceita);
         var leadsValore = await db.Leads.CountAsync(l => l.Origem == Lead.OrigemValore);
