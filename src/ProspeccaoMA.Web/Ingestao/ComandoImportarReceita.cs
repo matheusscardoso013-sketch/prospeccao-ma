@@ -22,14 +22,15 @@ public static class ComandoImportarReceita
         var gravar = args.Any(a => string.Equals(a, "--gravar", StringComparison.OrdinalIgnoreCase));
         var capMin = ValorDecimal(args, "--capmin");
         var capMax = ValorDecimal(args, "--capmax");
-        var portes = ValorLista(args, "--porte"); // 05 = "demais" = faturamento acima de R$ 4,8 mi
+        var portes = ValorLista(args, "--porte");
+        var naturezas = ValorLista(args, "--natureza"); // 2062=Ltda, 2054/2046=S.A., 2232/2240=simples, 2305=EIRELI // 05 = "demais" = faturamento acima de R$ 4,8 mi
 
         Console.WriteLine($"Importando recorte da Receita de: {pasta}");
         Console.WriteLine($"  CNAEs: {string.Join(",", cnaes)} | UFs: {string.Join(",", ufs)} | capital: {capMin}–{capMax} | porte: {(portes.Count == 0 ? "todos" : string.Join(",", portes))} | gravar: {gravar}");
 
         using var escopo = sp.CreateScope();
         var importador = escopo.ServiceProvider.GetRequiredService<IImportadorReceita>();
-        var r = await importador.ImportarRecorteAsync(pasta, cnaes, ufs, gravar, capMin, capMax, portes);
+        var r = await importador.ImportarRecorteAsync(pasta, cnaes, ufs, gravar, capMin, capMax, portes, naturezas);
 
         Console.WriteLine($"Estabelecimentos lidos: {r.LinhasEstabelecimentos}");
         Console.WriteLine($"Selecionados no recorte: {r.Selecionados}");

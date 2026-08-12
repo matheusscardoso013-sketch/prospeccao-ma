@@ -12,7 +12,8 @@ public interface IImportadorReceita
     Task<ResultadoImportacaoReceita> ImportarRecorteAsync(
         string pasta, IReadOnlyCollection<string> cnaes, IReadOnlyCollection<string> ufs,
         bool gravar, decimal? capMin = null, decimal? capMax = null,
-        IReadOnlyCollection<string>? portes = null, CancellationToken ct = default);
+        IReadOnlyCollection<string>? portes = null, IReadOnlyCollection<string>? naturezas = null,
+        CancellationToken ct = default);
 }
 
 /// <summary>
@@ -39,7 +40,8 @@ public class ImportadorReceita : IImportadorReceita
     public async Task<ResultadoImportacaoReceita> ImportarRecorteAsync(
         string pasta, IReadOnlyCollection<string> cnaes, IReadOnlyCollection<string> ufs,
         bool gravar, decimal? capMin = null, decimal? capMax = null,
-        IReadOnlyCollection<string>? portes = null, CancellationToken ct = default)
+        IReadOnlyCollection<string>? portes = null, IReadOnlyCollection<string>? naturezas = null,
+        CancellationToken ct = default)
     {
         if (!Directory.Exists(pasta))
             throw new DirectoryNotFoundException($"Pasta não encontrada: {pasta}");
@@ -116,7 +118,7 @@ public class ImportadorReceita : IImportadorReceita
         _log.LogInformation("Estabelecimentos lidos: {L}; selecionados no recorte: {S}", linhasEstab, selecionados.Count);
 
         // ----- Passo 2: varrer Empresas e completar razão social, capital e porte -----
-        var dadosEmpresa = new Dictionary<string, (string razao, decimal capital, string porte)>();
+        var dadosEmpresa = new Dictionary<string, (string razao, decimal capital, string porte, string natureza)>();
         foreach (var arq in fEmpre)
         {
             using var r = new StreamReader(arq, CsvReceita.Latin1);
@@ -127,7 +129,7 @@ public class ImportadorReceita : IImportadorReceita
                 if (c.Length < 6) continue;
                 var basico = c[0].Trim();
                 if (!basicosNecessarios.Contains(basico)) continue;
-                dadosEmpresa[basico] = (c[1].Trim(), CsvReceita.ParseCapital(c[4]), c[5].Trim());
+                dadosEmpresa[basico] = (c[1].Trim(), CsvReceita.ParseCapital(c[4]), c[5].Trim(), c[2].Trim());
             }
         }
 
@@ -146,6 +148,32 @@ public class ImportadorReceita : IImportadorReceita
                 lead.PorteEstimado = EstimadorPorte.Estimar(0m, null);
             }
         }
+
+        // NATUREZA JURÍDICA — separa SOCIEDADE de registro individual. O código 2135
+        // ("Empresário Individual") é a razão social virar "CNPJ + nome da pessoa"; em 11/08
+        // duas dessas entraram na esteira como se fossem empresas ("52.641.423 TIFFANY
+        // GABRIELLI..."). Não são alvo de M&A: não há participação societária a vender.
+        // Allow-list em vez de exclusão — na dúvida, fica de fora.
+        if (naturezas is { Count: > 0 })
+        {
+            var codigos = naturezas.Select(x => x.Trim()).ToHashSet();
+            var antesN = selecionados.Count;
+            selecionados = selecionados
+                .Where(kv => dadosEmpresa.TryGetValue(kv.Key[..8], out var d) && codigos.Contains(d.natureza))
+                .ToDictionary(kv => kv.Key, kv => kv.Value);
+            _log.LogInformation("Filtro de natureza jurídica: {Antes} → {Depois}", antesN, selecionados.Count);
+        }
+
+        // A Receita carimba o estado da empresa NA PRÓPRIA RAZÃO SOCIAL. "DIBUTE SOFTWARE
+        // LTDA FALIDO" passou por todos os filtros em 11/08 porque a situação cadastral
+        // ainda constava ATIVA. Empresa falida, em recuperação ou espólio não se vende.
+        string[] marcasMortas = { "FALID", "EM RECUPERACAO", "EM RECUPERAÇÃO", "ESPOLIO", "ESPÓLIO", "EM LIQUIDACAO", "EM LIQUIDAÇÃO" };
+        var antesM = selecionados.Count;
+        selecionados = selecionados
+            .Where(kv => !marcasMortas.Any(m => kv.Value.RazaoSocial.ToUpperInvariant().Contains(m)))
+            .ToDictionary(kv => kv.Key, kv => kv.Value);
+        if (antesM != selecionados.Count)
+            _log.LogInformation("Filtro de empresa morta (falida/recuperação/espólio): {Antes} → {Depois}", antesM, selecionados.Count);
 
         // PORTE DECLARADO PELA RECEITA — o corte mais confiável que existe para o piso do
         // middle market. Os códigos seguem os limites legais de faturamento:

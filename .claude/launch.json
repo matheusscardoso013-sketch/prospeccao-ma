@@ -4,8 +4,26 @@
     {
       "name": "prospeccao",
       "runtimeExecutable": "C:\\Program Files\\dotnet\\dotnet.exe",
-      "runtimeArgs": ["run", "--project", "src/ProspeccaoMA.Web", "--urls", "http://localhost:5080"],
+      "runtimeArgs": [
+        "run",
+        "--project",
+        "src/ProspeccaoMA.Web",
+        "--urls",
+        "http://localhost:5080"
+      ],
       "port": 5080
+    },
+    {
+      "name": "relatorio-lp",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "5150",
+        "--directory",
+        "../valore-ma-deals-report/site"
+      ],
+      "port": 5150
     }
   ]
 }

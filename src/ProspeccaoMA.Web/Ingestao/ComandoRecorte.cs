@@ -49,9 +49,16 @@ public static class ComandoRecorte
                               (cnaes is null ? " | CNAEs inalterados" : $" | CNAEs: {cnaes}"));
         }
 
-        // Fora da faixa = o que não serve mais à esteira. Curados (sem CNPJ da Receita) ficam.
-        var foraDaFaixa = db.Leads.Where(l => l.Origem == Lead.OrigemReceita
-            && (l.CapitalSocial < capMin.Value || l.CapitalSocial > capMax.Value));
+        // --zerar: remove TODA a base da Receita para reimportar limpa. Necessário quando o
+        // critério muda de forma que não dá para reavaliar pelo que está gravado — natureza
+        // jurídica, por exemplo, não fica no Lead: quem já entrou como empresário individual
+        // não teria como ser identificado depois. Curados nunca são tocados.
+        var zerar = args.Any(a => a.Equals("--zerar", StringComparison.OrdinalIgnoreCase));
+        var foraDaFaixa = zerar
+            ? db.Leads.Where(l => l.Origem == Lead.OrigemReceita)
+            : db.Leads.Where(l => l.Origem == Lead.OrigemReceita
+                && (l.CapitalSocial < capMin.Value || l.CapitalSocial > capMax.Value));
+        if (zerar) Console.WriteLine("  MODO ZERAR: toda a base da Receita sai (reimportar em seguida).\n");
 
         var quantos = await foraDaFaixa.CountAsync();
         var idsFora = await foraDaFaixa.Select(l => l.Id).ToListAsync();
