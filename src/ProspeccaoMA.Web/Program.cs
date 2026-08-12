@@ -41,7 +41,14 @@ if (string.IsNullOrWhiteSpace(connNeon))
     connNeon = "Host=localhost;Database=prospeccao_dev;Username=postgres;Password=postgres";
 }
 
-builder.Services.AddDbContext<AppDbContext>(opt => opt.UseNpgsql(connNeon));
+// O Neon é Postgres SERVERLESS: ele derruba conexões ociosas e reciclia instâncias, então
+// "connection forcibly closed" acontece sem nada estar errado. Já derrubou um lote de
+// embeddings em julho e o cruzamento da Starian em 12/08, no terceiro par — o trabalho já
+// feito ficava salvo, mas o comando morria no meio. A estratégia de retry do próprio EF
+// reconhece essas falhas como transitórias e refaz a operação.
+builder.Services.AddDbContext<AppDbContext>(opt =>
+    opt.UseNpgsql(connNeon, npg => npg.EnableRetryOnFailure(
+        maxRetryCount: 5, maxRetryDelay: TimeSpan.FromSeconds(10), errorCodesToAdd: null)));
 
 // Persiste as chaves de Data Protection no banco (Neon) para os cookies de login
 // sobreviverem aos redeploys do Render (disco efêmero recria as chaves a cada deploy).
@@ -124,6 +131,18 @@ if (args.Length > 0 && string.Equals(args[0], "fila", StringComparison.OrdinalIg
 if (args.Length > 0 && string.Equals(args[0], "modelos", StringComparison.OrdinalIgnoreCase))
 {
     await ComandoModelos.ExecutarAsync(app.Services, app.Configuration);
+    return;
+}
+
+if (args.Length > 0 && string.Equals(args[0], "cadastrar-comprador", StringComparison.OrdinalIgnoreCase))
+{
+    await ComandoCompradorNovo.CadastrarAsync(app.Services, args);
+    return;
+}
+
+if (args.Length > 0 && string.Equals(args[0], "cruzar-comprador", StringComparison.OrdinalIgnoreCase))
+{
+    await ComandoCompradorNovo.CruzarAsync(app.Services, args);
     return;
 }
 

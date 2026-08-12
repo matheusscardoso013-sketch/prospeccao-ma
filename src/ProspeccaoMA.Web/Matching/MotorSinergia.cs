@@ -387,7 +387,7 @@ public class MotorSinergia : IMotorSinergia
         var partes = new[]
         {
             c.Nome, c.TipoEmpresa, c.Segmento, c.Tags,
-            c.Tese.Length > 1500 ? c.Tese[..1500] : c.Tese,
+            c.Tese.Length > 3500 ? c.Tese[..3500] : c.Tese,
             c.ModeloNegocioAlvo, c.GeografiaAlvo,
             c.PerfilSite is { Length: > 400 } ? c.PerfilSite[..400] : c.PerfilSite
         };

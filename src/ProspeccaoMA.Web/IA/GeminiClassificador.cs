@@ -535,7 +535,7 @@ public class GeminiClassificador : IClassificadorIA
         if (!string.IsNullOrWhiteSpace(comprador.TipoEmpresa)) sb.AppendLine($"- Tipo: {comprador.TipoEmpresa}");
         if (!string.IsNullOrWhiteSpace(comprador.Segmento)) sb.AppendLine($"- Segmento: {comprador.Segmento}");
         if (!string.IsNullOrWhiteSpace(comprador.Tags)) sb.AppendLine($"- Tags da tese: {comprador.Tags}");
-        sb.AppendLine($"- Tese: {Resumir(comprador.Tese, 1500)}");
+        sb.AppendLine($"- Tese: {Resumir(comprador.Tese, 3500)}");
         if (!string.IsNullOrWhiteSpace(comprador.PerfilSite))
             sb.AppendLine($"- Perfil (do site oficial): {Resumir(comprador.PerfilSite, 600)}");
         sb.AppendLine("### Critérios estruturados do comprador (quando informados, têm prioridade sobre o texto da tese)");
