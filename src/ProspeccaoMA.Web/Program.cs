@@ -146,6 +146,12 @@ if (args.Length > 0 && string.Equals(args[0], "cruzar-comprador", StringComparis
     return;
 }
 
+if (args.Length > 0 && string.Equals(args[0], "derivar-sites", StringComparison.OrdinalIgnoreCase))
+{
+    await ComandoDerivarSites.ExecutarAsync(app.Services, args);
+    return;
+}
+
 if (args.Length > 0 && string.Equals(args[0], "ultimos", StringComparison.OrdinalIgnoreCase))
 {
     await ComandoUltimos.ExecutarAsync(app.Services, args);
