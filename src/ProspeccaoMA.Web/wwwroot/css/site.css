@@ -188,6 +188,15 @@ tbody tr:last-child td{border-bottom:none}
 .px-aviso strong{color:var(--vb-navy);font-weight:600}
 /* Colunas numéricas da auditoria: alinhadas à direita e tabulares, para comparar de relance. */
 .q-num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+/* Descartados: presentes para consulta, mas fora do caminho de quem está trabalhando. */
+.fa-descartados{margin-top:26px;border-top:1px solid var(--line);padding-top:18px}
+.fa-descartados>summary{cursor:pointer;font-size:11px;text-transform:uppercase;letter-spacing:.14em;
+                        color:var(--muted);list-style:none;padding:6px 0}
+.fa-descartados>summary::-webkit-details-marker{display:none}
+.fa-descartados>summary::before{content:"▸ ";color:var(--muted)}
+.fa-descartados[open]>summary::before{content:"▾ "}
+.fa-descartados>summary:hover{color:var(--vb-navy)}
+.fa-descartados .fa-buyer{opacity:.72}
 .px-sect{font-size:11px;text-transform:uppercase;letter-spacing:.16em;color:var(--muted);
          display:flex;justify-content:space-between;align-items:baseline;margin-bottom:20px}
 .px-sect a{font-size:11.5px;letter-spacing:.02em;text-transform:none;color:var(--vb-azul);font-weight:600}

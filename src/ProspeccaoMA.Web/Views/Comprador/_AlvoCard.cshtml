@@ -1,0 +1,61 @@
+@using ProspeccaoMA.Web.Util
+@model ProspeccaoMA.Web.Models.SinergiaComprador
+@*
+    Card de um alvo na ficha do comprador. Extraído para partial quando os descartados
+    passaram a ser renderizados em bloco separado — o mesmo card serve aos dois grupos.
+*@
+@{
+    string CorScore(int s) => s >= 80 ? "teal" : s >= 60 ? "bronze" : "muted";
+    double Dash(int s) => 106.8 * s / 100.0;
+    string Inv(double d) => d.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
+
+    var l = Model.Lead!;
+    var sub = string.Join(" · ", new[]
+    {
+        l.Origem == ProspeccaoMA.Web.Models.Lead.OrigemValore ? "★ Curado Valore" : null,
+        !string.IsNullOrWhiteSpace(l.Segmento) ? l.Segmento : (!string.IsNullOrWhiteSpace(l.Cnae) ? CnaeCatalogo.Rotulo(l.Cnae) : null),
+        !string.IsNullOrWhiteSpace(l.Uf) ? $"{l.Municipio}/{l.Uf}" : null
+    }.Where(x => !string.IsNullOrWhiteSpace(x)));
+}
+
+<div class="fa-buyer">
+    <div class="fa-g">
+        <svg width="44" height="44" viewBox="0 0 44 44">
+            <circle cx="22" cy="22" r="17" fill="none" stroke="var(--line)" stroke-width="2.5" />
+            <circle cx="22" cy="22" r="17" fill="none" stroke="var(--@CorScore(Model.Score))" stroke-width="2.5"
+                    stroke-linecap="round" stroke-dasharray="@Inv(Dash(Model.Score)) 106.8" transform="rotate(-90 22 22)" />
+        </svg>
+        <div class="val">@Model.Score</div>
+    </div>
+    <div class="fa-b-main">
+        <div class="fa-b-top">
+            <span class="fa-b-nome">@l.RazaoSocial</span>
+            @if (!string.IsNullOrWhiteSpace(sub)) { <span class="fa-b-faixa">@sub</span> }
+        </div>
+        @if (!string.IsNullOrWhiteSpace(Model.Racional)) { <div class="fa-b-rac">@Model.Racional</div> }
+        @if (Model.ScoreSetor is not null)
+        {
+            <div class="fa-b-sub">Setor @Model.ScoreSetor/40 · Porte @Model.ScorePorte/25 · Modelo @Model.ScoreModelo/20 · Geo @Model.ScoreGeo/15</div>
+        }
+        <div class="fa-b-ctrl">
+            <span class="stpill @StatusUi.Css(Model.Status)">@StatusUi.Rotulo(Model.Status)</span>
+            <form asp-controller="Sinergia" asp-action="Atualizar" asp-route-id="@Model.Id" method="post" class="fa-b-ctrl" style="flex:1;margin:0">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="voltar" value="@(Context.Request.Path + Context.Request.QueryString)" />
+                <select name="status">
+                    @foreach (var st in StatusUi.Todos)
+                    {
+                        <option value="@((int)st)" selected="@(Model.Status == st)">@StatusUi.Rotulo(st)</option>
+                    }
+                </select>
+                <input type="text" name="anotacoes" value="@Model.Anotacoes" placeholder="anotações…" />
+                <button type="submit" class="fa-btn s" style="padding:6px 12px">Salvar</button>
+            </form>
+            <a class="tese" asp-controller="Lead" asp-action="Compradores" asp-route-id="@l.Id">Ver alvo →</a>
+        </div>
+        @{
+            ViewData["Voltar"] = Context.Request.Path + Context.Request.QueryString;
+        }
+        <partial name="_CrmMatch" model="Model" view-data="ViewData" />
+    </div>
+</div>

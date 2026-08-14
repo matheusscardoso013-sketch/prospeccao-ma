@@ -84,64 +84,43 @@
         }
     </div>
 
-    <div class="fa-sect">Alvos que encaixam <span class="c">@Model.Count</span></div>
+    @{
+        // Descartados saem da frente, mas NÃO do banco: o registro evita reavaliar a mesma
+        // empresa (e gastar cota de novo) e alimenta o aprendizado da IA para este comprador.
+        var ativos = Model.Where(x => x.Status != StatusSinergia.Descartado).ToList();
+        var descartados = Model.Where(x => x.Status == StatusSinergia.Descartado).ToList();
+    }
 
-    @if (Model.Count == 0)
+    <div class="fa-sect">Alvos que encaixam <span class="c">@ativos.Count</span></div>
+
+    @if (ativos.Count == 0)
     {
-        <div class="fa-vazio">Ainda não há alvos cruzados com este comprador. Eles aparecem conforme novos leads são prospectados.</div>
+        <div class="fa-vazio">
+            @(descartados.Count == 0
+                ? "Ainda não há alvos cruzados com este comprador. Eles aparecem conforme novos leads são prospectados."
+                : "Nenhum alvo em aberto — todos os cruzados até agora foram descartados.")
+        </div>
     }
     else
     {
-        foreach (var s in Model)
+        foreach (var s in ativos)
         {
-            var l = s.Lead!;
-            var sub = string.Join(" · ", new[]
-            {
-                l.Origem == ProspeccaoMA.Web.Models.Lead.OrigemValore ? "★ Curado Valore" : null,
-                !string.IsNullOrWhiteSpace(l.Segmento) ? l.Segmento : (!string.IsNullOrWhiteSpace(l.Cnae) ? ProspeccaoMA.Web.Util.CnaeCatalogo.Rotulo(l.Cnae) : null),
-                !string.IsNullOrWhiteSpace(l.Uf) ? $"{l.Municipio}/{l.Uf}" : null
-            }.Where(x => !string.IsNullOrWhiteSpace(x)));
-            <div class="fa-buyer">
-                <div class="fa-g">
-                    <svg width="44" height="44" viewBox="0 0 44 44">
-                        <circle cx="22" cy="22" r="17" fill="none" stroke="var(--line)" stroke-width="2.5" />
-                        <circle cx="22" cy="22" r="17" fill="none" stroke="var(--@CorScore(s.Score))" stroke-width="2.5"
-                                stroke-linecap="round" stroke-dasharray="@Inv(Dash(s.Score)) 106.8" transform="rotate(-90 22 22)" />
-                    </svg>
-                    <div class="val">@s.Score</div>
-                </div>
-                <div class="fa-b-main">
-                    <div class="fa-b-top">
-                        <span class="fa-b-nome">@l.RazaoSocial</span>
-                        @if (!string.IsNullOrWhiteSpace(sub)) { <span class="fa-b-faixa">@sub</span> }
-                    </div>
-                    @if (!string.IsNullOrWhiteSpace(s.Racional)) { <div class="fa-b-rac">@s.Racional</div> }
-                    @if (s.ScoreSetor is not null)
-                    {
-                        <div class="fa-b-sub">Setor @s.ScoreSetor/40 · Porte @s.ScorePorte/25 · Modelo @s.ScoreModelo/20 · Geo @s.ScoreGeo/15</div>
-                    }
-                    <div class="fa-b-ctrl">
-                        <span class="stpill @StatusUi.Css(s.Status)">@StatusUi.Rotulo(s.Status)</span>
-                        <form asp-controller="Sinergia" asp-action="Atualizar" asp-route-id="@s.Id" method="post" class="fa-b-ctrl" style="flex:1;margin:0">
-                            @Html.AntiForgeryToken()
-                            <input type="hidden" name="voltar" value="@(Context.Request.Path + Context.Request.QueryString)" />
-                            <select name="status">
-                                @foreach (var st in StatusUi.Todos)
-                                {
-                                    <option value="@((int)st)" selected="@(s.Status == st)">@StatusUi.Rotulo(st)</option>
-                                }
-                            </select>
-                            <input type="text" name="anotacoes" value="@s.Anotacoes" placeholder="anotações…" />
-                            <button type="submit" class="fa-btn s" style="padding:6px 12px">Salvar</button>
-                        </form>
-                        <a class="tese" asp-controller="Lead" asp-action="Compradores" asp-route-id="@l.Id">Ver alvo →</a>
-                    </div>
-                    @{
-                        ViewData["Voltar"] = Context.Request.Path + Context.Request.QueryString;
-                    }
-                    <partial name="_CrmMatch" model="s" view-data="ViewData" />
-                </div>
-            </div>
+            <partial name="_AlvoCard" model="s" />
         }
+    }
+
+    @if (descartados.Count > 0)
+    {
+        <details class="fa-descartados">
+            <summary>Já descartados (@descartados.Count) — clique para ver</summary>
+            <div class="px-sub" style="margin:10px 0 16px">
+                Ficam registrados de propósito: evitam reavaliar a mesma empresa e servem de
+                exemplo negativo para a IA calibrar os próximos cruzamentos deste comprador.
+            </div>
+            @foreach (var s in descartados)
+            {
+                <partial name="_AlvoCard" model="s" />
+            }
+        </details>
     }
 </div>
