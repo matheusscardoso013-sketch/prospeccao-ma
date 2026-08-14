@@ -48,6 +48,20 @@ jobs:
             echo "ping $i: $estado"
           done
 
+      - name: Conferir a porta de entrada do time
+        # /Jobs/Saude não basta: em 14/08 ele respondeu 200 enquanto a tela de LOGIN
+        # devolvia 500, e a plataforma ficou inacessível sem nenhum alarme disparar.
+        # O vigia precisa abrir a mesma porta que uma pessoa abre.
+        run: |
+          codigo=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 60 \
+            https://prospeccao-ma.onrender.com/Conta/Login || echo "000")
+          echo "tela de login: HTTP $codigo"
+          case "$codigo" in
+            2*) echo "OK: o time consegue entrar." ;;
+            *)  echo "::error::A tela de login respondeu $codigo — plataforma inacessível."
+                exit 1 ;;
+          esac
+
       - name: Conferir se a rodada do dia saiu
         run: |
           saude=$(curl -sS --max-time 60 https://prospeccao-ma.onrender.com/Jobs/Saude)
