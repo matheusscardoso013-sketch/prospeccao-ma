@@ -30,6 +30,7 @@ public class RotinaProspeccao
     private readonly int _leadsPorDia;
     private readonly int _curadosPorDia;
     private readonly int _reprocessarPorDia;
+    private readonly bool _lerSite;
 
     private const string FonteReceita = Lead.OrigemReceita;
 
@@ -47,6 +48,7 @@ public class RotinaProspeccao
         _leadsPorDia = Math.Max(1, cfg.GetValue("Prospeccao:LeadsPorDia", 3));
         _curadosPorDia = Math.Max(0, cfg.GetValue("Prospeccao:AlvosCuradosPorDia", 10));
         _reprocessarPorDia = Math.Max(0, cfg.GetValue("Prospeccao:ReprocessarFalhasPorDia", 30));
+        _lerSite = cfg.GetValue("Prospeccao:LerSiteAntesDePontuar", true);
     }
 
     // Trava global de execução única: impede rodadas sobrepostas (timer interno + cron
@@ -188,11 +190,13 @@ public class RotinaProspeccao
             config.Id, selecionados.Count, maximo);
 
         var novos = 0;
+        using var navegador = ComandoDadoRico.NovoNavegador();
         foreach (var lead in selecionados)
         {
             ct.ThrowIfCancellationRequested();
 
             await EnriquecerAsync(lead, ct);              // contatos via BrasilAPI (best-effort)
+            await DescreverAsync(lead, navegador, ct);    // o que a empresa FAZ, pelo site oficial
             var resultado = await _ia.ClassificarAsync(lead, config, ct);
 
             _db.LeadScores.Add(new LeadScore
@@ -242,6 +246,50 @@ public class RotinaProspeccao
         catch (Exception ex)
         {
             _log.LogWarning(ex, "Enriquecimento falhou para {Cnpj} (seguindo sem contatos)", lead.Cnpj);
+        }
+    }
+
+    /// <summary>
+    /// Lê o site oficial do lead e grava o que ele FAZ, antes de qualquer pontuação.
+    ///
+    /// Até 17/08 a rodada só enriquecia CONTATOS (telefone, e-mail, endereço) e mandava o lead
+    /// para a IA sabendo dele apenas razão social, CNAE e capital social. Só que "Desenvolvimento
+    /// de programas de computador" descreve milhares de empresas de forma idêntica — a IA
+    /// pontuava no escuro, e era daí que vinham os matches frios que a mesa reclamava. O site
+    /// é a diferença entre "empresa de software em SP" e "ERP para construtoras".
+    ///
+    /// Ordem importa: vem depois do BrasilAPI (que pode trazer um e-mail melhor que o do
+    /// arquivo da Receita) e antes de ClassificarAsync/CruzarLeadAsync, que são justamente
+    /// quem precisa do dado. Custa uma chamada de geração por lead com site.
+    /// </summary>
+    private async Task DescreverAsync(Lead lead, HttpClient navegador, CancellationToken ct)
+    {
+        if (!_lerSite || lead.PerfilSiteEm is not null) return;
+        if (IA.GeminiClassificador.GeracaoSuspensa) return;   // cota morta — a pontuação vem primeiro
+
+        try
+        {
+            // Sem site ainda? Deriva do domínio do e-mail — com a mesma checagem de dono do
+            // comando derivar-sites, porque é praxe no Brasil cadastrar o e-mail do CONTADOR.
+            if (string.IsNullOrWhiteSpace(lead.Site))
+            {
+                var dominio = ComandoDerivarSites.DominioDoContato(lead.Contato);
+                if (dominio is null || !ComandoDerivarSites.Combina(lead.RazaoSocial, dominio)) return;
+                lead.Site = dominio;
+            }
+
+            var (perfil, motivo) = await ComandoDadoRico.PerfilDoSiteAsync(navegador, _ia, lead.RazaoSocial, lead.Site!, ct);
+            lead.PerfilSiteEm = DateTime.UtcNow;   // marca a tentativa: site quebrado não volta amanhã
+            lead.PerfilSite = perfil;
+
+            if (perfil is null) _log.LogInformation("Sem perfil para {Nome}: {Motivo}", lead.RazaoSocial, motivo);
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            // Ler o site é um GANHO de qualidade, não um requisito: sem ele a rodada segue
+            // pontuando como sempre pontuou.
+            _log.LogWarning(ex, "Não consegui descrever {Nome} pelo site (seguindo sem perfil)", lead.RazaoSocial);
         }
     }
 
