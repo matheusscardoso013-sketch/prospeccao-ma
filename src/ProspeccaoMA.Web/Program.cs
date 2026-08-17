@@ -368,4 +368,26 @@ catch (Exception ex)
     app.Logger.LogError(ex, "Banco não inicializado (configure ConnectionStrings:Neon). App segue de pé para diagnóstico.");
 }
 
+// Aquece as chaves de Data Protection ANTES de aceitar gente.
+//
+// A tela de login é a única que precisa delas (token antiforgery), e o key ring é montado sob
+// demanda — na primeira requisição que o exigir, lendo as chaves do Neon. Isso explica o
+// padrão estranho de 14/08, quando o Login devolveu 500 enquanto /Jobs/Saude respondia 200:
+// o endpoint de saúde consulta o banco e passa, porque não toca no key ring. Em 17/08 o mesmo
+// aconteceu logo após um deploy — 500 numa tentativa, 200 na seguinte, sem nada mudar.
+//
+// Montando aqui, o custo (e o risco) do arranque a frio sai do caminho de quem entra: se
+// falhar, falha no boot com a exceção no log, em vez de na cara do time.
+try
+{
+    app.Services.GetRequiredService<IDataProtectionProvider>()
+       .CreateProtector("aquecimento").Protect("ok");
+    app.Logger.LogInformation("Chaves de Data Protection prontas — a tela de login não precisa montá-las.");
+}
+catch (Exception ex)
+{
+    app.Logger.LogError(ex, "Não consegui preparar as chaves de Data Protection no arranque — " +
+                            "a tela de login pode devolver 500 até o banco responder.");
+}
+
 app.Run();
