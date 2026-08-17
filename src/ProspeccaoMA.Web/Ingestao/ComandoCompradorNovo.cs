@@ -17,7 +17,14 @@ namespace ProspeccaoMA.Web.Ingestao;
 /// e muito mais folgada: ranqueia todos os alvos por similaridade com a tese e só os
 /// finalistas vão à IA. Uso:
 ///   cadastrar-comprador arquivo.json [--gravar]
-///   cruzar-comprador "Nome" [--max 15] [--gravar]
+///   cruzar-comprador "Nome" [--cnae 62,63] [--orcamento N] [--enriquecer N] [--reserva N] [--max 15] [--gravar]
+///
+/// --enriquecer resolve o problema que a Starian expôs: nenhuma empresa da Receita entrou no
+/// top 25, porque o embedding delas só tem razão social e a descrição do CNAE — texto que
+/// descreve milhares de empresas de forma idêntica. Não é falta de aderência, é falta de
+/// DADO. Com a flag, os melhores candidatos SEM perfil têm o site lido na hora, e são
+/// remedidos com o que a empresa realmente faz. Fica de fora por padrão porque cada perfil
+/// custa uma chamada de GERAÇÃO — a mesma cota escassa da pontuação, que vem depois.
 /// </summary>
 public static class ComandoCompradorNovo
 {
@@ -71,7 +78,7 @@ public static class ComandoCompradorNovo
 
     public static async Task CruzarAsync(IServiceProvider sp, string[] args)
     {
-        if (args.Length < 2) { Console.WriteLine("Uso: cruzar-comprador \"Nome\" [--max 15] [--gravar]"); return; }
+        if (args.Length < 2) { Console.WriteLine("Uso: cruzar-comprador \"Nome\" [--cnae 62,63] [--orcamento N] [--enriquecer N] [--reserva N] [--max 15] [--gravar]"); return; }
         var nome = args[1];
         var gravar = args.Any(a => a.Equals("--gravar", StringComparison.OrdinalIgnoreCase));
         var max = 15;
@@ -130,7 +137,7 @@ public static class ComandoCompradorNovo
         // O orçamento limita apenas embeddings NOVOS. Quem já tem vetor no banco entra de
         // graça — é o que permite rodar de novo e continuar de onde parou, em vez de gastar
         // a cota sempre nos mesmos primeiros alvos.
-        var comVetor = new List<(Lead L, double Sim)>();
+        var comVetor = new List<Candidato>();
         int gerados = 0;
         // --orcamento 0 usa SÓ o que já está em cache (útil quando a cota de embedding
         // do dia acabou — descoberto em 12/08: ela NÃO é ilimitada, 429 após ~1.000).
@@ -143,7 +150,7 @@ public static class ComandoCompradorNovo
 
             var v = await motor.EmbeddingDoLeadAsync(l);
             if (v is null) continue;
-            comVetor.Add((l, MotorSinergia.Similaridade(vetorTese, v)));
+            comVetor.Add(new Candidato { L = l, Sim = MotorSinergia.Similaridade(vetorTese, v) });
 
             if (tinhaVetor) continue;
             gerados++;
@@ -157,17 +164,111 @@ public static class ComandoCompradorNovo
         await db.SaveChangesAsync();
         Console.WriteLine($"Vetorizados: {comVetor.Count}/{leads.Count} ({gerados} gerados agora).");
 
-        var finalistas = comVetor.OrderByDescending(x => x.Sim).Take(max).ToList();
+        // 3) Enriquecer sob demanda: ler o site dos melhores candidatos que ainda não têm
+        //    perfil e REMEDIR a similaridade. Os candidatos são ordenados entre si, não pela
+        //    posição no ranking geral — de propósito. Uma empresa da Receita boa pode estar em
+        //    400º lugar justamente porque o texto dela é pobre; cortar pelo topo geral a
+        //    deixaria de fora e o problema se perpetuaria.
+        //    Só empresas da RECEITA: os alvos curados já têm fila própria no dreno diário, e na
+        //    primeira medição (17/08) eles consumiram quase todas as vagas por estarem no topo
+        //    da lista — justamente porque já são bem descritos. Quem precisa do site é quem não
+        //    tem descrição nenhuma.
+        var enriquecer = int.TryParse(Texto(args, "--enriquecer"), out var en) ? en : 0;
+        var enriqueciveis = comVetor
+            .Where(x => x.L.Origem != Lead.OrigemValore
+                        && !string.IsNullOrWhiteSpace(x.L.Site) && x.L.PerfilSiteEm is null)
+            .OrderByDescending(x => x.Sim)
+            .ToList();
+
+        if (enriquecer > 0 && enriqueciveis.Count > 0)
+        {
+            var antes = comVetor.OrderByDescending(x => x.Sim).Take(max).Select(x => x.L.Id).ToHashSet();
+            Console.WriteLine($"\n=== Enriquecendo sob demanda: {Math.Min(enriquecer, enriqueciveis.Count)} " +
+                              $"de {enriqueciveis.Count} candidato(s) com site e sem perfil ===");
+
+            using var http = ComandoDadoRico.NovoNavegador();
+            int perfis = 0, semPerfil = 0;
+            foreach (var cand in enriqueciveis.Take(enriquecer))
+            {
+                if (GeminiClassificador.GeracaoSuspensa)
+                {
+                    Console.WriteLine("  Freio de cota — paro de ler sites e pontuo com o que já tem.");
+                    break;
+                }
+
+                var (perfil, motivo) = await ComandoDadoRico.PerfilDoSiteAsync(http, ia, cand.L.RazaoSocial, cand.L.Site!);
+                cand.L.PerfilSiteEm = DateTime.UtcNow;   // marca a tentativa: site quebrado não volta amanhã
+                cand.L.PerfilSite = perfil;
+                await db.SaveChangesAsync();
+
+                if (perfil is null) { semPerfil++; Console.WriteLine($"  sem perfil   {cand.L.RazaoSocial}: {motivo}"); continue; }
+
+                // O perfil entra no texto do embedding, então o hash muda e o vetor é refeito
+                // sozinho — a empresa passa a ser medida pelo que FAZ, não pelo CNAE dela.
+                cand.SimAntes = cand.Sim;
+                var refeito = await motor.EmbeddingDoLeadAsync(cand.L);
+                if (refeito is not null)
+                {
+                    cand.Sim = MotorSinergia.Similaridade(vetorTese, refeito);
+                    await db.SaveChangesAsync();
+                }
+                cand.Enriquecido = true;
+                perfis++;
+                Console.WriteLine($"  {cand.SimAntes:0.000} → {cand.Sim:0.000}  {cand.L.RazaoSocial}");
+            }
+
+            var entraram = comVetor.OrderByDescending(x => x.Sim).Take(max)
+                .Where(x => !antes.Contains(x.L.Id)).ToList();
+            Console.WriteLine($"\n{perfis} perfil(is) lido(s), {semPerfil} site(s) sem resposta útil.");
+            Console.WriteLine(entraram.Count == 0
+                ? "Nenhum alvo novo entrou no topo — o dado real confirmou o ranking anterior."
+                : $"{entraram.Count} alvo(s) entraram no topo depois da leitura: {string.Join(", ", entraram.Select(x => x.L.RazaoSocial))}");
+        }
+        else if (enriqueciveis.Count > 0)
+        {
+            Console.WriteLine($"\n{enriqueciveis.Count} empresa(s) da Receita têm site e nenhum perfil — a busca semântica só " +
+                              "tem razão social e CNAE para ler nelas, texto que não distingue uma empresa da outra.");
+            Console.WriteLine("Use --enriquecer N para ler o site antes de pontuar (1 chamada de geração por site).");
+        }
+
+        // 4) Finalistas. A triagem por embedding compara TEXTO, e os dois lados escrevem de
+        //    forma diferente: o alvo curado tem descrição redigida por gente de M&A, no mesmo
+        //    registro da tese; o da Receita tem o resumo do próprio site. Medido em 17/08 na
+        //    Starian: curados ~0,72, Receita ~0,65, e a distância PERSISTE depois de ler o
+        //    site. Não é aderência, é semelhança de estilo — a prova é que um fundo de private
+        //    equity rankeou acima de softwares de verdade numa tese de software.
+        //    Então a triagem não decide sozinha: parte das vagas é reservada a empresas da
+        //    Receita e quem julga é a IA, que lê conteúdo. Se não prestarem, ela reprova com
+        //    motivo — e o "não" ainda vira exemplo negativo para as próximas.
+        var reserva = int.TryParse(Texto(args, "--reserva"), out var rv) ? rv : max / 3;
+        var ordenados = comVetor.OrderByDescending(x => x.Sim).ToList();
+        var finalistas = ordenados.Take(Math.Max(0, max - reserva)).ToList();
+        if (reserva > 0)
+        {
+            var escolhidos = finalistas.Select(x => x.L.Id).ToHashSet();
+            var daReceita = ordenados
+                .Where(x => x.L.Origem != Lead.OrigemValore && !escolhidos.Contains(x.L.Id))
+                .Take(reserva).ToList();
+            finalistas.AddRange(daReceita);
+            finalistas = finalistas.OrderByDescending(x => x.Sim).ToList();
+            Console.WriteLine($"\nVagas reservadas a empresas da Receita: {daReceita.Count} de {reserva}.");
+        }
+
         Console.WriteLine($"\n=== {finalistas.Count} finalistas por similaridade ===");
         foreach (var f in finalistas)
-            Console.WriteLine($"  {f.Sim:0.000}  {f.L.RazaoSocial}  ({Util.CnaeCatalogo.Rotulo(f.L.Cnae)})");
+        {
+            var quem = f.L.Origem == Lead.OrigemValore ? "★ curado" : Util.CnaeCatalogo.Rotulo(f.L.Cnae);
+            Console.WriteLine($"  {f.Sim:0.000}  {f.L.RazaoSocial}  ({quem})" +
+                              (f.Enriquecido ? "  ← site lido agora" : ""));
+        }
 
-        if (!gravar) { Console.WriteLine("\nDRY-RUN — a IA não foi chamada. Use --gravar para pontuar."); return; }
+        if (!gravar) { Console.WriteLine("\nDRY-RUN — a IA não pontuou nada. Use --gravar para pontuar."); return; }
 
         Console.WriteLine("\n=== Pontuação pela IA ===");
         var novos = 0;
-        foreach (var (lead, _) in finalistas)
+        foreach (var f in finalistas)
         {
+            var lead = f.L;
             if (GeminiClassificador.GeracaoSuspensa) { Console.WriteLine("Freio de cota — o resto fica para depois."); break; }
 
             var r = await ia.ClassificarSinergiaAsync(lead, c);
@@ -185,6 +286,19 @@ public static class ComandoCompradorNovo
             Console.WriteLine($"        {r.Racional}");
         }
         Console.WriteLine($"\n{novos} par(es) gravado(s) para {c.Nome}.");
+    }
+
+    /// <summary>
+    /// Um candidato na triagem. É classe, não tupla, porque o enriquecimento sob demanda
+    /// REESCREVE a similaridade depois de ler o site: o mesmo alvo é medido duas vezes, antes
+    /// com dado pobre e depois com o que a empresa realmente faz.
+    /// </summary>
+    private sealed class Candidato
+    {
+        public Lead L { get; init; } = null!;
+        public double Sim { get; set; }
+        public double SimAntes { get; set; }
+        public bool Enriquecido { get; set; }
     }
 
     private static string? Texto(string[] args, string flag)
