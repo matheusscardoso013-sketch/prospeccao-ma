@@ -107,7 +107,19 @@ public class DrenoDadoRico : IDrenoDadoRico
             .Where(l => l.Origem == Lead.OrigemValore && l.Site != null && l.Site != "" && l.PerfilSiteEm == null)
             .OrderBy(l => l.Id).Take(faltam).ToListAsync(ct);
 
-        if (compradores.Count == 0 && curados.Count == 0) return 0;
+        // Empresas da Receita QUE JÁ ESTÃO NA MESA. A rodada agora lê o site de todo lead novo
+        // antes de pontuar, mas quem foi prospectado antes de 17/08 foi julgado só por razão
+        // social e CNAE — e continua na Mesa com um score tirado no escuro. Estes vêm por
+        // último de propósito: são muitos (1.947 têm site), e a fila só faz sentido para os que
+        // alguém realmente vai olhar. Quem nunca foi cruzado com ninguém não entra aqui; entra
+        // pelo cruzar-comprador, quando uma tese pedir.
+        faltam = _maxPerfis - compradores.Count - curados.Count;
+        var naMesa = faltam <= 0 ? new List<Lead>() : await _db.Leads
+            .Where(l => l.Origem == Lead.OrigemReceita && l.Site != null && l.Site != "" && l.PerfilSiteEm == null
+                        && _db.SinergiasComprador.Any(s => s.LeadId == l.Id))
+            .OrderBy(l => l.Id).Take(faltam).ToListAsync(ct);
+
+        if (compradores.Count == 0 && curados.Count == 0 && naMesa.Count == 0) return 0;
 
         using var http = ComandoDadoRico.NovoNavegador();
         var feitos = 0;
@@ -124,7 +136,7 @@ public class DrenoDadoRico : IDrenoDadoRico
             else _log.LogInformation("Perfil não obtido (comprador {Nome}): {Motivo}", c.Nome, motivo);
         }
 
-        foreach (var l in curados)
+        foreach (var l in curados.Concat(naMesa))
         {
             ct.ThrowIfCancellationRequested();
             if (GeminiClassificador.GeracaoSuspensa) break;
